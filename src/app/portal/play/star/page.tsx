@@ -4,19 +4,17 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState, useEffect } from "react";
 import StarField from "@/components/StarField";
 import NeonButton from "@/components/NeonButton";
-import SpaceShooterGame from "@/components/SpaceShooterGame";
+import StarHunterGame from "@/components/StarHunterGame";
 import LevelIntro from "@/components/LevelIntro";
 import { useGame } from "@/lib/game-context";
-import { getShooterLevels, type GameLevel } from "@/lib/db";
+import { getStarHunterLevels, type GameLevel } from "@/lib/db";
 
 const PLANET_NAMES: Record<string, { name: string; emoji: string }> = {
-    "hue": { name: "Cố đô Huế", emoji: "🏯" },
-    "ha-long": { name: "Vịnh Hạ Long", emoji: "🏝️" },
-    "phong-nha": { name: "Phong Nha", emoji: "🦇" },
-    "hoi-an": { name: "Phố cổ Hội An", emoji: "🏮" },
+    "hanoi": { name: "Hà Nội", emoji: "🌆" },
+    "mekong": { name: "Đồng bằng Mê Kông", emoji: "🌊" },
 };
 
-function PlayContent() {
+function StarPlayContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { player, addXP, updatePlanetProgress } = useGame();
@@ -24,17 +22,13 @@ function PlayContent() {
     const [levels, setLevels] = useState<GameLevel[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const planetId = searchParams.get("planet") || "hue";
-    const planetInfo = PLANET_NAMES[planetId] || { name: "Cố đô Huế", emoji: "🏯" };
+    const planetId = searchParams.get("planet") || "hanoi";
+    const planetInfo = PLANET_NAMES[planetId] || { name: "Hà Nội", emoji: "🌆" };
 
-    // Load levels from DB (or mock fallback) based on player grade
     useEffect(() => {
         setLoading(true);
-        getShooterLevels(planetId, player.grade)
-            .then((data) => {
-                setLevels(data);
-                setLoading(false);
-            })
+        getStarHunterLevels(planetId, player.grade)
+            .then((data) => { setLevels(data); setLoading(false); })
             .catch(() => setLoading(false));
     }, [planetId, player.grade]);
 
@@ -51,8 +45,8 @@ function PlayContent() {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center space-y-4">
-                    <div className="text-4xl animate-bounce">🚀</div>
-                    <p className="text-white/60">Đang tải sứ mệnh...</p>
+                    <div className="text-4xl" style={{ animation: "spin 1.5s linear infinite" }}>⭐</div>
+                    <p className="text-white/60">Đang triệu tập các ngôi sao...</p>
                 </div>
             </div>
         );
@@ -60,7 +54,7 @@ function PlayContent() {
 
     return (
         <div className="min-h-screen relative flex flex-col">
-            <StarField count={40} />
+            <StarField count={60} />
 
             {/* Top bar */}
             <div className="relative z-10 glass-card-strong" style={{ borderRadius: 0 }}>
@@ -85,21 +79,23 @@ function PlayContent() {
             </div>
 
             {/* Game area */}
-            <div className="relative z-10 flex-1 flex items-center justify-center p-4 sm:p-8">
+            <div className="relative z-10 flex-1 flex flex-col p-4 sm:p-6">
                 {showIntro ? (
-                    <div className="w-full max-w-5xl mx-auto relative min-h-[500px] rounded-2xl overflow-hidden border border-white/10 bg-space-deep flex items-center justify-center">
-                        <LevelIntro
-                            planetName={planetInfo.name}
-                            planetEmoji={planetInfo.emoji}
-                            levelTitle={levels[0]?.title || ""}
-                            levelNumber={levels[0]?.level || 1}
-                            subject={levels[0]?.subject || ""}
-                            playerClass={player.playerClass}
-                            onStart={() => setShowIntro(false)}
-                        />
+                    <div className="flex-1 flex items-center justify-center">
+                        <div className="w-full max-w-5xl mx-auto relative min-h-[500px] rounded-2xl overflow-hidden border border-white/10 bg-space-deep flex items-center justify-center">
+                            <LevelIntro
+                                planetName={planetInfo.name}
+                                planetEmoji={planetInfo.emoji}
+                                levelTitle={levels[0]?.title || ""}
+                                levelNumber={levels[0]?.level || 1}
+                                subject={levels[0]?.subject || ""}
+                                playerClass={player.playerClass}
+                                onStart={() => setShowIntro(false)}
+                            />
+                        </div>
                     </div>
                 ) : (
-                    <SpaceShooterGame
+                    <StarHunterGame
                         levels={levels}
                         onExit={() => router.push("/portal")}
                         playerClass={player.playerClass}
@@ -111,10 +107,10 @@ function PlayContent() {
     );
 }
 
-export default function PlayPage() {
+export default function StarPlayPage() {
     return (
         <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><span className="text-white/50">Đang tải...</span></div>}>
-            <PlayContent />
+            <StarPlayContent />
         </Suspense>
     );
 }

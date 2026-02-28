@@ -135,6 +135,32 @@ export const mockPlanets = [
         description: "Giải mật mã ruộng bậc thang bằng Toán học!",
         emoji: "🌾",
     },
+    {
+        id: "hanoi",
+        name: "Hà Nội",
+        subjects: ["Lịch sử", "Địa lý"],
+        color1: "#FF8C00",
+        color2: "#C2410C",
+        ringColor: "#FFDAB9",
+        progress: 0,
+        totalLevels: 20,
+        completedLevels: 0,
+        description: "Khám phá thủ đô ngàn năm văn hiến!",
+        emoji: "🌆",
+    },
+    {
+        id: "mekong",
+        name: "Đồng bằng Mê Kông",
+        subjects: ["Khoa học", "Địa lý"],
+        color1: "#00FF88",
+        color2: "#065F46",
+        ringColor: "#00FF8866",
+        progress: 0,
+        totalLevels: 18,
+        completedLevels: 0,
+        description: "Bí ẩn vùng sông nước phương Nam!",
+        emoji: "🌊",
+    },
 ];
 
 export const mockGameLevels = [
@@ -533,4 +559,73 @@ export const mockSapaLevels = [
         ],
     },
 ];
+
+// ─── Star Hunter: Hà Nội ──────────────────────────────
+export const mockHanoiLevels = [
+    {
+        level: 1, planet: "Hà Nội", subject: "Địa lý", title: "Thủ đô Hà Nội", speed: 1.0,
+        questions: [
+            { question: "Thủ đô nước Việt Nam?", correctWord: "Hà Nội", wrongWords: ["Hồ Chí Minh", "Đà Nẵng", "Huế", "Cần Thơ"] },
+            { question: "Hồ nổi tiếng nhất Hà Nội?", correctWord: "Hồ Hoàn Kiếm", wrongWords: ["Hồ Tây", "Hồ Ba Mẫu", "Hồ Đống Đa"] },
+            { question: "Chùa nổi tiếng ở Hà Nội?", correctWord: "Chùa Một Cột", wrongWords: ["Chùa Bái Đính", "Chùa Hương", "Chùa Thầy"] },
+            { question: "Cầu nào cổ nhất qua sông Hồng?", correctWord: "Cầu Long Biên", wrongWords: ["Cầu Nhật Tân", "Cầu Chương Dương", "Cầu Thăng Long"] },
+            { question: "Hà Nội có biệt danh là?", correctWord: "Thành phố vì hòa bình", wrongWords: ["Thành phố hoa phượng", "Thành phố sông Hàn", "Phố biển"] },
+        ],
+    },
+    {
+        level: 2, planet: "Hà Nội", subject: "Lịch sử", title: "Lịch sử Hà Nội", speed: 1.2,
+        questions: [
+            { question: "Hà Nội được dời đô vào năm?", correctWord: "1010", wrongWords: ["1045", "899", "1225", "1100"] },
+            { question: "Vua nào dời đô về Thăng Long?", correctWord: "Lý Thái Tổ", wrongWords: ["Trần Thái Tông", "Lê Lợi", "Đinh Tiên Hoàng"] },
+            { question: "Hà Nội còn được gọi là?", correctWord: "Thăng Long", wrongWords: ["Đại Việt", "Việt Trì", "Đông Đô Cổ"] },
+            { question: "Văn Miếu Quốc Tử Giám thờ ai?", correctWord: "Khổng Tử", wrongWords: ["Phật Thích Ca", "Hùng Vương", "Nguyễn Trãi"] },
+            { question: "Kỷ niệm 1000 năm Thăng Long năm?", correctWord: "2010", wrongWords: ["2000", "2015", "1998"] },
+        ],
+    },
+    {
+        level: 3, planet: "Hà Nội", subject: "Lịch sử", title: "Danh nhân Hà Nội", speed: 1.4,
+        questions: [
+            { question: "Ai viết 'Bình Ngô Đại Cáo'?", correctWord: "Nguyễn Trãi", wrongWords: ["Lê Lợi", "Nguyễn Du", "Trần Hưng Đạo"] },
+            { question: "Thánh Gióng quê ở đâu?", correctWord: "Phù Đổng", wrongWords: ["Hà Nội", "Bắc Ninh", "Sóc Sơn"] },
+            { question: "Nguyễn Du sinh ở đâu?", correctWord: "Hà Tĩnh", wrongWords: ["Hà Nội", "Nam Định", "Nghệ An"] },
+            { question: "Ai xây dựng Văn Miếu?", correctWord: "Lý Thánh Tông", wrongWords: ["Lý Thái Tổ", "Lê Thánh Tông", "Trần Nhân Tông"] },
+            { question: "Phố bán sách cũ nổi tiếng HN?", correctWord: "Đinh Lễ", wrongWords: ["Hàng Bài", "Tràng Tiền", "Lý Thường Kiệt"] },
+        ],
+    },
+];
+
+// ─── Star Hunter: Mê Kông ─────────────────────────────
+export const mockMekongLevels = [
+    {
+        level: 1, planet: "Đồng bằng Mê Kông", subject: "Địa lý", title: "Sông ngòi Mê Kông", speed: 1.0,
+        questions: [
+            { question: "ĐBSCL thuộc miền nào?", correctWord: "Miền Nam", wrongWords: ["Miền Bắc", "Miền Trung", "Tây Nguyên"] },
+            { question: "Sông Cửu Long đổ vào đâu?", correctWord: "Biển Đông", wrongWords: ["Biển Tây", "Vịnh Thái Lan", "Ấn Độ Dương"] },
+            { question: "Đặc sản nổi tiếng Cần Thơ?", correctWord: "Bánh xèo", wrongWords: ["Bún bò", "Phở", "Bánh mì"] },
+            { question: "Mê Kông bắt nguồn từ đâu?", correctWord: "Trung Quốc", wrongWords: ["Lào", "Myanmar", "Ấn Độ"] },
+            { question: "Tỉnh có nhiều xoài nhất?", correctWord: "Tiền Giang", wrongWords: ["Cần Thơ", "An Giang", "Đồng Tháp"] },
+        ],
+    },
+    {
+        level: 2, planet: "Đồng bằng Mê Kông", subject: "Khoa học", title: "Hệ sinh thái sông nước", speed: 1.2,
+        questions: [
+            { question: "Rừng ngập mặn ĐBSCL chủ yếu là?", correctWord: "Cây đước", wrongWords: ["Cây tràm", "Cây bần", "Cây dừa nước"] },
+            { question: "Cá nước ngọt đặc trưng Mê Kông?", correctWord: "Cá tra", wrongWords: ["Cá hồi", "Cá thu", "Cá ngừ"] },
+            { question: "Rừng U Minh chủ yếu có cây?", correctWord: "Tràm", wrongWords: ["Đước", "Sú", "Vẹt"] },
+            { question: "Cá sấu Mê Kông thuộc loại?", correctWord: "Động vật bò sát", wrongWords: ["Tôm cua", "Côn trùng", "Chim"] },
+            { question: "Vùng nào nổi tiếng nuôi tôm?", correctWord: "Cà Mau", wrongWords: ["Tiền Giang", "Vĩnh Long", "Đồng Tháp"] },
+        ],
+    },
+    {
+        level: 3, planet: "Đồng bằng Mê Kông", subject: "Khoa học", title: "Trái cây phương Nam", speed: 1.3,
+        questions: [
+            { question: "Trái cây nào có mùi nồng nhất?", correctWord: "Sầu riêng", wrongWords: ["Mít", "Dứa", "Ổi"] },
+            { question: "Màu quả xoài chín?", correctWord: "Vàng", wrongWords: ["Đỏ", "Xanh", "Tím"] },
+            { question: "Cây nào cho dừa?", correctWord: "Cọ dừa", wrongWords: ["Cọ cảnh", "Cây chà là", "Cây cọ dầu"] },
+            { question: "Thanh long có màu gì phổ biến?", correctWord: "Đỏ và trắng", wrongWords: ["Vàng và xanh", "Tím và cam", "Đen và trắng"] },
+            { question: "Mít chín có màu gì bên trong?", correctWord: "Vàng", wrongWords: ["Trắng", "Đỏ", "Xanh"] },
+        ],
+    },
+];
+
 

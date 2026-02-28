@@ -55,6 +55,8 @@ const DEFAULT_PLAYER: PlayerData = {
         "phong-nha": { completedLevels: 0, totalLevels: 18 },
         "hoi-an": { completedLevels: 0, totalLevels: 15 },
         "sapa": { completedLevels: 0, totalLevels: 22 },
+        "hanoi": { completedLevels: 0, totalLevels: 20 },
+        "mekong": { completedLevels: 0, totalLevels: 18 },
     },
 };
 

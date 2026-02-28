@@ -1,18 +1,13 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import StarField from "@/components/StarField";
 import NeonButton from "@/components/NeonButton";
 import MathForgeGame from "@/components/MathForgeGame";
 import LevelIntro from "@/components/LevelIntro";
-import { mockMathLevels, mockSapaLevels } from "@/lib/mock-data";
 import { useGame } from "@/lib/game-context";
-
-const PLANET_LEVELS: Record<string, typeof mockMathLevels> = {
-    "giong": mockMathLevels,
-    "sapa": mockSapaLevels,
-};
+import { getMathLevels, type MathLevel } from "@/lib/db";
 
 const PLANET_NAMES: Record<string, { name: string; emoji: string }> = {
     "giong": { name: "Làng Gióng", emoji: "⚔️" },
@@ -24,10 +19,22 @@ function MathPlayContent() {
     const searchParams = useSearchParams();
     const { player, addXP, updatePlanetProgress } = useGame();
     const [showIntro, setShowIntro] = useState(true);
+    const [levels, setLevels] = useState<MathLevel[]>([]);
+    const [loading, setLoading] = useState(true);
 
     const planetId = searchParams.get("planet") || "giong";
-    const levels = PLANET_LEVELS[planetId] || mockMathLevels;
     const planetInfo = PLANET_NAMES[planetId] || { name: "Làng Gióng", emoji: "⚔️" };
+
+    // Load levels from DB (or mock fallback) based on player grade
+    useEffect(() => {
+        setLoading(true);
+        getMathLevels(planetId, player.grade)
+            .then((data) => {
+                setLevels(data);
+                setLoading(false);
+            })
+            .catch(() => setLoading(false));
+    }, [planetId, player.grade]);
 
     const handleGameComplete = (finalScore: number, levelsCompleted: number) => {
         addXP(finalScore);
@@ -37,6 +44,17 @@ function MathPlayContent() {
             updatePlanetProgress(planetId, newCompleted, currentProgress.totalLevels);
         }
     };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center space-y-4">
+                    <div className="text-4xl animate-bounce">⚔️</div>
+                    <p className="text-white/60">Đang tải lò rèn...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen relative flex flex-col">
