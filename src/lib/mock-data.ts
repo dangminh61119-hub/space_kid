@@ -137,6 +137,96 @@ export const mockPlanets = [
     },
 ];
 
+export const mockGameLevels = [
+    {
+        level: 1,
+        planet: "Cố đô Huế",
+        subject: "Tiếng Việt",
+        title: "Chính tả cơ bản",
+        speed: 1,
+        questions: [
+            { question: "Từ nào viết ĐÚNG?", correctWord: "kỹ năng", wrongWords: ["kỉ năng", "kĩ năg", "ky năng"] },
+            { question: "Từ nào viết ĐÚNG?", correctWord: "giữ gìn", wrongWords: ["giử gìn", "giữ gìng", "dữ gìn"] },
+            { question: "Từ nào viết ĐÚNG?", correctWord: "sáng tạo", wrongWords: ["xáng tạo", "sáng tạu", "xáng tạu"] },
+            { question: "Từ nào viết ĐÚNG?", correctWord: "nghiên cứu", wrongWords: ["nghiên cửu", "ngiên cứu", "nghiên cừu"] },
+            { question: "Từ nào viết ĐÚNG?", correctWord: "trường học", wrongWords: ["chường học", "trườn học", "trường hộc"] },
+        ],
+    },
+    {
+        level: 2,
+        planet: "Cố đô Huế",
+        subject: "Tiếng Việt",
+        title: "Dấu thanh nâng cao",
+        speed: 1.3,
+        questions: [
+            { question: "Từ nào viết ĐÚNG?", correctWord: "vẻ đẹp", wrongWords: ["vẽ đẹp", "vẻ đep", "vẽ đep"] },
+            { question: "Từ nào viết ĐÚNG?", correctWord: "dữ liệu", wrongWords: ["giữ liệu", "dử liệu", "giử liệu"] },
+            { question: "Từ nào viết ĐÚNG?", correctWord: "khuyến khích", wrongWords: ["khuyến kích", "khuyến khic", "khuyến kic"] },
+            { question: "Từ nào viết ĐÚNG?", correctWord: "hạnh phúc", wrongWords: ["hạn phúc", "hạnh phuc", "hạn phuc"] },
+            { question: "Từ nào viết ĐÚNG?", correctWord: "phát triển", wrongWords: ["phác triển", "phát chiển", "phác chiển"] },
+        ],
+    },
+    {
+        level: 3,
+        planet: "Vịnh Hạ Long",
+        subject: "Tiếng Anh",
+        title: "English Vocabulary",
+        speed: 1.5,
+        questions: [
+            { question: "'Planet' nghĩa là gì?", correctWord: "Hành tinh", wrongWords: ["Ngôi sao", "Mặt trăng", "Bầu trời"] },
+            { question: "'Ocean' nghĩa là gì?", correctWord: "Đại dương", wrongWords: ["Sông", "Hồ", "Suối"] },
+            { question: "'Mountain' nghĩa là gì?", correctWord: "Núi", wrongWords: ["Đồi", "Thung lũng", "Đồng bằng"] },
+            { question: "'Knowledge' nghĩa là gì?", correctWord: "Kiến thức", wrongWords: ["Sức mạnh", "Tốc độ", "Âm nhạc"] },
+            { question: "'Adventure' nghĩa là gì?", correctWord: "Phiêu lưu", wrongWords: ["Mạo hiểm", "Nguy hiểm", "Tai nạn"] },
+        ],
+    },
+];
+
+export const mockMathLevels = [
+    {
+        level: 1,
+        planet: "Làng Gióng",
+        subject: "Toán",
+        title: "Phép cộng & trừ",
+        timePerQuestion: 15,
+        questions: [
+            { equation: "_ + 3 = 7", answer: 4, options: [2, 3, 4, 5] },
+            { equation: "9 - _ = 4", answer: 5, options: [3, 4, 5, 6] },
+            { equation: "_ + 6 = 10", answer: 4, options: [3, 4, 5, 6] },
+            { equation: "12 - _ = 7", answer: 5, options: [4, 5, 6, 7] },
+            { equation: "_ + 8 = 15", answer: 7, options: [5, 6, 7, 8] },
+        ],
+    },
+    {
+        level: 2,
+        planet: "Làng Gióng",
+        subject: "Toán",
+        title: "Phép nhân & chia",
+        timePerQuestion: 18,
+        questions: [
+            { equation: "_ × 4 = 20", answer: 5, options: [3, 4, 5, 6] },
+            { equation: "24 ÷ _ = 6", answer: 4, options: [3, 4, 6, 8] },
+            { equation: "_ × 7 = 42", answer: 6, options: [5, 6, 7, 8] },
+            { equation: "36 ÷ _ = 9", answer: 4, options: [3, 4, 6, 9] },
+            { equation: "_ × 8 = 56", answer: 7, options: [6, 7, 8, 9] },
+        ],
+    },
+    {
+        level: 3,
+        planet: "Làng Gióng",
+        subject: "Toán",
+        title: "Biểu thức hỗn hợp",
+        timePerQuestion: 20,
+        questions: [
+            { equation: "(3 + _) × 2 = 14", answer: 4, options: [3, 4, 5, 6] },
+            { equation: "(_ - 2) × 3 = 15", answer: 7, options: [5, 6, 7, 8] },
+            { equation: "20 ÷ (10 - _) = 4", answer: 5, options: [4, 5, 6, 7] },
+            { equation: "(_ + 5) × 2 = 22", answer: 6, options: [5, 6, 7, 8] },
+            { equation: "(12 - _) × 3 = 21", answer: 5, options: [4, 5, 6, 7] },
+        ],
+    },
+];
+
 export const mockOnboardingQuestions = [
     {
         question: "Hệ thống khởi động! 5 + 3 bằng bao nhiêu?",

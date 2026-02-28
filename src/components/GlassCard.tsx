@@ -5,10 +5,10 @@ interface GlassCardProps {
     glow?: "cyan" | "magenta" | "gold" | "none";
 }
 
-const glowStyles = {
-    cyan: "hover:shadow-[0_0_20px_rgba(0,245,255,0.15)]",
-    magenta: "hover:shadow-[0_0_20px_rgba(255,107,255,0.15)]",
-    gold: "hover:shadow-[0_0_20px_rgba(255,224,102,0.15)]",
+const glowGradients = {
+    cyan: "from-cyan-500/10 to-blue-500/10",
+    magenta: "from-fuchsia-500/10 to-purple-500/10",
+    gold: "from-amber-500/10 to-orange-500/10",
     none: "",
 };
 
@@ -21,13 +21,22 @@ export default function GlassCard({
     return (
         <div
             className={`
-        glass-card p-6
-        ${hover ? "transition-all duration-300 hover:border-white/20 hover:translate-y-[-2px]" : ""}
-        ${glowStyles[glow]}
-        ${className}
-      `}
+                relative group rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md overflow-hidden
+                ${hover ? "transition-transform duration-300 hover:-translate-y-1" : ""}
+                ${className}
+            `}
         >
-            {children}
+            {/* Hover Glow Effect */}
+            {glow !== "none" && (
+                <div
+                    className={`absolute inset-0 bg-gradient-to-br ${glowGradients[glow]} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
+                />
+            )}
+            
+            {/* Content */}
+            <div className="relative z-10 p-6 h-full w-full flex flex-col">
+                {children}
+            </div>
         </div>
     );
 }

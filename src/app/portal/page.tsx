@@ -117,7 +117,7 @@ export default function PortalPage() {
                                     initial="hidden"
                                     animate="visible"
                                 >
-                                    <Link href="/portal/play">
+                                    <Link href={planet.id === "giong" ? "/portal/play/math" : "/portal/play"}>
                                         <GlassCard
                                             glow="none"
                                             className="planet-card cursor-pointer group relative overflow-hidden"

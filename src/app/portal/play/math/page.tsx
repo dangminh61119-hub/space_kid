@@ -3,10 +3,10 @@
 import { useRouter } from "next/navigation";
 import StarField from "@/components/StarField";
 import NeonButton from "@/components/NeonButton";
-import SpaceShooterGame from "@/components/SpaceShooterGame";
-import { mockGameLevels } from "@/lib/mock-data";
+import MathForgeGame from "@/components/MathForgeGame";
+import { mockMathLevels } from "@/lib/mock-data";
 
-export default function PlayPage() {
+export default function MathPlayPage() {
     const router = useRouter();
 
     return (
@@ -20,7 +20,7 @@ export default function PlayPage() {
                         ← Quay lại
                     </NeonButton>
                     <h1 className="text-sm sm:text-base font-bold text-white/80 font-[var(--font-heading)]">
-                        🎮 Bắn Từ Không Gian
+                        ⚔️ Lò Rèn Vũ Trụ
                     </h1>
                     <div className="flex items-center gap-4">
                         <div className="glass-card !p-2 !px-4 !rounded-xl flex items-center gap-2">
@@ -37,8 +37,8 @@ export default function PlayPage() {
 
             {/* Game area */}
             <div className="relative z-10 flex-1 flex items-center justify-center p-4 sm:p-8">
-                <SpaceShooterGame
-                    levels={mockGameLevels}
+                <MathForgeGame
+                    levels={mockMathLevels}
                     onExit={() => router.push("/portal")}
                 />
             </div>

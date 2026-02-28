@@ -6,6 +6,8 @@ import Navbar from "@/components/Navbar";
 import NeonButton from "@/components/NeonButton";
 import GlassCard from "@/components/GlassCard";
 import PlanetIcon from "@/components/PlanetIcon";
+import MascotAI from "@/components/MascotAI";
+import ChallengePlanets from "@/components/ChallengePlanets";
 
 const features = [
   {
@@ -39,23 +41,30 @@ const fadeUp = {
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen relative">
+    <div className="min-h-screen relative overflow-hidden bg-slate-950">
+      {/* Background Elements */}
       <StarField count={100} />
+      {/* Grid Pattern Overlay */}
+      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0wIDBoNDB2NDBIMHoiIGZpbGw9Im5vbmUiLz4KPHBhdGggZD0iTTAgMGg0MHYxSDB6TTAgMHY0MGgxVjB6IiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDUpIi8+Cjwvc3ZnPg==')] opacity-20 pointer-events-none" />
+
       <Navbar />
+      <MascotAI />
 
       {/* Hero */}
-      <section className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 text-center">
+      <section className="relative z-10 flex flex-col items-center justify-center min-h-screen pt-20 pb-16 px-4 text-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="mb-6"
+          className="mb-8"
         >
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <PlanetIcon color1="#00F5FF" color2="#0077B6" size={50} ringColor="#00F5FF" className="animate-float" />
-            <PlanetIcon color1="#FF6BFF" color2="#9D174D" size={35} ringColor="#FF6BFF" className="animate-float-slow" />
+          <div className="flex items-center justify-center gap-4 mb-6 relative">
+            {/* Glowing orb behind planets */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-cyan-500/20 rounded-full blur-2xl pointer-events-none" />
+            <PlanetIcon color1="#00F5FF" color2="#0077B6" size={60} ringColor="#00F5FF" className="animate-float" />
+            <PlanetIcon color1="#FF6BFF" color2="#9D174D" size={45} ringColor="#FF6BFF" className="animate-float-slow" />
           </div>
-          <h1 className="text-5xl sm:text-7xl md:text-8xl font-black font-[var(--font-heading)] neon-text leading-tight">
+          <h1 className="text-5xl sm:text-7xl md:text-8xl font-black font-[var(--font-heading)] neon-text leading-tight tracking-wide text-white">
             CosmoMosaic
           </h1>
         </motion.div>
@@ -64,7 +73,7 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.6 }}
-          className="text-lg sm:text-xl text-white/70 max-w-xl mb-3 font-[var(--font-heading)]"
+          className="text-xl sm:text-2xl text-slate-300 max-w-2xl mb-4 font-[var(--font-heading)] leading-relaxed"
         >
           Ghép tri thức, thắp sáng vũ trụ! ✨
         </motion.p>
@@ -72,22 +81,22 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.45, duration: 0.6 }}
-          className="text-sm text-white/50 max-w-md mb-8"
+          className="text-base text-slate-400 max-w-lg mb-10"
         >
-          Game giáo dục cho học sinh tiểu học Việt Nam – Học vô hình trong vũ trụ neon rực rỡ
+          Game giáo dục cho học sinh tiểu học Việt Nam – Học vô hình trong không gian học tập tương lai.
         </motion.p>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6, duration: 0.6 }}
-          className="flex flex-col sm:flex-row gap-4"
+          className="flex flex-col sm:flex-row gap-6"
         >
-          <NeonButton href="/onboarding" variant="cyan" size="lg">
-            Bắt đầu Hành trình 🚀
+          <NeonButton href="/onboarding" variant="orange" size="lg">
+            BẮT ĐẦU HÀNH TRÌNH
           </NeonButton>
-          <NeonButton href="/dashboard" variant="magenta" size="lg">
-            Phụ huynh 👨‍👩‍👧
+          <NeonButton href="/dashboard" variant="cyan" size="lg">
+            PHỤ HUYNH
           </NeonButton>
         </motion.div>
 
@@ -96,24 +105,28 @@ export default function HomePage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.2 }}
-          className="absolute bottom-8 animate-float"
+          className="absolute bottom-10 animate-float cursor-pointer flex flex-col items-center gap-2"
         >
-          <span className="text-white/30 text-sm">↓ Khám phá thêm</span>
+          <span className="text-slate-400 text-sm tracking-widest uppercase font-mono">Hệ Thống Sẵn Sàng</span>
+          <div className="w-1 h-8 bg-gradient-to-b from-cyan-400 to-transparent rounded-full" />
         </motion.div>
       </section>
 
+      {/* Features Separator (Glowing Line) */}
+      <div className="w-full h-px bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
+
       {/* Features */}
-      <section className="relative z-10 max-w-6xl mx-auto px-4 py-20">
+      <section className="relative z-10 max-w-7xl mx-auto px-6 py-24">
         <motion.h2
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-3xl sm:text-4xl font-bold font-[var(--font-heading)] neon-text text-center mb-12"
+          className="text-3xl sm:text-4xl font-bold font-[var(--font-heading)] text-white tracking-wide text-center mb-16"
         >
-          Tại sao CosmoMosaic? 🌟
+          Tại sao lại chọn <span className="text-cyan-400">CosmoMosaic?</span> 🌟
         </motion.h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {features.map((feature, i) => (
             <motion.div
               key={feature.title}
@@ -123,12 +136,12 @@ export default function HomePage() {
               whileInView="visible"
               viewport={{ once: true }}
             >
-              <GlassCard glow={feature.glow} className="h-full text-center">
-                <div className="text-5xl mb-4">{feature.icon}</div>
-                <h3 className="text-xl font-bold font-[var(--font-heading)] text-white mb-3">
+              <GlassCard glow={feature.glow} className="h-full text-center p-8">
+                <div className="text-6xl mb-6">{feature.icon}</div>
+                <h3 className="text-2xl font-bold font-[var(--font-heading)] text-white mb-4">
                   {feature.title}
                 </h3>
-                <p className="text-white/60 text-sm leading-relaxed">
+                <p className="text-slate-300 text-base leading-relaxed">
                   {feature.description}
                 </p>
               </GlassCard>
@@ -137,90 +150,68 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Planets Preview Separator */}
+      <div className="w-full h-px bg-gradient-to-r from-transparent via-fuchsia-500/50 to-transparent" />
+
       {/* Planets Preview */}
-      <section className="relative z-10 max-w-6xl mx-auto px-4 py-20">
+      <section className="relative z-10 max-w-7xl mx-auto px-6 py-24">
         <motion.h2
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-3xl sm:text-4xl font-bold font-[var(--font-heading)] neon-text text-center mb-4"
+          className="text-3xl sm:text-4xl font-bold font-[var(--font-heading)] text-white tracking-wide text-center mb-6"
         >
-          Hành tinh Di sản Việt Nam 🇻🇳
+          Hành tinh Di sản <span className="text-fuchsia-400">Việt Nam</span> 🇻🇳
         </motion.h2>
         <motion.p
           initial={{ opacity: 0, y: 15 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-white/50 text-center mb-12 max-w-lg mx-auto"
+          className="text-slate-400 text-center mb-16 max-w-2xl mx-auto text-lg"
         >
-          Mỗi hành tinh mang tên một di sản văn hóa Việt Nam, chứa đựng kiến thức từ sách giáo khoa 2018
+          Mỗi hành tinh mang tên một di sản văn hóa Việt Nam, chứa đựng các thử thách dựa trên sách giáo khoa 2018. Hãy lần lượt khám phá!
         </motion.p>
 
-        <div className="flex flex-wrap justify-center gap-8">
-          {[
-            { name: "Vịnh Hạ Long", emoji: "🏝️", c1: "#00F5FF", c2: "#0077B6", ring: "#00F5FF" },
-            { name: "Cố đô Huế", emoji: "🏯", c1: "#FF6BFF", c2: "#9D174D", ring: "#FF6BFF" },
-            { name: "Làng Gióng", emoji: "⚔️", c1: "#FFE066", c2: "#D97706", ring: "#FFE066" },
-          ].map((planet, i) => (
-            <motion.div
-              key={planet.name}
-              custom={i}
-              variants={fadeUp}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-              className="flex flex-col items-center gap-3 group cursor-pointer"
-            >
-              <div className="planet-card">
-                <PlanetIcon
-                  color1={planet.c1}
-                  color2={planet.c2}
-                  ringColor={planet.ring}
-                  size={100}
-                />
-              </div>
-              <span className="text-2xl">{planet.emoji}</span>
-              <span className="text-sm text-white/70 group-hover:text-neon-cyan transition-colors font-semibold">
-                {planet.name}
-              </span>
-            </motion.div>
-          ))}
-        </div>
+        {/* Replaced logic with new modular component */}
+        <ChallengePlanets />
       </section>
 
+      {/* Class System Separator */}
+      <div className="w-full h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
+
       {/* Class System */}
-      <section className="relative z-10 max-w-6xl mx-auto px-4 py-20">
+      <section className="relative z-10 max-w-7xl mx-auto px-6 py-24">
         <motion.h2
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-3xl sm:text-4xl font-bold font-[var(--font-heading)] neon-text text-center mb-12"
+          className="text-3xl sm:text-4xl font-bold font-[var(--font-heading)] text-white tracking-wide text-center mb-16"
         >
-          Chọn Lớp Nhân Vật ⚡
+          Đội Hình <span className="text-amber-400">Vũ Trụ</span> ⚡
         </motion.h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
             {
               name: "Chiến binh Sao Băng",
               icon: "⚔️",
-              power: "Lá chắn thép – Sai 1 lần không mất máu!",
+              power: "Lá chắn thép – Sai 1 lần không mất điểm!",
               glow: "cyan" as const,
-              color: "neon-cyan",
+              color: "text-cyan-400",
             },
             {
               name: "Phù thủy Tinh Vân",
               icon: "✨",
               power: "Ngưng đọng thời gian – Thêm thời gian suy nghĩ!",
               glow: "magenta" as const,
-              color: "neon-magenta",
+              color: "text-fuchsia-400",
             },
             {
               name: "Thợ săn Ngân Hà",
               icon: "🎯",
-              power: "Mắt đại bàng – Loại 1 đáp án sai!",
+              power: "Mắt đại bàng – Loại 1 đáp án sai nhanh chóng!",
               glow: "gold" as const,
-              color: "neon-gold",
+              color: "text-amber-400",
             },
           ].map((cls, i) => (
             <motion.div
@@ -231,12 +222,12 @@ export default function HomePage() {
               whileInView="visible"
               viewport={{ once: true }}
             >
-              <GlassCard glow={cls.glow} className="text-center h-full">
-                <div className="text-5xl mb-3">{cls.icon}</div>
-                <h3 className={`text-lg font-bold font-[var(--font-heading)] text-${cls.color} mb-2`}>
+              <GlassCard glow={cls.glow} className="text-center h-full p-8 border-white/5">
+                <div className="text-6xl mb-6">{cls.icon}</div>
+                <h3 className={`text-xl font-bold font-[var(--font-heading)] ${cls.color} mb-4 uppercase tracking-wider`}>
                   {cls.name}
                 </h3>
-                <p className="text-white/60 text-sm">{cls.power}</p>
+                <p className="text-slate-300 text-base">{cls.power}</p>
               </GlassCard>
             </motion.div>
           ))}
@@ -244,25 +235,26 @@ export default function HomePage() {
       </section>
 
       {/* CTA Footer */}
-      <section className="relative z-10 text-center py-20 px-4">
+      <section className="relative z-10 text-center py-32 px-6 bg-slate-900/50 border-t border-white/5">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
+          className="max-w-3xl mx-auto flex flex-col items-center gap-8"
         >
-          <h2 className="text-3xl sm:text-4xl font-bold font-[var(--font-heading)] neon-text mb-4">
-            Sẵn sàng Thắp sáng Vũ trụ? 🚀
+          <h2 className="text-4xl sm:text-5xl font-bold font-[var(--font-heading)] text-white tracking-wide leading-tight">
+            Sẵn sàng Thắp sáng <span className="text-emerald-400">Vũ trụ?</span> 🚀
           </h2>
-          <p className="text-white/50 mb-8 max-w-md mx-auto">
+          <p className="text-slate-400 text-lg mb-2">
             Tham gia ngay hành trình tri thức cùng hàng nghìn bạn nhỏ khắp Việt Nam!
           </p>
-          <NeonButton href="/onboarding" variant="cyan" size="lg">
-            Bắt đầu Miễn phí
+          <NeonButton href="/onboarding" variant="green" size="lg">
+            BẮT ĐẦU MIỄN PHÍ
           </NeonButton>
         </motion.div>
 
-        <div className="mt-16 pt-8 border-t border-white/10 text-white/30 text-xs">
-          © 2026 CosmoMosaic · Ghép tri thức, thắp sáng vũ trụ! ✨
+        <div className="mt-24 pt-8 border-t border-white/5 text-slate-500 text-xs tracking-widest font-mono">
+          © 2026 COSMOMOSAIC · HỆ THỐNG GIÁO DỤC TƯƠNG LAI
         </div>
       </section>
     </div>
