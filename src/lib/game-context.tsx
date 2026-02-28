@@ -23,6 +23,13 @@ export interface PlayerData {
     onboardingQuizScore: number;
     surveyCompleted: boolean;
     estimatedGrade: number;
+    profileCompleted: boolean;
+    birthday?: string;
+    school?: string;
+    parentEmail?: string;
+    parentName?: string;
+    parentPhone?: string;
+    favoriteSubjects?: string[];
     planetsProgress: Record<string, PlanetProgress>;
 }
 
@@ -52,6 +59,13 @@ const DEFAULT_PLAYER: PlayerData = {
     onboardingQuizScore: 0,
     surveyCompleted: false,
     estimatedGrade: 3,
+    profileCompleted: false,
+    birthday: "",
+    school: "",
+    parentEmail: "",
+    parentName: "",
+    parentPhone: "",
+    favoriteSubjects: [],
     planetsProgress: {
         "ha-long": { completedLevels: 0, totalLevels: 20 },
         "hue": { completedLevels: 0, totalLevels: 25 },

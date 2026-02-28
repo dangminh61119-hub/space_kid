@@ -8,6 +8,7 @@ import GlassCard from "@/components/GlassCard";
 import NeonButton from "@/components/NeonButton";
 import { useGame } from "@/lib/game-context";
 import { useAuth, markSurveyCompleted } from "@/lib/auth-context";
+import { saveSurveyProficiency } from "@/lib/proficiency";
 import {
     type SurveyResponse,
     getNextSubject,
@@ -120,12 +121,15 @@ export default function SurveyPage() {
         // Update GameContext
         updatePlayer({
             grade: results.estimatedGrade,
+            estimatedGrade: results.estimatedGrade,
             onboardingQuizScore: results.totalCorrect,
+            surveyCompleted: true,
             // We store proficiency-related info too
         });
 
-        // Mark survey completed in DB
+        // Save proficiency data & mark survey completed in DB
         if (playerDbId) {
+            await saveSurveyProficiency(playerDbId, results.proficiencies);
             await markSurveyCompleted(playerDbId, results.estimatedGrade);
         }
 

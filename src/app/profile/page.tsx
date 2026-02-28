@@ -91,7 +91,17 @@ export default function ProfilePage() {
             if (playerDbId) {
                 await saveProfileData(playerDbId, data);
             }
-            updatePlayer({ name: data.childName, grade: data.grade });
+            updatePlayer({
+                name: data.childName,
+                grade: data.grade,
+                profileCompleted: true,
+                birthday: data.birthday,
+                school: data.school,
+                parentEmail: data.parentEmail,
+                parentName: data.parentName,
+                parentPhone: data.parentPhone,
+                favoriteSubjects: data.favoriteSubjects
+            });
             setProfileDone();
             router.push("/survey");
         } catch {

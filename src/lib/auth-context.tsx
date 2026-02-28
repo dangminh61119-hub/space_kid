@@ -71,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setSession(s);
             setUser(s?.user ?? null);
             if (s?.user) {
+                setProfileCompleted(s.user.user_metadata?.profile_completed ?? false);
                 loadPlayerData(s.user.id);
             } else {
                 setLoading(false);
@@ -82,11 +83,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setSession(s);
             setUser(s?.user ?? null);
             if (s?.user) {
+                setProfileCompleted(s.user.user_metadata?.profile_completed ?? false);
                 loadPlayerData(s.user.id);
             } else {
                 setPlayerDbId(null);
                 setSurveyCompleted(false);
                 setOnboardingComplete(false);
+                setProfileCompleted(false);
             }
         });
 
@@ -99,13 +102,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
             const { data, error } = await supabase
                 .from("players")
-                .select("id, profile_completed, survey_completed, onboarding_complete")
+                .select("id, survey_completed, onboarding_complete")
                 .eq("auth_id", authId)
                 .single();
 
             if (!error && data) {
                 setPlayerDbId(data.id);
-                setProfileCompleted(data.profile_completed ?? false);
                 setSurveyCompleted(data.survey_completed);
                 setOnboardingComplete(data.onboarding_complete);
             }
@@ -270,11 +272,18 @@ export async function saveProfileData(playerDbId: string, data: ProfileFormData)
         return;
     }
 
+    // Update name and grade in players table
     await supabase
         .from("players")
         .update({
             name: data.childName,
             grade: data.grade,
+        })
+        .eq("id", playerDbId);
+
+    // Update the rest in Auth user metadata
+    await supabase.auth.updateUser({
+        data: {
             birthday: data.birthday || null,
             school: data.school || null,
             favorite_subjects: data.favoriteSubjects || [],
@@ -282,8 +291,8 @@ export async function saveProfileData(playerDbId: string, data: ProfileFormData)
             parent_name: data.parentName || null,
             parent_phone: data.parentPhone || null,
             profile_completed: true,
-        })
-        .eq("id", playerDbId);
+        }
+    });
 }
 
 /* ─── Helper: Update survey/onboarding status ─── */
