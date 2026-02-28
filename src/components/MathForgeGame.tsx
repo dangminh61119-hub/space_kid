@@ -23,13 +23,15 @@ interface MathLevel {
 interface Props {
     levels: MathLevel[];
     onExit?: () => void;
+    playerClass?: "warrior" | "wizard" | "hunter" | null;
+    onGameComplete?: (finalScore: number, levelsCompleted: number) => void;
 }
 
 /* ─── Constants ─── */
 const MAX_HP = 3;
 
 /* ─── Component ─── */
-export default function MathForgeGame({ levels, onExit }: Props) {
+export default function MathForgeGame({ levels, onExit, playerClass, onGameComplete }: Props) {
     const [gameState, setGameState] = useState<"ready" | "playing" | "levelComplete" | "gameOver" | "win">("ready");
     const [currentLevel, setCurrentLevel] = useState(0);
     const [questionIdx, setQuestionIdx] = useState(0);
@@ -42,6 +44,8 @@ export default function MathForgeGame({ levels, onExit }: Props) {
     const [comboCount, setComboCount] = useState(0);
     const [shakeWrong, setShakeWrong] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [shieldUsed, setShieldUsed] = useState(false);
+    const [hunterEliminated, setHunterEliminated] = useState<number | null>(null);
 
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const dropZoneRef = useRef<HTMLDivElement>(null);
@@ -55,7 +59,7 @@ export default function MathForgeGame({ levels, onExit }: Props) {
     useEffect(() => {
         if (gameState !== "playing" || feedback) return;
 
-        const t = level?.timePerQuestion ?? 15;
+        const t = (level?.timePerQuestion ?? 15) + (playerClass === "wizard" ? 5 : 0);
         setTimeLeft(t);
 
         timerRef.current = setInterval(() => {
@@ -75,6 +79,16 @@ export default function MathForgeGame({ levels, onExit }: Props) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gameState, questionIdx, currentLevel, feedback]);
 
+    /* ─── Hunter ability: eliminate one wrong option per question ─── */
+    useEffect(() => {
+        if (playerClass !== "hunter" || !question || feedback) return;
+        const wrongOptions = question.options.filter(o => o !== question.answer);
+        if (wrongOptions.length > 0) {
+            const randomWrong = wrongOptions[Math.floor(Math.random() * wrongOptions.length)];
+            setHunterEliminated(randomWrong);
+        }
+    }, [playerClass, questionIdx, currentLevel, question, feedback]);
+
     /* ─── Handle answer ─── */
     const handleAnswer = useCallback((value: number) => {
         if (feedback) return;
@@ -93,23 +107,34 @@ export default function MathForgeGame({ levels, onExit }: Props) {
             setFeedback("wrong");
             setComboCount(0);
             setShakeWrong(true);
-            setHp(prev => {
-                const newHp = prev - 1;
-                if (newHp <= 0) {
-                    setTimeout(() => setGameState("gameOver"), 800);
-                }
-                return newHp;
-            });
+
+            // Warrior shield: absorb first wrong
+            if (playerClass === "warrior" && !shieldUsed) {
+                setShieldUsed(true);
+                // Don't lose HP
+            } else {
+                setHp(prev => {
+                    const newHp = prev - 1;
+                    if (newHp <= 0) {
+                        setTimeout(() => {
+                            onGameComplete?.(score, currentLevel);
+                            setGameState("gameOver");
+                        }, 800);
+                    }
+                    return newHp;
+                });
+            }
             setTimeout(() => setShakeWrong(false), 500);
         }
 
         // Advance after delay
         setTimeout(() => {
-            if (!isCorrect && hp <= 1) return; // game over handled above
+            if (!isCorrect && hp <= 1 && !(playerClass === "warrior" && !shieldUsed)) return; // game over handled above
 
             const nextQ = questionIdx + 1;
             if (nextQ >= (level?.questions.length ?? 0)) {
                 if (currentLevel + 1 >= levels.length) {
+                    onGameComplete?.(score + (isCorrect ? 100 : 0), currentLevel + 1);
                     setGameState("win");
                 } else {
                     setGameState("levelComplete");
@@ -119,6 +144,7 @@ export default function MathForgeGame({ levels, onExit }: Props) {
                 setFeedback(null);
                 setSelectedAnswer(null);
                 setDroppedAnswer(null);
+                setHunterEliminated(null);
             }
         }, 1200);
     }, [feedback, question, comboCount, questionIdx, level, currentLevel, levels.length, hp]);
@@ -128,6 +154,8 @@ export default function MathForgeGame({ levels, onExit }: Props) {
         setScore(0);
         setHp(MAX_HP);
         setComboCount(0);
+        setShieldUsed(false);
+        setHunterEliminated(null);
         startLevel(0);
     };
 
@@ -328,6 +356,8 @@ export default function MathForgeGame({ levels, onExit }: Props) {
                         className="relative z-10 flex items-center justify-center gap-4 sm:gap-6 pb-8 pt-4 px-4 flex-wrap"
                     >
                         {question.options.map((opt, i) => {
+                            // Hunter ability: skip the eliminated option
+                            if (hunterEliminated === opt) return null;
                             const isSelected = selectedAnswer === opt;
                             const isCorrectOpt = feedback && opt === question.answer;
                             const isWrongSelected = feedback === "wrong" && isSelected;

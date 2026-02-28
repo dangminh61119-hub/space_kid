@@ -7,6 +7,7 @@ import StarField from "@/components/StarField";
 import NeonButton from "@/components/NeonButton";
 import GlassCard from "@/components/GlassCard";
 import { mockOnboardingQuestions } from "@/lib/mock-data";
+import { useGame } from "@/lib/game-context";
 
 const mascots = [
     { id: "cat", emoji: "🐱", name: "Mèo Sao Băng", desc: "Nhanh nhẹn, thông minh, thích khám phá!" },
@@ -45,6 +46,7 @@ type Step = (typeof steps)[number];
 
 export default function OnboardingPage() {
     const router = useRouter();
+    const { updatePlayer } = useGame();
     const [currentStep, setCurrentStep] = useState<Step>("welcome");
     const [mascot, setMascot] = useState<string | null>(null);
     const [selectedClass, setSelectedClass] = useState<string | null>(null);
@@ -136,8 +138,8 @@ export default function OnboardingPage() {
                                         <GlassCard
                                             glow={m.id === "cat" ? "magenta" : "cyan"}
                                             className={`text-center cursor-pointer transition-all ${mascot === m.id
-                                                    ? "ring-2 ring-neon-cyan scale-105"
-                                                    : "hover:scale-[1.02]"
+                                                ? "ring-2 ring-neon-cyan scale-105"
+                                                : "hover:scale-[1.02]"
                                                 }`}
                                         >
                                             <div className="text-6xl mb-3">{m.emoji}</div>
@@ -221,10 +223,10 @@ export default function OnboardingPage() {
                                     <div
                                         key={i}
                                         className={`w-2.5 h-2.5 rounded-full transition-all ${i === quizIndex
-                                                ? "bg-neon-gold scale-125"
-                                                : i < quizIndex
-                                                    ? "bg-neon-green"
-                                                    : "bg-white/20"
+                                            ? "bg-neon-gold scale-125"
+                                            : i < quizIndex
+                                                ? "bg-neon-green"
+                                                : "bg-white/20"
                                             }`}
                                     />
                                 ))}
@@ -253,8 +255,8 @@ export default function OnboardingPage() {
                                     <button key={cls.id} onClick={() => setSelectedClass(cls.id)}>
                                         <GlassCard
                                             className={`cursor-pointer text-left flex items-center gap-4 transition-all ${selectedClass === cls.id
-                                                    ? "ring-2 scale-[1.02]"
-                                                    : "hover:scale-[1.01]"
+                                                ? "ring-2 scale-[1.02]"
+                                                : "hover:scale-[1.01]"
                                                 }`}
                                             glow="none"
                                         >
@@ -319,7 +321,15 @@ export default function OnboardingPage() {
                             <NeonButton
                                 variant="cyan"
                                 size="lg"
-                                onClick={() => router.push("/portal")}
+                                onClick={() => {
+                                    updatePlayer({
+                                        mascot: mascot as "cat" | "dog",
+                                        playerClass: selectedClass as "warrior" | "wizard" | "hunter",
+                                        onboardingComplete: true,
+                                        onboardingQuizScore: score,
+                                    });
+                                    router.push("/portal");
+                                }}
                             >
                                 Khám phá Vũ trụ! 🌌
                             </NeonButton>

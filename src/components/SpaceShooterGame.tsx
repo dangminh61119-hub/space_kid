@@ -62,6 +62,8 @@ interface FloatingText {
 interface Props {
     levels: GameLevel[];
     onExit?: () => void;
+    playerClass?: "warrior" | "wizard" | "hunter" | null;
+    onGameComplete?: (finalScore: number, levelsCompleted: number) => void;
 }
 
 /* ─── Constants ─── */
@@ -75,7 +77,7 @@ const BOMB_H = 50;
 const MAX_HP = 3;
 
 /* ─── Component ─── */
-export default function SpaceShooterGame({ levels, onExit }: Props) {
+export default function SpaceShooterGame({ levels, onExit, playerClass, onGameComplete }: Props) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -88,6 +90,8 @@ export default function SpaceShooterGame({ levels, onExit }: Props) {
     const [currentQuestion, setCurrentQuestion] = useState("");
     const [isPaused, setIsPaused] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [shieldUsed, setShieldUsed] = useState(false);
+    const [abilityNotice, setAbilityNotice] = useState<string | null>(null);
 
     // Mutable refs for the game loop
     const shipX = useRef(CANVAS_W / 2);
@@ -144,9 +148,21 @@ export default function SpaceShooterGame({ levels, onExit }: Props) {
         setCurrentQuestion(q.question);
 
         const allWords = [q.correctWord, ...q.wrongWords].sort(() => Math.random() - 0.5);
-        const spacing = CANVAS_W / (allWords.length + 1);
 
-        const newBombs: WordBomb[] = allWords.map((word, i) => {
+        // Hunter ability: remove one wrong word
+        let filteredWords = allWords;
+        if (playerClass === "hunter" && allWords.length > 2) {
+            const wrongWordsInList = filteredWords.filter(w => w !== q.correctWord);
+            if (wrongWordsInList.length > 1) {
+                const removeIdx = Math.floor(Math.random() * wrongWordsInList.length);
+                const wordToRemove = wrongWordsInList[removeIdx];
+                filteredWords = filteredWords.filter(w => w !== wordToRemove || w === q.correctWord);
+            }
+        }
+
+        const spacing = CANVAS_W / (filteredWords.length + 1);
+
+        const newBombs: WordBomb[] = filteredWords.map((word, i) => {
             const w = Math.max(word.length * 16 + 32, 120);
             return {
                 id: nextBombId.current++,
@@ -154,14 +170,14 @@ export default function SpaceShooterGame({ levels, onExit }: Props) {
                 isCorrect: word === q.correctWord,
                 x: spacing * (i + 1) - w / 2,
                 y: -50 - Math.random() * 60,
-                speed: (0.5 + Math.random() * 0.3) * level.speed,
+                speed: (0.5 + Math.random() * 0.3) * level.speed * (playerClass === "wizard" ? 0.7 : 1),
                 width: w,
                 height: BOMB_H,
                 opacity: 1,
             };
         });
         bombs.current = newBombs;
-    }, [levels]);
+    }, [levels, playerClass]);
 
     /* ─── Start game / level ─── */
     const startLevel = useCallback((lvlIdx: number) => {
@@ -182,6 +198,7 @@ export default function SpaceShooterGame({ levels, onExit }: Props) {
         scoreRef.current = 0;
         setHp(MAX_HP);
         hpRef.current = MAX_HP;
+        setShieldUsed(false);
         startLevel(0);
     }, [startLevel]);
 
@@ -343,16 +360,25 @@ export default function SpaceShooterGame({ levels, onExit }: Props) {
 
             // If correct bomb fell off screen → lose HP
             if (bombHitBottom) {
-                const newHp = hpRef.current - 1;
-                hpRef.current = newHp;
-                setHp(newHp);
-                spawnExplosion(CANVAS_W / 2, CANVAS_H - 30, "#FF4444");
-                if (newHp <= 0) {
-                    setGameState("gameOver");
-                    return;
+                // Warrior shield: absorb first hit
+                if (playerClass === "warrior" && !shieldUsed) {
+                    setShieldUsed(true);
+                    setAbilityNotice("🛡️ Lá chắn thép đã bảo vệ bạn!");
+                    setTimeout(() => setAbilityNotice(null), 2000);
+                    spawnExplosion(CANVAS_W / 2, CANVAS_H - 30, "#FFE066");
+                    advanceQuestion();
+                } else {
+                    const newHp = hpRef.current - 1;
+                    hpRef.current = newHp;
+                    setHp(newHp);
+                    spawnExplosion(CANVAS_W / 2, CANVAS_H - 30, "#FF4444");
+                    if (newHp <= 0) {
+                        onGameComplete?.(scoreRef.current, currentLevel);
+                        setGameState("gameOver");
+                        return;
+                    }
+                    advanceQuestion();
                 }
-                // Next question
-                advanceQuestion();
             }
 
             // Collision: laser ↔ bomb
@@ -375,20 +401,29 @@ export default function SpaceShooterGame({ levels, onExit }: Props) {
                             const pts = 100;
                             scoreRef.current += pts;
                             setScore(s => s + pts);
-                            // Bigger explosion and floating text
                             spawnExplosion(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, "#00F5FF", 2, 25);
                             spawnText("+100 XP!", bomb.x + bomb.width / 2, bomb.y, "#00F5FF");
                             advanceQuestion();
                         } else {
-                            // Wrong hit → lose HP
-                            const newHp = hpRef.current - 1;
-                            hpRef.current = newHp;
-                            setHp(newHp);
-                            spawnExplosion(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, "#FF4444", 1.5, 20);
-                            spawnText("Oops!", bomb.x + bomb.width / 2, bomb.y, "#FF4444");
-                            if (newHp <= 0) {
-                                setGameState("gameOver");
-                                return;
+                            // Warrior shield check
+                            if (playerClass === "warrior" && !shieldUsed) {
+                                setShieldUsed(true);
+                                setAbilityNotice("🛡️ Lá chắn thép đã bảo vệ bạn!");
+                                setTimeout(() => setAbilityNotice(null), 2000);
+                                spawnExplosion(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, "#FFE066", 1.5, 20);
+                                spawnText("🛡️ Chắn!", bomb.x + bomb.width / 2, bomb.y, "#FFE066");
+                            } else {
+                                // Wrong hit → lose HP
+                                const newHp = hpRef.current - 1;
+                                hpRef.current = newHp;
+                                setHp(newHp);
+                                spawnExplosion(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, "#FF4444", 1.5, 20);
+                                spawnText("Oops!", bomb.x + bomb.width / 2, bomb.y, "#FF4444");
+                                if (newHp <= 0) {
+                                    onGameComplete?.(scoreRef.current, currentLevel);
+                                    setGameState("gameOver");
+                                    return;
+                                }
                             }
                         }
                     }
@@ -423,6 +458,7 @@ export default function SpaceShooterGame({ levels, onExit }: Props) {
                 // Level complete
                 bombs.current = [];
                 if (currentLevel + 1 >= levels.length) {
+                    onGameComplete?.(scoreRef.current, currentLevel + 1);
                     setGameState("win");
                 } else {
                     setGameState("levelComplete");
@@ -637,7 +673,24 @@ export default function SpaceShooterGame({ levels, onExit }: Props) {
                             ❤️
                         </span>
                     ))}
+                    {playerClass === "warrior" && !shieldUsed && (
+                        <span className="text-xl ml-1" title="Lá chắn thép">🛡️</span>
+                    )}
                 </div>
+
+                {/* Ability notice */}
+                <AnimatePresence>
+                    {abilityNotice && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute top-14 left-1/2 -translate-x-1/2 z-30 glass-card !px-4 !py-2 !rounded-xl text-sm font-bold text-neon-gold whitespace-nowrap"
+                        >
+                            {abilityNotice}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* Question display */}
                 <div className="flex-1 text-center">

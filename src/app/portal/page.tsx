@@ -6,7 +6,8 @@ import Navbar from "@/components/Navbar";
 import GlassCard from "@/components/GlassCard";
 import PlanetIcon from "@/components/PlanetIcon";
 import NeonButton from "@/components/NeonButton";
-import { mockPlanets, mockStudent, mockDailyQuest } from "@/lib/mock-data";
+import { mockPlanets, mockDailyQuest } from "@/lib/mock-data";
+import { useGame, MASCOT_INFO, CLASS_ABILITIES } from "@/lib/game-context";
 import Link from "next/link";
 
 const fadeUp = {
@@ -19,6 +20,14 @@ const fadeUp = {
 };
 
 export default function PortalPage() {
+    const { player } = useGame();
+
+    const mascotEmoji = player.mascot ? MASCOT_INFO[player.mascot].emoji : "🚀";
+    const classInfo = player.playerClass ? CLASS_ABILITIES[player.playerClass] : null;
+    const planetsCompleted = Object.values(player.planetsProgress).filter(
+        p => p.completedLevels >= p.totalLevels
+    ).length;
+    const totalPlanets = Object.keys(player.planetsProgress).length;
     return (
         <div className="min-h-screen relative">
             <StarField count={70} />
@@ -58,22 +67,27 @@ export default function PortalPage() {
                     >
                         <GlassCard glow="magenta" className="lg:sticky lg:top-24">
                             <div className="text-center mb-4">
-                                <div className="text-5xl mb-2">{mockStudent.avatar}</div>
-                                <h3 className="text-lg font-bold text-white">{mockStudent.name}</h3>
-                                <p className="text-white/50 text-sm">{mockStudent.class}</p>
+                                <div className="text-5xl mb-2">{mascotEmoji}</div>
+                                <h3 className="text-lg font-bold text-white">{player.name}</h3>
+                                <p className="text-white/50 text-sm">
+                                    {player.playerClass === "warrior" && "Chiến binh Sao Băng"}
+                                    {player.playerClass === "wizard" && "Phù thủy Tinh Vân"}
+                                    {player.playerClass === "hunter" && "Thợ săn Ngân Hà"}
+                                    {!player.playerClass && "Tân Binh"}
+                                </p>
                             </div>
 
                             <div className="space-y-3">
                                 {/* Level */}
                                 <div>
                                     <div className="flex justify-between text-xs text-white/60 mb-1">
-                                        <span>Level {mockStudent.level}</span>
-                                        <span>{mockStudent.xp} / {mockStudent.xpToNext} XP</span>
+                                        <span>Level {player.level}</span>
+                                        <span>{player.xp} / {player.xpToNext} XP</span>
                                     </div>
                                     <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                                         <div
                                             className="h-full bg-gradient-to-r from-neon-cyan to-neon-magenta rounded-full transition-all"
-                                            style={{ width: `${(mockStudent.xp / mockStudent.xpToNext) * 100}%` }}
+                                            style={{ width: `${(player.xp / player.xpToNext) * 100}%` }}
                                         />
                                     </div>
                                 </div>
@@ -81,18 +95,29 @@ export default function PortalPage() {
                                 {/* Stats */}
                                 <div className="grid grid-cols-2 gap-2 pt-2">
                                     <div className="glass-card !p-3 text-center !rounded-xl">
-                                        <div className="text-xl font-bold text-neon-gold">{mockStudent.streak}🔥</div>
+                                        <div className="text-xl font-bold text-neon-gold">{player.streak}🔥</div>
                                         <div className="text-[10px] text-white/50">STREAK</div>
                                     </div>
                                     <div className="glass-card !p-3 text-center !rounded-xl">
-                                        <div className="text-xl font-bold text-neon-cyan">{mockStudent.planetsCompleted}/{mockStudent.totalPlanets}</div>
+                                        <div className="text-xl font-bold text-neon-cyan">{planetsCompleted}/{totalPlanets}</div>
                                         <div className="text-[10px] text-white/50">HÀNH TINH</div>
                                     </div>
                                 </div>
 
+                                {/* Class Ability */}
+                                {classInfo && (
+                                    <div className="glass-card !p-3 !rounded-xl mt-2">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-lg">{classInfo.icon}</span>
+                                            <span className="text-xs font-bold text-neon-gold">{classInfo.name}</span>
+                                        </div>
+                                        <p className="text-[10px] text-white/40">{classInfo.description}</p>
+                                    </div>
+                                )}
+
                                 {/* Grade */}
                                 <div className="text-center pt-2">
-                                    <span className="text-xs text-white/40">Lớp {mockStudent.grade} · Cấp {mockStudent.level}</span>
+                                    <span className="text-xs text-white/40">Lớp {player.grade} · Cấp {player.level}</span>
                                 </div>
                             </div>
                         </GlassCard>
@@ -117,7 +142,11 @@ export default function PortalPage() {
                                     initial="hidden"
                                     animate="visible"
                                 >
-                                    <Link href={planet.id === "giong" ? "/portal/play/math" : "/portal/play"}>
+                                    <Link href={
+                                        planet.id === "giong" || planet.id === "sapa"
+                                            ? `/portal/play/math?planet=${planet.id}`
+                                            : `/portal/play?planet=${planet.id}`
+                                    }>
                                         <GlassCard
                                             glow="none"
                                             className="planet-card cursor-pointer group relative overflow-hidden"
@@ -156,21 +185,29 @@ export default function PortalPage() {
                                                         ))}
                                                     </div>
                                                     {/* Progress */}
-                                                    <div>
-                                                        <div className="flex justify-between text-[10px] text-white/50 mb-1">
-                                                            <span>{planet.completedLevels}/{planet.totalLevels} cấp</span>
-                                                            <span>{planet.progress}%</span>
-                                                        </div>
-                                                        <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                                                            <div
-                                                                className="h-full rounded-full transition-all"
-                                                                style={{
-                                                                    width: `${planet.progress}%`,
-                                                                    background: `linear-gradient(90deg, ${planet.color1}, ${planet.color2})`,
-                                                                }}
-                                                            />
-                                                        </div>
-                                                    </div>
+                                                    {(() => {
+                                                        const pp = player.planetsProgress[planet.id];
+                                                        const completed = pp?.completedLevels ?? 0;
+                                                        const total = pp?.totalLevels ?? planet.totalLevels;
+                                                        const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+                                                        return (
+                                                            <div>
+                                                                <div className="flex justify-between text-[10px] text-white/50 mb-1">
+                                                                    <span>{completed}/{total} cấp</span>
+                                                                    <span>{progress}%</span>
+                                                                </div>
+                                                                <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                                                    <div
+                                                                        className="h-full rounded-full transition-all"
+                                                                        style={{
+                                                                            width: `${progress}%`,
+                                                                            background: `linear-gradient(90deg, ${planet.color1}, ${planet.color2})`,
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </div>
                                         </GlassCard>

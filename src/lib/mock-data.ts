@@ -168,16 +168,44 @@ export const mockGameLevels = [
     },
     {
         level: 3,
-        planet: "Vịnh Hạ Long",
-        subject: "Tiếng Anh",
-        title: "English Vocabulary",
+        planet: "Cố đô Huế",
+        subject: "Lịch sử",
+        title: "Các triều đại Việt Nam",
+        speed: 1.0,
+        questions: [
+            { question: "Triều đại nào dài nhất VN?", correctWord: "Nhà Lý", wrongWords: ["Nhà Lê", "Nhà Trần", "Nhà Nguyễn"] },
+            { question: "Ai dời đô về Thăng Long?", correctWord: "Lý Thái Tổ", wrongWords: ["Trần Thái Tông", "Lê Lợi", "Ngô Quyền"] },
+            { question: "Nhà Trần nổi tiếng với?", correctWord: "Chống Mông Nguyên", wrongWords: ["Chống Minh", "Chống Thanh", "Chống Tống"] },
+            { question: "Triều Nguyễn đặt kinh đô ở?", correctWord: "Huế", wrongWords: ["Hà Nội", "Sài Gòn", "Đà Nẵng"] },
+            { question: "Ngô Quyền đánh thắng trận?", correctWord: "Bạch Đằng", wrongWords: ["Chi Lăng", "Đống Đa", "Rạch Gầm"] },
+        ],
+    },
+    {
+        level: 4,
+        planet: "Cố đô Huế",
+        subject: "Lịch sử",
+        title: "Di sản Cố đô Huế",
+        speed: 1.2,
+        questions: [
+            { question: "Cung điện chính ở Huế?", correctWord: "Đại Nội", wrongWords: ["Cố Cung", "Dinh Độc Lập", "Hoàng Thành"] },
+            { question: "Sông nào chảy qua Huế?", correctWord: "Sông Hương", wrongWords: ["Sông Hồng", "Sông Mê Kông", "Sông Đà"] },
+            { question: "Cầu nổi tiếng ở Huế?", correctWord: "Cầu Trường Tiền", wrongWords: ["Cầu Long Biên", "Cầu Thê Húc", "Cầu Rồng"] },
+            { question: "Huế là di sản UNESCO năm?", correctWord: "1993", wrongWords: ["1999", "2003", "1987"] },
+            { question: "Áo dài Huế có màu gì đặc trưng?", correctWord: "Tím", wrongWords: ["Đỏ", "Trắng", "Xanh"] },
+        ],
+    },
+    {
+        level: 5,
+        planet: "Cố đô Huế",
+        subject: "Tiếng Việt",
+        title: "Thành ngữ, tục ngữ",
         speed: 1.5,
         questions: [
-            { question: "'Planet' nghĩa là gì?", correctWord: "Hành tinh", wrongWords: ["Ngôi sao", "Mặt trăng", "Bầu trời"] },
-            { question: "'Ocean' nghĩa là gì?", correctWord: "Đại dương", wrongWords: ["Sông", "Hồ", "Suối"] },
-            { question: "'Mountain' nghĩa là gì?", correctWord: "Núi", wrongWords: ["Đồi", "Thung lũng", "Đồng bằng"] },
-            { question: "'Knowledge' nghĩa là gì?", correctWord: "Kiến thức", wrongWords: ["Sức mạnh", "Tốc độ", "Âm nhạc"] },
-            { question: "'Adventure' nghĩa là gì?", correctWord: "Phiêu lưu", wrongWords: ["Mạo hiểm", "Nguy hiểm", "Tai nạn"] },
+            { question: "'Có công mài sắt...'?", correctWord: "có ngày nên kim", wrongWords: ["có ngày nên vàng", "có ngày thành công", "sắt cũng mòn"] },
+            { question: "'Uống nước...'?", correctWord: "nhớ nguồn", wrongWords: ["nhớ sông", "nhớ suối", "nhớ mưa"] },
+            { question: "'Tốt gỗ hơn...'?", correctWord: "tốt nước sơn", wrongWords: ["tốt màu sắc", "tốt hình dáng", "tốt bề ngoài"] },
+            { question: "'Đi một ngày đàng...'?", correctWord: "học một sàng khôn", wrongWords: ["mỏi một đôi chân", "biết một điều hay", "thêm một người bạn"] },
+            { question: "'Gần mực thì...'?", correctWord: "đen", wrongWords: ["tối", "bẩn", "xấu"] },
         ],
     },
 ];
@@ -225,6 +253,34 @@ export const mockMathLevels = [
             { equation: "(12 - _) × 3 = 21", answer: 5, options: [4, 5, 6, 7] },
         ],
     },
+    {
+        level: 4,
+        planet: "Làng Gióng",
+        subject: "Toán",
+        title: "Phân số cơ bản",
+        timePerQuestion: 20,
+        questions: [
+            { equation: "1/2 + 1/2 = _", answer: 1, options: [1, 2, 0, 3] },
+            { equation: "1/4 + _ /4 = 3/4", answer: 2, options: [1, 2, 3, 4] },
+            { equation: "3/5 - _/5 = 1/5", answer: 2, options: [1, 2, 3, 4] },
+            { equation: "_/3 + 1/3 = 2/3", answer: 1, options: [1, 2, 3, 0] },
+            { equation: "5/6 - 2/6 = _/6", answer: 3, options: [2, 3, 4, 1] },
+        ],
+    },
+    {
+        level: 5,
+        planet: "Làng Gióng",
+        subject: "Toán",
+        title: "Dãy số & quy luật",
+        timePerQuestion: 18,
+        questions: [
+            { equation: "2, 4, 6, 8, _", answer: 10, options: [9, 10, 11, 12] },
+            { equation: "1, 3, 5, 7, _", answer: 9, options: [8, 9, 10, 11] },
+            { equation: "5, 10, 15, 20, _", answer: 25, options: [22, 24, 25, 30] },
+            { equation: "3, 6, 9, _, 15", answer: 12, options: [10, 11, 12, 13] },
+            { equation: "1, 4, 9, 16, _", answer: 25, options: [20, 24, 25, 36] },
+        ],
+    },
 ];
 
 export const mockOnboardingQuestions = [
@@ -253,3 +309,228 @@ export const mockOnboardingQuestions = [
         subject: "Tiếng Việt",
     },
 ];
+
+/* === Game levels per planet === */
+
+export const mockHaLongLevels = [
+    {
+        level: 1,
+        planet: "Vịnh Hạ Long",
+        subject: "Tiếng Anh",
+        title: "Colors of the Bay",
+        speed: 1,
+        questions: [
+            { question: "'Blue' nghĩa là gì?", correctWord: "Xanh dương", wrongWords: ["Xanh lá", "Đỏ", "Vàng"] },
+            { question: "'Beautiful' nghĩa là gì?", correctWord: "Đẹp", wrongWords: ["Xấu", "Cao", "Nhỏ"] },
+            { question: "'Island' nghĩa là gì?", correctWord: "Hòn đảo", wrongWords: ["Biển", "Sông", "Núi"] },
+            { question: "'Water' nghĩa là gì?", correctWord: "Nước", wrongWords: ["Lửa", "Đất", "Gió"] },
+            { question: "'Fish' nghĩa là gì?", correctWord: "Cá", wrongWords: ["Chim", "Mèo", "Chó"] },
+        ],
+    },
+    {
+        level: 2,
+        planet: "Vịnh Hạ Long",
+        subject: "Tiếng Anh",
+        title: "Nature Vocabulary",
+        speed: 1.3,
+        questions: [
+            { question: "'Cave' nghĩa là gì?", correctWord: "Hang động", wrongWords: ["Biển", "Đồi", "Cánh đồng"] },
+            { question: "'Rock' nghĩa là gì?", correctWord: "Đá", wrongWords: ["Cây", "Hoa", "Cỏ"] },
+            { question: "'Boat' nghĩa là gì?", correctWord: "Thuyền", wrongWords: ["Xe", "Máy bay", "Tàu hỏa"] },
+            { question: "'Bird' nghĩa là gì?", correctWord: "Chim", wrongWords: ["Cá", "Rắn", "Gấu"] },
+            { question: "'Sunset' nghĩa là gì?", correctWord: "Hoàng hôn", wrongWords: ["Bình minh", "Trưa", "Đêm"] },
+        ],
+    },
+    {
+        level: 3,
+        planet: "Vịnh Hạ Long",
+        subject: "Địa lý",
+        title: "Địa lý Việt Nam",
+        speed: 1.0,
+        questions: [
+            { question: "Việt Nam có bao nhiêu tỉnh/TP?", correctWord: "63", wrongWords: ["54", "58", "72"] },
+            { question: "Đỉnh núi cao nhất VN?", correctWord: "Fansipan", wrongWords: ["Bà Đen", "Bạch Mã", "Ngọc Linh"] },
+            { question: "Sông dài nhất VN?", correctWord: "Sông Mê Kông", wrongWords: ["Sông Hồng", "Sông Đà", "Sông Đồng Nai"] },
+            { question: "VN giáp biển gì?", correctWord: "Biển Đông", wrongWords: ["Biển Tây", "Thái Bình Dương", "Ấn Độ Dương"] },
+            { question: "Hạ Long thuộc tỉnh?", correctWord: "Quảng Ninh", wrongWords: ["Hải Phòng", "Thanh Hóa", "Thái Bình"] },
+        ],
+    },
+    {
+        level: 4,
+        planet: "Vịnh Hạ Long",
+        subject: "Tiếng Anh",
+        title: "Sea Animals",
+        speed: 1.3,
+        questions: [
+            { question: "'Dolphin' nghĩa là gì?", correctWord: "Cá heo", wrongWords: ["Cá voi", "Cá mập", "Cá ngựa"] },
+            { question: "'Turtle' nghĩa là gì?", correctWord: "Rùa biển", wrongWords: ["Sứa", "Ốc", "Tôm"] },
+            { question: "'Jellyfish' nghĩa là gì?", correctWord: "Sứa", wrongWords: ["Bạch tuộc", "San hô", "Cá"] },
+            { question: "'Crab' nghĩa là gì?", correctWord: "Cua", wrongWords: ["Tôm", "Ốc", "Sò"] },
+            { question: "'Whale' nghĩa là gì?", correctWord: "Cá voi", wrongWords: ["Cá heo", "Cá mập", "Cá chép"] },
+        ],
+    },
+    {
+        level: 5,
+        planet: "Vịnh Hạ Long",
+        subject: "Tiếng Anh",
+        title: "Weather & Seasons",
+        speed: 1.5,
+        questions: [
+            { question: "'Sunny' nghĩa là gì?", correctWord: "Nắng", wrongWords: ["Mưa", "Gió", "Tuyết"] },
+            { question: "'Rainy' nghĩa là gì?", correctWord: "Mưa", wrongWords: ["Nắng", "Lạnh", "Nóng"] },
+            { question: "'Spring' (mùa) nghĩa là gì?", correctWord: "Mùa xuân", wrongWords: ["Mùa hè", "Mùa thu", "Mùa đông"] },
+            { question: "'Winter' nghĩa là gì?", correctWord: "Mùa đông", wrongWords: ["Mùa xuân", "Mùa hè", "Mùa thu"] },
+            { question: "'Cloud' nghĩa là gì?", correctWord: "Đám mây", wrongWords: ["Ngôi sao", "Mặt trời", "Cầu vồng"] },
+        ],
+    },
+];
+
+export const mockPhongNhaLevels = [
+    {
+        level: 1,
+        planet: "Phong Nha",
+        subject: "Khoa học",
+        title: "Sinh vật trong hang",
+        speed: 1,
+        questions: [
+            { question: "Động vật nào sống trong hang?", correctWord: "Dơi", wrongWords: ["Cá heo", "Sư tử", "Voi"] },
+            { question: "Đá trong hang gọi là?", correctWord: "Thạch nhũ", wrongWords: ["Cát", "Sỏi", "Đất sét"] },
+            { question: "Nước trong hang thường?", correctWord: "Trong vắt", wrongWords: ["Đục ngầu", "Nóng sôi", "Có sóng"] },
+            { question: "Ánh sáng trong hang?", correctWord: "Tối", wrongWords: ["Sáng", "Rực rỡ", "Chói"] },
+            { question: "Nhiệt độ trong hang?", correctWord: "Mát mẻ", wrongWords: ["Nóng bức", "Lạnh cóng", "Thay đổi"] },
+        ],
+    },
+    {
+        level: 2,
+        planet: "Phong Nha",
+        subject: "Khoa học",
+        title: "Chuỗi thức ăn",
+        speed: 1.2,
+        questions: [
+            { question: "Cỏ → Thỏ → ?", correctWord: "Cáo", wrongWords: ["Gà", "Bò", "Chuột"] },
+            { question: "Sinh vật tự tạo thức ăn?", correctWord: "Thực vật", wrongWords: ["Động vật", "Nấm", "Vi khuẩn"] },
+            { question: "Đầu chuỗi thức ăn luôn là?", correctWord: "Mặt trời", wrongWords: ["Nước", "Đất", "Không khí"] },
+            { question: "Động vật ăn cỏ gọi là?", correctWord: "Động vật ăn thực vật", wrongWords: ["Động vật ăn thịt", "Động vật ăn tạp", "Ký sinh"] },
+            { question: "Con nào là động vật ăn thịt?", correctWord: "Hổ", wrongWords: ["Voi", "Bò", "Ngựa"] },
+        ],
+    },
+    {
+        level: 3,
+        planet: "Phong Nha",
+        subject: "Địa lý",
+        title: "Địa hình Việt Nam",
+        speed: 1.3,
+        questions: [
+            { question: "VN có dạng chữ gì?", correctWord: "Chữ S", wrongWords: ["Chữ V", "Chữ L", "Chữ C"] },
+            { question: "Đồng bằng lớn nhất miền Bắc?", correctWord: "Đồng bằng sông Hồng", wrongWords: ["Đồng bằng sông Cửu Long", "Tây Nguyên", "Đồng bằng Thanh Hóa"] },
+            { question: "Phong Nha thuộc tỉnh?", correctWord: "Quảng Bình", wrongWords: ["Quảng Trị", "Nghệ An", "Hà Tĩnh"] },
+            { question: "Cao nguyên lớn nhất VN?", correctWord: "Tây Nguyên", wrongWords: ["Tây Bắc", "Đông Bắc", "Đồng Nai"] },
+            { question: "Bờ biển VN dài bao nhiêu km?", correctWord: "3.260 km", wrongWords: ["1.500 km", "5.000 km", "2.100 km"] },
+        ],
+    },
+];
+
+export const mockHoiAnLevels = [
+    {
+        level: 1,
+        planet: "Phố cổ Hội An",
+        subject: "Tiếng Anh",
+        title: "Festival Words",
+        speed: 1,
+        questions: [
+            { question: "'Lantern' nghĩa là gì?", correctWord: "Đèn lồng", wrongWords: ["Nến", "Đèn pin", "Ngọn lửa"] },
+            { question: "'Bridge' nghĩa là gì?", correctWord: "Cầu", wrongWords: ["Đường", "Nhà", "Cổng"] },
+            { question: "'Market' nghĩa là gì?", correctWord: "Chợ", wrongWords: ["Trường", "Bệnh viện", "Công viên"] },
+            { question: "'Color' nghĩa là gì?", correctWord: "Màu sắc", wrongWords: ["Hình dạng", "Kích cỡ", "Âm thanh"] },
+            { question: "'River' nghĩa là gì?", correctWord: "Sông", wrongWords: ["Biển", "Hồ", "Suối"] },
+        ],
+    },
+    {
+        level: 2,
+        planet: "Phố cổ Hội An",
+        subject: "Tiếng Anh",
+        title: "Food & Drink",
+        speed: 1.2,
+        questions: [
+            { question: "'Rice' nghĩa là gì?", correctWord: "Cơm", wrongWords: ["Mì", "Bánh", "Phở"] },
+            { question: "'Tea' nghĩa là gì?", correctWord: "Trà", wrongWords: ["Cà phê", "Nước ép", "Sữa"] },
+            { question: "'Noodle' nghĩa là gì?", correctWord: "Mì", wrongWords: ["Cơm", "Bánh", "Xôi"] },
+            { question: "'Fruit' nghĩa là gì?", correctWord: "Trái cây", wrongWords: ["Rau", "Thịt", "Cá"] },
+            { question: "'Soup' nghĩa là gì?", correctWord: "Canh", wrongWords: ["Gỏi", "Xào", "Nướng"] },
+        ],
+    },
+    {
+        level: 3,
+        planet: "Phố cổ Hội An",
+        subject: "Mỹ thuật",
+        title: "Màu sắc & Hình dạng",
+        speed: 1.3,
+        questions: [
+            { question: "Trộn Đỏ + Vàng thành?", correctWord: "Cam", wrongWords: ["Tím", "Xanh", "Nâu"] },
+            { question: "Trộn Xanh + Vàng thành?", correctWord: "Xanh lá", wrongWords: ["Cam", "Tím", "Nâu"] },
+            { question: "Trộn Đỏ + Xanh thành?", correctWord: "Tím", wrongWords: ["Cam", "Xanh lá", "Nâu"] },
+            { question: "Màu nào KHÔNG phải màu cơ bản?", correctWord: "Cam", wrongWords: ["Đỏ", "Vàng", "Xanh dương"] },
+            { question: "Hình có 3 cạnh gọi là?", correctWord: "Tam giác", wrongWords: ["Hình vuông", "Hình tròn", "Hình thoi"] },
+        ],
+    },
+];
+
+export const mockSapaLevels = [
+    {
+        level: 1,
+        planet: "Ruộng bậc thang Sa Pa",
+        subject: "Toán",
+        title: "Hình học cơ bản",
+        timePerQuestion: 15,
+        questions: [
+            { equation: "Hình vuông có _ cạnh", answer: 4, options: [3, 4, 5, 6] },
+            { equation: "Tam giác có _ góc", answer: 3, options: [2, 3, 4, 5] },
+            { equation: "Hình chữ nhật có _ cạnh", answer: 4, options: [3, 4, 5, 6] },
+            { equation: "Đường tròn có _ cạnh", answer: 0, options: [0, 1, 2, 4] },
+            { equation: "Hình thoi có _ cạnh bằng nhau", answer: 4, options: [2, 3, 4, 6] },
+        ],
+    },
+    {
+        level: 2,
+        planet: "Ruộng bậc thang Sa Pa",
+        subject: "Toán",
+        title: "Đo lường",
+        timePerQuestion: 18,
+        questions: [
+            { equation: "1 mét = _ cm", answer: 100, options: [10, 100, 1000, 50] },
+            { equation: "1 kg = _ gam", answer: 1000, options: [100, 500, 1000, 10000] },
+            { equation: "1 giờ = _ phút", answer: 60, options: [30, 60, 100, 120] },
+            { equation: "1 ngày = _ giờ", answer: 24, options: [12, 24, 36, 48] },
+            { equation: "1 tuần = _ ngày", answer: 7, options: [5, 6, 7, 10] },
+        ],
+    },
+    {
+        level: 3,
+        planet: "Ruộng bậc thang Sa Pa",
+        subject: "Khoa học",
+        title: "Thực vật & Thời tiết",
+        timePerQuestion: 15,
+        questions: [
+            { equation: "Cây cần _ để quang hợp", answer: 3, options: [1, 2, 3, 4] },
+            { equation: "Nước đóng băng ở _ °C", answer: 0, options: [0, 10, 100, -10] },
+            { equation: "Nước sôi ở _ °C", answer: 100, options: [50, 80, 100, 120] },
+            { equation: "1 năm có _ mùa ở VN", answer: 4, options: [2, 3, 4, 5] },
+            { equation: "Lá cây có màu xanh nhờ chất _", answer: 1, options: [1, 2, 3, 4] },
+        ],
+    },
+    {
+        level: 4,
+        planet: "Ruộng bậc thang Sa Pa",
+        subject: "Toán",
+        title: "Bảng cửu chương nâng cao",
+        timePerQuestion: 15,
+        questions: [
+            { equation: "_ × 9 = 72", answer: 8, options: [6, 7, 8, 9] },
+            { equation: "_ × 6 = 54", answer: 9, options: [7, 8, 9, 10] },
+            { equation: "_ × 7 = 63", answer: 9, options: [7, 8, 9, 10] },
+            { equation: "_ × 8 = 96", answer: 12, options: [10, 11, 12, 13] },
+            { equation: "_ × 11 = 132", answer: 12, options: [11, 12, 13, 14] },
+        ],
+    },
+];
+
