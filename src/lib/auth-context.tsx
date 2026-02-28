@@ -15,6 +15,7 @@ interface AuthContextType {
     signInWithFacebook: () => Promise<{ error: string | null }>;
     signOut: () => Promise<void>;
     playerDbId: string | null; // UUID from players table
+    profileCompleted: boolean;
     surveyCompleted: boolean;
     onboardingComplete: boolean;
     setSurveyDone: () => void;
@@ -30,6 +31,7 @@ interface MockAuthData {
     email: string;
     name: string;
     grade: number;
+    profileCompleted: boolean;
     surveyCompleted: boolean;
     onboardingComplete: boolean;
 }
@@ -40,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [session, setSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(true);
     const [playerDbId, setPlayerDbId] = useState<string | null>(null);
+    const [profileCompleted, setProfileCompleted] = useState(false);
     const [surveyCompleted, setSurveyCompleted] = useState(false);
     const [onboardingComplete, setOnboardingComplete] = useState(false);
 
@@ -52,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 if (saved) {
                     const data = JSON.parse(saved) as MockAuthData;
                     setUser({ id: "mock-user-id", email: data.email } as User);
+                    setProfileCompleted(data.profileCompleted);
                     setSurveyCompleted(data.surveyCompleted);
                     setOnboardingComplete(data.onboardingComplete);
                     setPlayerDbId("mock-player-id");
@@ -94,12 +98,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
             const { data, error } = await supabase
                 .from("players")
-                .select("id, survey_completed, onboarding_complete")
+                .select("id, profile_completed, survey_completed, onboarding_complete")
                 .eq("auth_id", authId)
                 .single();
 
             if (!error && data) {
                 setPlayerDbId(data.id);
+                setProfileCompleted(data.profile_completed ?? false);
                 setSurveyCompleted(data.survey_completed);
                 setOnboardingComplete(data.onboarding_complete);
             }
@@ -128,10 +133,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const signUp = useCallback(async (email: string, password: string, name: string, grade: number) => {
         if (isMockMode || !supabase) {
             // Mock mode
-            const mockData: MockAuthData = { email, name, grade, surveyCompleted: false, onboardingComplete: false };
+            const mockData: MockAuthData = { email, name, grade, profileCompleted: false, surveyCompleted: false, onboardingComplete: false };
             localStorage.setItem(MOCK_AUTH_KEY, JSON.stringify(mockData));
             setUser({ id: "mock-user-id", email } as User);
             setPlayerDbId("mock-player-id");
+            setProfileCompleted(false);
             setSurveyCompleted(false);
             setOnboardingComplete(false);
             return { error: null };
@@ -142,6 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (data.user) {
             const playerId = await createPlayerRecord(data.user.id, name, grade, email);
             setPlayerDbId(playerId);
+            setProfileCompleted(false);
             setSurveyCompleted(false);
             setOnboardingComplete(false);
         }
@@ -155,6 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const data = JSON.parse(saved) as MockAuthData;
                 if (data.email === email) {
                     setUser({ id: "mock-user-id", email } as User);
+                    setProfileCompleted(data.profileCompleted);
                     setSurveyCompleted(data.surveyCompleted);
                     setOnboardingComplete(data.onboardingComplete);
                     setPlayerDbId("mock-player-id");
@@ -198,6 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             localStorage.removeItem(MOCK_AUTH_KEY);
             setUser(null);
             setPlayerDbId(null);
+            setProfileCompleted(false);
             setSurveyCompleted(false);
             setOnboardingComplete(false);
             return;
@@ -213,7 +222,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             user, session, loading,
             signUp, signIn, signInWithGoogle, signInWithFacebook, signOut,
             playerDbId, surveyCompleted, onboardingComplete,
-            setSurveyDone, setOnboardingDone,
         }}>
             {children}
         </AuthContext.Provider>
@@ -227,6 +235,52 @@ export function useAuth() {
         throw new Error("useAuth must be used within an AuthProvider");
     }
     return ctx;
+}
+
+/* ─── Helper: Profile data types ─── */
+export interface ProfileFormData {
+    childName: string;
+    grade: number;
+    birthday?: string;
+    school?: string;
+    favoriteSubjects?: string[];
+    parentEmail: string;
+    parentName?: string;
+    parentPhone?: string;
+}
+
+/* ─── Helper: Save profile data & mark completed ─── */
+export async function saveProfileData(playerDbId: string, data: ProfileFormData) {
+    if (isMockMode || !supabase) {
+        try {
+            const saved = localStorage.getItem(MOCK_AUTH_KEY);
+            if (saved) {
+                const mock = JSON.parse(saved) as MockAuthData;
+                mock.name = data.childName;
+                mock.grade = data.grade;
+                mock.profileCompleted = true;
+                localStorage.setItem(MOCK_AUTH_KEY, JSON.stringify(mock));
+            }
+            // Also store profile details separately
+            localStorage.setItem("cosmomosaic_profile", JSON.stringify(data));
+        } catch { /* ignore */ }
+        return;
+    }
+
+    await supabase
+        .from("players")
+        .update({
+            name: data.childName,
+            grade: data.grade,
+            birthday: data.birthday || null,
+            school: data.school || null,
+            favorite_subjects: data.favoriteSubjects || [],
+            parent_email: data.parentEmail,
+            parent_name: data.parentName || null,
+            parent_phone: data.parentPhone || null,
+            profile_completed: true,
+        })
+        .eq("id", playerDbId);
 }
 
 /* ─── Helper: Update survey/onboarding status ─── */

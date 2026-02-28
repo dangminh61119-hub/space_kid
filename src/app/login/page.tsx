@@ -12,7 +12,7 @@ type AuthTab = "login" | "register";
 
 export default function LoginPage() {
     const router = useRouter();
-    const { signUp, signIn, signInWithGoogle, signInWithFacebook, loading: authLoading, user, surveyCompleted, onboardingComplete } = useAuth();
+    const { signUp, signIn, signInWithGoogle, signInWithFacebook, loading: authLoading, user, profileCompleted, surveyCompleted, onboardingComplete } = useAuth();
 
     const [tab, setTab] = useState<AuthTab>("login");
     const [email, setEmail] = useState("");
@@ -24,7 +24,9 @@ export default function LoginPage() {
     // If already logged in, redirect based on status
     useEffect(() => {
         if (user) {
-            if (!surveyCompleted) {
+            if (!profileCompleted) {
+                router.push("/profile");
+            } else if (!surveyCompleted) {
                 router.push("/survey");
             } else if (!onboardingComplete) {
                 router.push("/onboarding");
@@ -32,10 +34,11 @@ export default function LoginPage() {
                 router.push("/portal");
             }
         }
-    }, [user, surveyCompleted, onboardingComplete, router]);
+    }, [user, profileCompleted, surveyCompleted, onboardingComplete, router]);
 
     /** Determine where to redirect after successful auth */
-    const getRedirectPath = (isSurveyDone: boolean, isOnboardingDone: boolean): string => {
+    const getRedirectPath = (isProfileDone: boolean, isSurveyDone: boolean, isOnboardingDone: boolean): string => {
+        if (!isProfileDone) return "/profile";
         if (!isSurveyDone) return "/survey";
         if (!isOnboardingDone) return "/onboarding";
         return "/portal";
@@ -54,8 +57,8 @@ export default function LoginPage() {
                     setError(err);
                 } else {
                     setSuccess("Đăng ký thành công!");
-                    // New user → always go to survey first
-                    setTimeout(() => router.push("/survey"), 800);
+                    // New user → always go to profile first
+                    setTimeout(() => router.push("/profile"), 800);
                 }
             } else {
                 const { error: err } = await signIn(email, password);
@@ -64,7 +67,7 @@ export default function LoginPage() {
                 } else {
                     // Existing user → redirect based on completion status
                     // After signIn, auth state updates; use current known values
-                    const path = getRedirectPath(surveyCompleted, onboardingComplete);
+                    const path = getRedirectPath(profileCompleted, surveyCompleted, onboardingComplete);
                     router.push(path);
                 }
             }

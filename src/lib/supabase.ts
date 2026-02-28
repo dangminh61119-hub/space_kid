@@ -78,6 +78,14 @@ export interface DBPlayer {
     onboarding_quiz_score: number;
     survey_completed: boolean;
     estimated_grade: number | null;
+    // Profile questionnaire fields
+    profile_completed: boolean;
+    birthday: string | null;
+    school: string | null;
+    parent_email: string | null;
+    parent_name: string | null;
+    parent_phone: string | null;
+    favorite_subjects: string[] | null;
 }
 
 export interface DBPlanetProgress {
