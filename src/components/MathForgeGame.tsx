@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Maximize, Minimize } from "lucide-react";
 
 /* ─── Types ─── */
 interface MathQuestion {
@@ -40,9 +41,11 @@ export default function MathForgeGame({ levels, onExit }: Props) {
     const [droppedAnswer, setDroppedAnswer] = useState<number | null>(null);
     const [comboCount, setComboCount] = useState(0);
     const [shakeWrong, setShakeWrong] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const dropZoneRef = useRef<HTMLDivElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     const level = levels[currentLevel];
     const question = level?.questions[questionIdx];
@@ -137,6 +140,27 @@ export default function MathForgeGame({ levels, onExit }: Props) {
         setGameState("playing");
     };
 
+    const toggleFullscreen = async () => {
+        if (!containerRef.current) return;
+        try {
+            if (!document.fullscreenElement) {
+                await containerRef.current.requestFullscreen();
+                setIsFullscreen(true);
+            } else {
+                await document.exitFullscreen();
+                setIsFullscreen(false);
+            }
+        } catch (err) {
+            console.error("Error toggling fullscreen", err);
+        }
+    };
+
+    useEffect(() => {
+        const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
+        document.addEventListener("fullscreenchange", handleFullscreenChange);
+        return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    }, []);
+
     /* ─── Drag handler ─── */
     const handleDragEnd = (value: number, info: { point: { x: number; y: number } }) => {
         if (!dropZoneRef.current || feedback) return;
@@ -205,9 +229,9 @@ export default function MathForgeGame({ levels, onExit }: Props) {
 
     /* ─── Render ─── */
     return (
-        <div className="w-full max-w-4xl mx-auto flex flex-col gap-4">
+        <div ref={containerRef} className={`w-full max-w-4xl mx-auto flex flex-col gap-4 ${isFullscreen ? 'bg-slate-950 p-4 justify-center py-10 overflow-hidden h-screen overflow-y-auto' : ''}`}>
             {/* HUD */}
-            <div className="flex items-center justify-between gap-3 glass-card-strong !rounded-2xl px-4 py-3">
+            <div className={`flex items-center justify-between gap-3 glass-card-strong !rounded-2xl px-4 py-3 ${isFullscreen ? 'max-w-[700px] mx-auto w-full shrink-0' : ''}`}>
                 {/* HP */}
                 <div className="flex items-center gap-1.5">
                     {Array.from({ length: MAX_HP }).map((_, i) => (
@@ -226,20 +250,31 @@ export default function MathForgeGame({ levels, onExit }: Props) {
                     </div>
                 )}
 
-                {/* Score + Combo */}
-                <div className="flex items-center gap-3">
-                    {comboCount > 1 && (
-                        <motion.span
-                            key={comboCount}
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className="text-xs font-bold text-neon-orange bg-neon-orange/10 px-2 py-1 rounded-full"
+                {/* Score + Combo + Fullscreen */}
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
+                        {comboCount > 1 && (
+                            <motion.span
+                                key={comboCount}
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                className="text-xs font-bold text-neon-orange bg-neon-orange/10 px-2 py-1 rounded-full"
+                            >
+                                🔥 x{comboCount}
+                            </motion.span>
+                        )}
+                        <span className="text-neon-cyan font-bold text-lg">{score}</span>
+                        <span className="text-white/40 text-xs">XP</span>
+                    </div>
+                    {gameState === "playing" && (
+                        <button
+                            onClick={toggleFullscreen}
+                            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-colors"
+                            title={isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}
                         >
-                            🔥 x{comboCount}
-                        </motion.span>
+                            {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+                        </button>
                     )}
-                    <span className="text-neon-cyan font-bold text-lg">{score}</span>
-                    <span className="text-white/40 text-xs">XP</span>
                 </div>
             </div>
 
@@ -255,7 +290,7 @@ export default function MathForgeGame({ levels, onExit }: Props) {
             )}
 
             {/* Main game area */}
-            <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-space-deep min-h-[450px] sm:min-h-[500px] flex flex-col">
+            <div className={`relative rounded-2xl overflow-hidden border border-white/10 bg-space-deep flex flex-col ${isFullscreen ? 'max-w-[800px] w-full mx-auto flex-1 my-4 min-h-[500px]' : 'min-h-[450px] sm:min-h-[500px]'}`}>
                 {/* Background decorations */}
                 <div className="absolute inset-0 pointer-events-none">
                     <div className="absolute top-10 left-10 w-32 h-32 bg-neon-gold/5 rounded-full blur-3xl" />

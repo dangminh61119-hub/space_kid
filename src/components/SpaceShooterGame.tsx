@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Maximize, Minimize } from "lucide-react";
 
 /* ─── Types ─── */
 interface Question {
@@ -48,6 +49,16 @@ interface Particle {
     size: number;
 }
 
+interface FloatingText {
+    id: number;
+    text: string;
+    x: number;
+    y: number;
+    color: string;
+    life: number;
+    vy: number;
+}
+
 interface Props {
     levels: GameLevel[];
     onExit?: () => void;
@@ -56,11 +67,11 @@ interface Props {
 /* ─── Constants ─── */
 const CANVAS_W = 800;
 const CANVAS_H = 600;
-const SHIP_W = 50;
-const SHIP_H = 40;
-const LASER_W = 4;
-const LASER_H = 18;
-const BOMB_H = 38;
+const SHIP_W = 120;
+const SHIP_H = 120;
+const LASER_W = 6;
+const LASER_H = 24;
+const BOMB_H = 50;
 const MAX_HP = 3;
 
 /* ─── Component ─── */
@@ -76,15 +87,18 @@ export default function SpaceShooterGame({ levels, onExit }: Props) {
     const [questionIdx, setQuestionIdx] = useState(0);
     const [currentQuestion, setCurrentQuestion] = useState("");
     const [isPaused, setIsPaused] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
     // Mutable refs for the game loop
     const shipX = useRef(CANVAS_W / 2);
     const lasers = useRef<Laser[]>([]);
     const bombs = useRef<WordBomb[]>([]);
     const particles = useRef<Particle[]>([]);
+    const floatingTexts = useRef<FloatingText[]>([]);
     const stars = useRef<{ x: number; y: number; size: number; speed: number; alpha: number }[]>([]);
     const nextBombId = useRef(0);
     const nextLaserId = useRef(0);
+    const nextTextId = useRef(0);
     const animFrameId = useRef(0);
     const lastShot = useRef(0);
     const mouseX = useRef(CANVAS_W / 2);
@@ -94,6 +108,7 @@ export default function SpaceShooterGame({ levels, onExit }: Props) {
     const spawnTimer = useRef(0);
     const gameStateRef = useRef(gameState);
     const isPausedRef = useRef(false);
+    const shipImgRef = useRef<HTMLImageElement | null>(null);
 
     // Keep refs in sync
     useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
@@ -115,6 +130,10 @@ export default function SpaceShooterGame({ levels, onExit }: Props) {
             });
         }
         stars.current = s;
+
+        const img = new Image();
+        img.src = "/spaceship.png";
+        img.onload = () => { shipImgRef.current = img; };
     }, []);
 
     /* ─── Spawn word bombs for current question ─── */
@@ -128,7 +147,7 @@ export default function SpaceShooterGame({ levels, onExit }: Props) {
         const spacing = CANVAS_W / (allWords.length + 1);
 
         const newBombs: WordBomb[] = allWords.map((word, i) => {
-            const w = Math.max(word.length * 14 + 24, 100);
+            const w = Math.max(word.length * 16 + 32, 120);
             return {
                 id: nextBombId.current++,
                 text: word,
@@ -152,6 +171,7 @@ export default function SpaceShooterGame({ levels, onExit }: Props) {
         bombs.current = [];
         lasers.current = [];
         particles.current = [];
+        floatingTexts.current = [];
         spawnTimer.current = 0;
         setGameState("playing");
         spawnBombs(lvlIdx, 0);
@@ -165,21 +185,32 @@ export default function SpaceShooterGame({ levels, onExit }: Props) {
         startLevel(0);
     }, [startLevel]);
 
-    /* ─── Explosion particles ─── */
-    const spawnExplosion = useCallback((x: number, y: number, color: string) => {
-        const count = 12;
+    /* ─── Explosion particles & Text ─── */
+    const spawnExplosion = useCallback((x: number, y: number, color: string, scale = 1, count = 12) => {
         for (let i = 0; i < count; i++) {
             const angle = (Math.PI * 2 * i) / count + Math.random() * 0.3;
-            const speed = 1.5 + Math.random() * 2.5;
+            const speed = (1.5 + Math.random() * 2.5) * scale;
             particles.current.push({
                 x, y,
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed,
                 life: 1,
                 color,
-                size: 2 + Math.random() * 3,
+                size: (2 + Math.random() * 3) * scale,
             });
         }
+    }, []);
+
+    const spawnText = useCallback((text: string, x: number, y: number, color: string) => {
+        floatingTexts.current.push({
+            id: nextTextId.current++,
+            text,
+            x,
+            y,
+            color,
+            life: 1.0,
+            vy: -1 - Math.random() * 1 // Float upwards
+        });
     }, []);
 
     /* ─── Mouse / Touch input ─── */
@@ -234,6 +265,30 @@ export default function SpaceShooterGame({ levels, onExit }: Props) {
             canvas.removeEventListener("touchmove", handleTouch);
             canvas.removeEventListener("touchstart", handleTouchStart);
         };
+    }, []);
+
+    const toggleFullscreen = async () => {
+        if (!containerRef.current) return;
+
+        try {
+            if (!document.fullscreenElement) {
+                await containerRef.current.requestFullscreen();
+                setIsFullscreen(true);
+            } else {
+                await document.exitFullscreen();
+                setIsFullscreen(false);
+            }
+        } catch (err) {
+            console.error("Error toggling fullscreen", err);
+        }
+    };
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        document.addEventListener("fullscreenchange", handleFullscreenChange);
+        return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
     }, []);
 
     /* ─── Main game loop ─── */
@@ -320,14 +375,17 @@ export default function SpaceShooterGame({ levels, onExit }: Props) {
                             const pts = 100;
                             scoreRef.current += pts;
                             setScore(s => s + pts);
-                            spawnExplosion(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, "#00F5FF");
+                            // Bigger explosion and floating text
+                            spawnExplosion(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, "#00F5FF", 2, 25);
+                            spawnText("+100 XP!", bomb.x + bomb.width / 2, bomb.y, "#00F5FF");
                             advanceQuestion();
                         } else {
                             // Wrong hit → lose HP
                             const newHp = hpRef.current - 1;
                             hpRef.current = newHp;
                             setHp(newHp);
-                            spawnExplosion(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, "#FF4444");
+                            spawnExplosion(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, "#FF4444", 1.5, 20);
+                            spawnText("Oops!", bomb.x + bomb.width / 2, bomb.y, "#FF4444");
                             if (newHp <= 0) {
                                 setGameState("gameOver");
                                 return;
@@ -346,6 +404,13 @@ export default function SpaceShooterGame({ levels, onExit }: Props) {
                 p.y += p.vy;
                 p.life -= 0.02;
                 return p.life > 0;
+            });
+
+            // Update floating texts
+            floatingTexts.current = floatingTexts.current.filter(t => {
+                t.y += t.vy;
+                t.life -= 0.015;
+                return t.life > 0;
             });
         };
 
@@ -433,7 +498,7 @@ export default function SpaceShooterGame({ levels, onExit }: Props) {
 
                 // Text
                 c.fillStyle = "#ffffff";
-                c.font = "bold 14px 'Outfit', sans-serif";
+                c.font = "bold 20px system-ui, -apple-system, sans-serif";
                 c.textAlign = "center";
                 c.textBaseline = "middle";
                 c.fillText(bomb.text, bomb.x + bomb.width / 2, bomb.y + bomb.height / 2);
@@ -465,36 +530,51 @@ export default function SpaceShooterGame({ levels, onExit }: Props) {
             const sx = shipX.current;
             const sy = CANVAS_H - SHIP_H - 15;
 
-            // Engine glow
-            c.shadowColor = "#00F5FF";
-            c.shadowBlur = 15;
-            c.fillStyle = "rgba(0,245,255,0.4)";
-            c.beginPath();
-            c.ellipse(sx, sy + SHIP_H + 5, 12, 6, 0, 0, Math.PI * 2);
-            c.fill();
-            c.shadowBlur = 0;
+            if (shipImgRef.current) {
+                // Draw normally first
+                c.drawImage(shipImgRef.current, sx - SHIP_W / 2, sy, SHIP_W, SHIP_H);
 
-            // Ship body
-            c.fillStyle = "#1a2a4a";
-            c.beginPath();
-            c.moveTo(sx, sy - 5);                    // nose
-            c.lineTo(sx + SHIP_W / 2, sy + SHIP_H);  // right wing
-            c.lineTo(sx + 8, sy + SHIP_H - 8);       // right indent
-            c.lineTo(sx - 8, sy + SHIP_H - 8);       // left indent
-            c.lineTo(sx - SHIP_W / 2, sy + SHIP_H);  // left wing
-            c.closePath();
-            c.fill();
+                // Then draw with 50% screen blend mode for glowing effect
+                const prevOp = c.globalCompositeOperation;
+                const prevAl = c.globalAlpha;
+                c.globalCompositeOperation = "screen";
+                c.globalAlpha = 0.5;
+                c.drawImage(shipImgRef.current, sx - SHIP_W / 2, sy, SHIP_W, SHIP_H);
 
-            // Ship highlight
-            c.strokeStyle = "rgba(0,245,255,0.6)";
-            c.lineWidth = 1.5;
-            c.stroke();
+                c.globalCompositeOperation = prevOp;
+                c.globalAlpha = prevAl;
+            } else {
+                // Fallback Engine glow
+                c.shadowColor = "#00F5FF";
+                c.shadowBlur = 15;
+                c.fillStyle = "rgba(0,245,255,0.4)";
+                c.beginPath();
+                c.ellipse(sx, sy + SHIP_H + 5, 12, 6, 0, 0, Math.PI * 2);
+                c.fill();
+                c.shadowBlur = 0;
 
-            // Cockpit
-            c.fillStyle = "rgba(0,245,255,0.3)";
-            c.beginPath();
-            c.ellipse(sx, sy + 10, 6, 8, 0, 0, Math.PI * 2);
-            c.fill();
+                // Ship body
+                c.fillStyle = "#1a2a4a";
+                c.beginPath();
+                c.moveTo(sx, sy - 5);                    // nose
+                c.lineTo(sx + SHIP_W / 2, sy + SHIP_H);  // right wing
+                c.lineTo(sx + 8, sy + SHIP_H - 8);       // right indent
+                c.lineTo(sx - 8, sy + SHIP_H - 8);       // left indent
+                c.lineTo(sx - SHIP_W / 2, sy + SHIP_H);  // left wing
+                c.closePath();
+                c.fill();
+
+                // Ship highlight
+                c.strokeStyle = "rgba(0,245,255,0.6)";
+                c.lineWidth = 1.5;
+                c.stroke();
+
+                // Cockpit
+                c.fillStyle = "rgba(0,245,255,0.3)";
+                c.beginPath();
+                c.ellipse(sx, sy + 10, 6, 8, 0, 0, Math.PI * 2);
+                c.fill();
+            }
 
             // Particles
             for (const p of particles.current) {
@@ -504,6 +584,20 @@ export default function SpaceShooterGame({ levels, onExit }: Props) {
                 c.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
                 c.fill();
             }
+
+            // Floating Texts
+            for (const t of floatingTexts.current) {
+                c.globalAlpha = t.life;
+                c.fillStyle = t.color;
+                c.font = "bold 26px system-ui, -apple-system, sans-serif";
+                c.textAlign = "center";
+                c.textBaseline = "middle";
+                c.shadowColor = t.color;
+                c.shadowBlur = 10;
+                c.fillText(t.text, t.x, t.y);
+                c.shadowBlur = 0;
+            }
+
             c.globalAlpha = 1;
 
             // Pause overlay
@@ -530,9 +624,9 @@ export default function SpaceShooterGame({ levels, onExit }: Props) {
     const progressPercent = level ? ((questionIdx + 1) / level.questions.length) * 100 : 0;
 
     return (
-        <div ref={containerRef} className="w-full max-w-5xl mx-auto flex flex-col gap-4">
+        <div ref={containerRef} className={`w-full max-w-5xl mx-auto flex flex-col gap-4 ${isFullscreen ? 'bg-slate-950 p-4 justify-center items-center overflow-hidden h-screen' : ''}`}>
             {/* ─ HUD ─ */}
-            <div className="flex items-center justify-between gap-3 glass-card-strong !rounded-2xl px-4 py-3">
+            <div className={`flex items-center justify-between gap-3 glass-card-strong !rounded-2xl px-4 py-3 ${isFullscreen ? 'w-full max-w-[800px]' : 'w-full'}`}>
                 {/* HP */}
                 <div className="flex items-center gap-1.5">
                     {Array.from({ length: MAX_HP }).map((_, i) => (
@@ -554,7 +648,7 @@ export default function SpaceShooterGame({ levels, onExit }: Props) {
                                 initial={{ opacity: 0, y: -10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: 10 }}
-                                className="text-sm sm:text-base font-bold text-neon-gold"
+                                className="text-xl sm:text-2xl font-bold text-neon-gold font-[var(--font-heading)] tracking-wider drop-shadow-md"
                             >
                                 {currentQuestion}
                             </motion.p>
@@ -562,10 +656,21 @@ export default function SpaceShooterGame({ levels, onExit }: Props) {
                     </AnimatePresence>
                 </div>
 
-                {/* Score */}
-                <div className="flex items-center gap-2">
-                    <span className="text-neon-cyan font-bold text-lg">{score}</span>
-                    <span className="text-white/40 text-xs">XP</span>
+                {/* Score & Fullscreen */}
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <span className="text-neon-cyan font-bold text-lg">{score}</span>
+                        <span className="text-white/40 text-xs">XP</span>
+                    </div>
+                    {gameState === "playing" && (
+                        <button
+                            onClick={toggleFullscreen}
+                            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-colors"
+                            title={isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}
+                        >
+                            {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+                        </button>
+                    )}
                 </div>
             </div>
 
