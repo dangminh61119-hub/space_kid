@@ -259,12 +259,26 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
             if (now - lastShot.current < 250) return; // rate limit
             lastShot.current = now;
             playShoot();
-            lasers.current.push({
-                id: nextLaserId.current++,
-                x: shipX.current,
-                y: CANVAS_H - SHIP_H - 20,
-                speed: 7,
-            });
+            lasers.current.push(
+                {
+                    id: nextLaserId.current++,
+                    x: shipX.current - 25,
+                    y: CANVAS_H - SHIP_H - 10,
+                    speed: 7,
+                },
+                {
+                    id: nextLaserId.current++,
+                    x: shipX.current,
+                    y: CANVAS_H - SHIP_H - 20,
+                    speed: 7,
+                },
+                {
+                    id: nextLaserId.current++,
+                    x: shipX.current + 25,
+                    y: CANVAS_H - SHIP_H - 10,
+                    speed: 7,
+                }
+            );
         };
 
         const handleClick = () => shoot();
