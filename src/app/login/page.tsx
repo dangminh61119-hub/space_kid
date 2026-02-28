@@ -17,8 +17,6 @@ export default function LoginPage() {
     const [tab, setTab] = useState<AuthTab>("login");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [name, setName] = useState("");
-    const [grade, setGrade] = useState(3);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState<string | null>(null);
@@ -51,12 +49,7 @@ export default function LoginPage() {
 
         try {
             if (tab === "register") {
-                if (!name.trim()) {
-                    setError("Vui lòng nhập tên!");
-                    setLoading(false);
-                    return;
-                }
-                const { error: err } = await signUp(email, password, name, grade);
+                const { error: err } = await signUp(email, password, email.split("@")[0], 3);
                 if (err) {
                     setError(err);
                 } else {
@@ -147,47 +140,6 @@ export default function LoginPage() {
                                     exit={{ opacity: 0, x: tab === "register" ? -20 : 20 }}
                                     className="space-y-4"
                                 >
-                                    {tab === "register" && (
-                                        <>
-                                            {/* Name */}
-                                            <div>
-                                                <label className="block text-white/60 text-xs mb-1.5 font-medium">
-                                                    Tên phi hành gia 🧑‍🚀
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={name}
-                                                    onChange={(e) => setName(e.target.value)}
-                                                    placeholder="Nhập tên của em..."
-                                                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-all"
-                                                    required
-                                                />
-                                            </div>
-
-                                            {/* Grade */}
-                                            <div>
-                                                <label className="block text-white/60 text-xs mb-1.5 font-medium">
-                                                    Lớp học hiện tại 📚
-                                                </label>
-                                                <div className="flex gap-2">
-                                                    {[1, 2, 3, 4, 5].map((g) => (
-                                                        <button
-                                                            key={g}
-                                                            type="button"
-                                                            onClick={() => setGrade(g)}
-                                                            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${grade === g
-                                                                ? "bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 scale-105"
-                                                                : "bg-white/5 border border-white/10 text-white/50 hover:border-white/20"
-                                                                }`}
-                                                        >
-                                                            Lớp {g}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </>
-                                    )}
-
                                     {/* Email */}
                                     <div>
                                         <label className="block text-white/60 text-xs mb-1.5 font-medium">
