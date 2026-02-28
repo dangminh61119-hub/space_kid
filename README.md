@@ -1,6 +1,6 @@
 # 🚀 CosmoMosaic
 
-> **Ghép tri thức, thắp sáng vũ trụ!** ✨  
+> **Ghép tri thức, thắp sáng vũ trụ!** ✨  --
 > Ứng dụng giáo dục gamification cho học sinh tiểu học Việt Nam (Lớp 1–5, 6–11 tuổi).
 
 ---

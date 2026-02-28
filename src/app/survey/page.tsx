@@ -24,7 +24,7 @@ type SurveyStep = "intro" | "questioning" | "results";
 export default function SurveyPage() {
     const router = useRouter();
     const { updatePlayer } = useGame();
-    const { playerDbId, surveyCompleted } = useAuth();
+    const { playerDbId, surveyCompleted, setSurveyDone } = useAuth();
 
     const [step, setStep] = useState<SurveyStep>("intro");
     const [responses, setResponses] = useState<SurveyResponse[]>([]);
@@ -122,13 +122,16 @@ export default function SurveyPage() {
             await markSurveyCompleted(playerDbId, results.estimatedGrade);
         }
 
+        // Update auth context state so redirect logic works
+        setSurveyDone();
+
         router.push("/onboarding");
     };
 
     // Get completed subjects for progress display
     const getSubjectProgress = (subject: string) => {
         const count = responses.filter(r => r.subject === subject).length;
-        return count >= 2 ? "done" : count > 0 ? "active" : "pending";
+        return count >= 3 ? "done" : count > 0 ? "active" : "pending";
     };
 
     return (
@@ -208,10 +211,10 @@ export default function SurveyPage() {
                                         <div
                                             key={s}
                                             className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-all ${status === "done"
-                                                    ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                                                    : s === currentSubject
-                                                        ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 scale-110"
-                                                        : "bg-white/5 text-white/40 border border-white/10"
+                                                ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                                                : s === currentSubject
+                                                    ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 scale-110"
+                                                    : "bg-white/5 text-white/40 border border-white/10"
                                                 }`}
                                         >
                                             <span>{SUBJECT_EMOJIS[s]}</span>
@@ -237,10 +240,10 @@ export default function SurveyPage() {
                                         <div className="flex items-center justify-center gap-2 mb-2">
                                             <span className="text-2xl">{SUBJECT_EMOJIS[currentQuestion.subject]}</span>
                                             <span className={`text-xs px-2 py-0.5 rounded-full ${currentQuestion.difficulty === "easy"
-                                                    ? "bg-green-500/20 text-green-400"
-                                                    : currentQuestion.difficulty === "medium"
-                                                        ? "bg-yellow-500/20 text-yellow-400"
-                                                        : "bg-red-500/20 text-red-400"
+                                                ? "bg-green-500/20 text-green-400"
+                                                : currentQuestion.difficulty === "medium"
+                                                    ? "bg-yellow-500/20 text-yellow-400"
+                                                    : "bg-red-500/20 text-red-400"
                                                 }`}>
                                                 {currentQuestion.difficulty === "easy" ? "Cơ bản" : currentQuestion.difficulty === "medium" ? "Trung bình" : "Nâng cao"}
                                             </span>
@@ -284,12 +287,12 @@ export default function SurveyPage() {
                                     <div
                                         key={i}
                                         className={`w-2 h-2 rounded-full transition-all ${i < answeredCount
-                                                ? responses[i]?.isCorrect
-                                                    ? "bg-neon-green"
-                                                    : "bg-red-400"
-                                                : i === answeredCount
-                                                    ? "bg-neon-gold scale-125"
-                                                    : "bg-white/20"
+                                            ? responses[i]?.isCorrect
+                                                ? "bg-neon-green"
+                                                : "bg-red-400"
+                                            : i === answeredCount
+                                                ? "bg-neon-gold scale-125"
+                                                : "bg-white/20"
                                             }`}
                                     />
                                 ))}
@@ -334,10 +337,10 @@ export default function SurveyPage() {
                                                 <div className="flex items-center justify-between mb-1">
                                                     <span className="text-white text-sm font-medium">{p.subject}</span>
                                                     <span className={`text-xs px-2 py-0.5 rounded-full ${p.level === "advanced"
-                                                            ? "bg-green-500/20 text-green-400"
-                                                            : p.level === "intermediate"
-                                                                ? "bg-yellow-500/20 text-yellow-400"
-                                                                : "bg-red-500/20 text-red-400"
+                                                        ? "bg-green-500/20 text-green-400"
+                                                        : p.level === "intermediate"
+                                                            ? "bg-yellow-500/20 text-yellow-400"
+                                                            : "bg-red-500/20 text-red-400"
                                                         }`}>
                                                         {p.level === "advanced" ? "Giỏi" : p.level === "intermediate" ? "Khá" : "Cần cải thiện"}
                                                     </span>
@@ -346,10 +349,10 @@ export default function SurveyPage() {
                                                 <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                                                     <motion.div
                                                         className={`h-full rounded-full ${p.masteryScore >= 70
-                                                                ? "bg-gradient-to-r from-green-400 to-emerald-500"
-                                                                : p.masteryScore >= 40
-                                                                    ? "bg-gradient-to-r from-yellow-400 to-amber-500"
-                                                                    : "bg-gradient-to-r from-red-400 to-orange-500"
+                                                            ? "bg-gradient-to-r from-green-400 to-emerald-500"
+                                                            : p.masteryScore >= 40
+                                                                ? "bg-gradient-to-r from-yellow-400 to-amber-500"
+                                                                : "bg-gradient-to-r from-red-400 to-orange-500"
                                                             }`}
                                                         initial={{ width: 0 }}
                                                         animate={{ width: `${p.masteryScore}%` }}

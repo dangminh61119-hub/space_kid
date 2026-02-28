@@ -17,6 +17,8 @@ interface AuthContextType {
     playerDbId: string | null; // UUID from players table
     surveyCompleted: boolean;
     onboardingComplete: boolean;
+    setSurveyDone: () => void;
+    setOnboardingDone: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -203,11 +205,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await supabase.auth.signOut();
     }, []);
 
+    const setSurveyDone = useCallback(() => setSurveyCompleted(true), []);
+    const setOnboardingDone = useCallback(() => setOnboardingComplete(true), []);
+
     return (
         <AuthContext.Provider value={{
             user, session, loading,
             signUp, signIn, signInWithGoogle, signInWithFacebook, signOut,
             playerDbId, surveyCompleted, onboardingComplete,
+            setSurveyDone, setOnboardingDone,
         }}>
             {children}
         </AuthContext.Provider>
