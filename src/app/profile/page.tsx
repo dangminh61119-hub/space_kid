@@ -24,7 +24,7 @@ type Step = (typeof steps)[number];
 export default function ProfilePage() {
     const router = useRouter();
     const { updatePlayer } = useGame();
-    const { playerDbId, profileCompleted } = useAuth();
+    const { playerDbId, profileCompleted, setProfileDone } = useAuth();
 
     const [currentStep, setCurrentStep] = useState<Step>("child");
     const [childName, setChildName] = useState("");
@@ -92,6 +92,7 @@ export default function ProfilePage() {
                 await saveProfileData(playerDbId, data);
             }
             updatePlayer({ name: data.childName, grade: data.grade });
+            setProfileDone();
             router.push("/survey");
         } catch {
             setError("Đã xảy ra lỗi. Vui lòng thử lại!");

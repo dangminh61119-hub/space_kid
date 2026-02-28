@@ -20,6 +20,7 @@ interface AuthContextType {
     onboardingComplete: boolean;
     setSurveyDone: () => void;
     setOnboardingDone: () => void;
+    setProfileDone: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -216,12 +217,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const setSurveyDone = useCallback(() => setSurveyCompleted(true), []);
     const setOnboardingDone = useCallback(() => setOnboardingComplete(true), []);
+    const setProfileDone = useCallback(() => setProfileCompleted(true), []);
 
     return (
         <AuthContext.Provider value={{
             user, session, loading,
             signUp, signIn, signInWithGoogle, signInWithFacebook, signOut,
-            playerDbId, surveyCompleted, onboardingComplete,
+            playerDbId, profileCompleted, surveyCompleted, onboardingComplete,
+            setSurveyDone, setOnboardingDone, setProfileDone,
         }}>
             {children}
         </AuthContext.Provider>

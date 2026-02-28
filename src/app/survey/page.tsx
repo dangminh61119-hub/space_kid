@@ -24,7 +24,7 @@ type SurveyStep = "intro" | "questioning" | "results";
 export default function SurveyPage() {
     const router = useRouter();
     const { updatePlayer } = useGame();
-    const { playerDbId, surveyCompleted } = useAuth();
+    const { playerDbId, profileCompleted, surveyCompleted, setSurveyDone } = useAuth();
 
     const [step, setStep] = useState<SurveyStep>("intro");
     const [responses, setResponses] = useState<SurveyResponse[]>([]);
@@ -33,7 +33,7 @@ export default function SurveyPage() {
     const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
     const [showFeedback, setShowFeedback] = useState(false);
     const [results, setResults] = useState<SurveyResult | null>(null);
-    
+
     // Redirect if profile not completed yet
     useEffect(() => {
         if (!profileCompleted) {
