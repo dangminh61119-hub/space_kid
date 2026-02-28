@@ -21,6 +21,25 @@ const fadeUp = {
     }),
 };
 
+/* ─── Game type info: icon, label, how-to-play ─── */
+const GAME_HOW_TO_PLAY: Record<string, { icon: string; label: string; howTo: string }> = {
+    shooter: {
+        icon: "🚀",
+        label: "Bắn Từ Không Gian",
+        howTo: "Di chuyển tàu bằng chuột, nhấn để bắn vào từ ĐÚNG!",
+    },
+    math: {
+        icon: "⚒️",
+        label: "Lò Rèn Vũ Trụ",
+        howTo: "Kéo thả số vào ô trống hoặc nhấn để chọn đáp án đúng!",
+    },
+    "star-hunter": {
+        icon: "⭐",
+        label: "Săn Sao Vũ Trụ",
+        howTo: "Nhấn vào ngôi sao chứa đáp án đúng trước khi hết giờ!",
+    },
+};
+
 /* ─── Route helper: planet.gameType → play URL ─── */
 function playUrl(planet: Planet): string {
     switch (planet.gameType) {
@@ -210,6 +229,23 @@ export default function PortalPage() {
                                                                 </span>
                                                             ))}
                                                         </div>
+                                                        {/* Cách chơi */}
+                                                        {(() => {
+                                                            const info = GAME_HOW_TO_PLAY[planet.gameType];
+                                                            if (!info) return null;
+                                                            return (
+                                                                <div
+                                                                    className="flex items-start gap-2 mb-3 p-2 rounded-xl border border-white/5"
+                                                                    style={{ background: `linear-gradient(135deg, ${planet.color1}10, ${planet.color2}08)` }}
+                                                                >
+                                                                    <span className="text-base shrink-0">{info.icon}</span>
+                                                                    <div className="min-w-0">
+                                                                        <div className="text-[10px] font-bold text-white/70 uppercase tracking-wider">{info.label}</div>
+                                                                        <p className="text-[10px] text-white/40 leading-tight">{info.howTo}</p>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })()}
                                                         {/* Progress */}
                                                         {(() => {
                                                             const pp = player.planetsProgress[planet.id];

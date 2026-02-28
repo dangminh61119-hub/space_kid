@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Maximize, Minimize } from "lucide-react";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 /* ─── Types ─── */
 interface MathQuestion {
@@ -32,6 +33,7 @@ const MAX_HP = 3;
 
 /* ─── Component ─── */
 export default function MathForgeGame({ levels, onExit, playerClass, onGameComplete }: Props) {
+    const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
     const [gameState, setGameState] = useState<"ready" | "playing" | "levelComplete" | "gameOver" | "win">("ready");
     const [currentLevel, setCurrentLevel] = useState(0);
     const [questionIdx, setQuestionIdx] = useState(0);
@@ -98,12 +100,14 @@ export default function MathForgeGame({ levels, onExit, playerClass, onGameCompl
         setSelectedAnswer(value);
 
         if (isCorrect) {
+            playCorrect();
             setFeedback("correct");
             const comboBonus = Math.min(comboCount, 5) * 10;
             setScore(s => s + 100 + comboBonus);
             setComboCount(c => c + 1);
             setDroppedAnswer(value);
         } else {
+            playWrong();
             setFeedback("wrong");
             setComboCount(0);
             setShakeWrong(true);
@@ -117,6 +121,7 @@ export default function MathForgeGame({ levels, onExit, playerClass, onGameCompl
                     const newHp = prev - 1;
                     if (newHp <= 0) {
                         setTimeout(() => {
+                            stopBGM();
                             onGameComplete?.(score, currentLevel);
                             setGameState("gameOver");
                         }, 800);
@@ -134,6 +139,7 @@ export default function MathForgeGame({ levels, onExit, playerClass, onGameCompl
             const nextQ = questionIdx + 1;
             if (nextQ >= (level?.questions.length ?? 0)) {
                 if (currentLevel + 1 >= levels.length) {
+                    stopBGM();
                     onGameComplete?.(score + (isCorrect ? 100 : 0), currentLevel + 1);
                     setGameState("win");
                 } else {
@@ -151,6 +157,7 @@ export default function MathForgeGame({ levels, onExit, playerClass, onGameCompl
 
     /* ─── Start helpers ─── */
     const startGame = () => {
+        playBGM();
         setScore(0);
         setHp(MAX_HP);
         setComboCount(0);

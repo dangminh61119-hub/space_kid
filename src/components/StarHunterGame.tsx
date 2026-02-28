@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { GameLevel } from "@/lib/db";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 // ─── Types ───────────────────────────────────────────────
 interface StarData {
@@ -52,11 +53,13 @@ function uid() { return Math.random().toString(36).slice(2, 9); }
 
 // ─── Component ───────────────────────────────────────────
 export default function StarHunterGame({ levels, onExit, playerClass, onGameComplete }: Props) {
+    const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
+
     // ── Game state ──
     const [hp, setHp] = useState(MAX_HP);
     const [score, setScore] = useState(0);
     const [combo, setCombo] = useState(1);
-    const [gameState, setGameState] = useState<"playing" | "levelComplete" | "win" | "gameOver">("playing");
+    const [gameState, setGameState] = useState<"ready" | "playing" | "levelComplete" | "win" | "gameOver">("ready");
     const [levelIdx, setLevelIdx] = useState(0);
     const [qIdx, setQIdx] = useState(0);
     const [stars, setStars] = useState<StarData[]>([]);
@@ -82,6 +85,17 @@ export default function StarHunterGame({ levels, onExit, playerClass, onGameComp
     const interactableRef = useRef(true); // block clicks during transitions
 
     useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+
+    const startGame = useCallback(() => {
+        playBGM();
+        setScore(0);
+        setHp(MAX_HP);
+        setCombo(1);
+        setLevelIdx(0);
+        setQIdx(0);
+        setLevelsCompleted(0);
+        setGameState("playing");
+    }, [playBGM]);
 
     // ── Derived ──
     const currentLevel = levels[levelIdx];
@@ -183,6 +197,7 @@ export default function StarHunterGame({ levels, onExit, playerClass, onGameComp
             setTimeLeft(prev => {
                 if (prev <= 1) {
                     setCombo(1);
+                    playWrong();
                     setHp(h => {
                         const next = h - 1;
                         if (next <= 0) setGameState("gameOver");
@@ -199,6 +214,7 @@ export default function StarHunterGame({ levels, onExit, playerClass, onGameComp
     // ─── Win / Game Over → call onGameComplete ────────────
     useEffect(() => {
         if (gameState === "win" || gameState === "gameOver") {
+            stopBGM();
             cancelAnimationFrame(animRef.current);
             if (timerRef.current) clearInterval(timerRef.current);
             onGameComplete?.(score, levelsCompleted);
@@ -227,6 +243,7 @@ export default function StarHunterGame({ levels, onExit, playerClass, onGameComp
         if (explodingIds.has(star.id)) return;
 
         if (star.isCorrect) {
+            playCorrect();
             interactableRef.current = false;
             const newCombo = Math.min(combo + 1, COMBO_MULTIPLIERS.length);
             const mult = COMBO_MULTIPLIERS[Math.min(newCombo - 1, COMBO_MULTIPLIERS.length - 1)];
@@ -270,6 +287,7 @@ export default function StarHunterGame({ levels, onExit, playerClass, onGameComp
             }, 650);
         } else {
             // Wrong
+            playWrong();
             if (shieldActive && playerClass === "warrior") {
                 setShieldActive(false);
             } else {
@@ -305,6 +323,41 @@ export default function StarHunterGame({ levels, onExit, playerClass, onGameComp
     const ability = playerClass ? abilityInfo[playerClass] : null;
 
     // ─── Render overlays ──────────────────────────────────
+    if (gameState === "ready") {
+        return (
+            <div className="flex-1 flex items-center justify-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-space-deep/90 flex flex-col items-center justify-center gap-6 z-30 animate-in fade-in duration-500">
+                    <div className="text-6xl animate-float">⭐</div>
+                    <h2 className="text-3xl sm:text-4xl font-bold font-[var(--font-heading)] neon-text text-center">
+                        Săn Sao Vũ Trụ
+                    </h2>
+                    <p className="text-white/60 text-sm text-center max-w-md px-4 leading-relaxed">
+                        Nhấn vào ngôi sao chứa đáp án đúng trước khi hết giờ!<br />
+                        Săn trúng mục tiêu, tránh sao <span className="text-neon-magenta font-bold">SAI</span>!
+                    </p>
+                    {levels[0] && (
+                        <div className="glass-card !p-3 !rounded-xl text-center">
+                            <p className="text-xs text-white/50">Level {levels[0].level} · {levels[0].planet}</p>
+                            <p className="text-sm font-bold text-white">{levels[0].title || "Săn Sao"}</p>
+                        </div>
+                    )}
+                    <button
+                        onClick={startGame}
+                        className="px-8 py-3 rounded-full text-white font-bold text-lg hover:scale-105 transition-transform"
+                        style={{ background: "linear-gradient(90deg, #FFD700, #FF8C00)", boxShadow: "0 0 25px rgba(255,215,0,0.4)" }}
+                    >
+                        BẮT ĐẦU SĂN ⭐
+                    </button>
+                    {onExit && (
+                        <button onClick={onExit} className="mt-2 text-sm text-white/40 hover:text-white transition-colors">
+                            ← Thoát
+                        </button>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
     if (gameState === "win" || gameState === "gameOver") {
         const isWin = gameState === "win";
         const stars3 = hp >= 3 ? 3 : hp >= 2 ? 2 : 1;
@@ -325,10 +378,17 @@ export default function StarHunterGame({ levels, onExit, playerClass, onGameComp
                         <div className="flex justify-between text-white/70"><span>Levels hoàn thành</span><span className="font-bold text-white">{levelsCompleted}/{levels.length}</span></div>
                         <div className="flex justify-between text-white/70"><span>Combo cao nhất</span><span className="font-bold text-neon-pink">×{multiplier}</span></div>
                     </div>
-                    <button onClick={onExit} className="w-full py-3 rounded-xl font-bold text-white"
-                        style={{ background: "linear-gradient(90deg,#00F5FF,#9D4EDD)" }}>
-                        ← Về Bản Đồ
-                    </button>
+                    <div className="flex gap-3 w-full">
+                        <button onClick={startGame} className="flex-1 py-3 rounded-xl font-bold text-white shadow-[0_0_15px_rgba(255,215,0,0.5)] hover:scale-105 transition-transform"
+                            style={{ background: "linear-gradient(90deg,#FFD700,#FF8C00)" }}>
+                            Chơi lại 🔄
+                        </button>
+                        {onExit && (
+                            <button onClick={onExit} className="flex-1 py-3 rounded-xl font-bold text-white border border-white/20 hover:bg-white/10 transition-colors">
+                                Thoát 🗺
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
         );

@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Maximize, Minimize } from "lucide-react";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 /* ─── Types ─── */
 interface Question {
@@ -78,6 +79,7 @@ const MAX_HP = 3;
 
 /* ─── Component ─── */
 export default function SpaceShooterGame({ levels, onExit, playerClass, onGameComplete }: Props) {
+    const { playShoot, playHit, playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -194,6 +196,7 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
     }, [spawnBombs]);
 
     const startGame = useCallback(() => {
+        playBGM();
         setScore(0);
         scoreRef.current = 0;
         setHp(MAX_HP);
@@ -255,6 +258,7 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
             const now = Date.now();
             if (now - lastShot.current < 250) return; // rate limit
             lastShot.current = now;
+            playShoot();
             lasers.current.push({
                 id: nextLaserId.current++,
                 x: shipX.current,
@@ -365,14 +369,17 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                     setShieldUsed(true);
                     setAbilityNotice("🛡️ Lá chắn thép đã bảo vệ bạn!");
                     setTimeout(() => setAbilityNotice(null), 2000);
+                    playHit();
                     spawnExplosion(CANVAS_W / 2, CANVAS_H - 30, "#FFE066");
                     advanceQuestion();
                 } else {
                     const newHp = hpRef.current - 1;
                     hpRef.current = newHp;
                     setHp(newHp);
+                    playWrong();
                     spawnExplosion(CANVAS_W / 2, CANVAS_H - 30, "#FF4444");
                     if (newHp <= 0) {
+                        stopBGM();
                         onGameComplete?.(scoreRef.current, currentLevel);
                         setGameState("gameOver");
                         return;
@@ -401,6 +408,7 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                             const pts = 100;
                             scoreRef.current += pts;
                             setScore(s => s + pts);
+                            playCorrect();
                             spawnExplosion(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, "#00F5FF", 2, 25);
                             spawnText("+100 XP!", bomb.x + bomb.width / 2, bomb.y, "#00F5FF");
                             advanceQuestion();
@@ -410,6 +418,7 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                                 setShieldUsed(true);
                                 setAbilityNotice("🛡️ Lá chắn thép đã bảo vệ bạn!");
                                 setTimeout(() => setAbilityNotice(null), 2000);
+                                playHit();
                                 spawnExplosion(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, "#FFE066", 1.5, 20);
                                 spawnText("🛡️ Chắn!", bomb.x + bomb.width / 2, bomb.y, "#FFE066");
                             } else {
@@ -417,9 +426,11 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                                 const newHp = hpRef.current - 1;
                                 hpRef.current = newHp;
                                 setHp(newHp);
+                                playWrong();
                                 spawnExplosion(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, "#FF4444", 1.5, 20);
                                 spawnText("Oops!", bomb.x + bomb.width / 2, bomb.y, "#FF4444");
                                 if (newHp <= 0) {
+                                    stopBGM();
                                     onGameComplete?.(scoreRef.current, currentLevel);
                                     setGameState("gameOver");
                                     return;
@@ -458,6 +469,7 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                 // Level complete
                 bombs.current = [];
                 if (currentLevel + 1 >= levels.length) {
+                    stopBGM();
                     onGameComplete?.(scoreRef.current, currentLevel + 1);
                     setGameState("win");
                 } else {
