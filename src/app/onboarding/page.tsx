@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import StarField from "@/components/StarField";
 import NeonButton from "@/components/NeonButton";
 import GlassCard from "@/components/GlassCard";
-import { mockOnboardingQuestions } from "@/lib/mock-data";
 import { useGame } from "@/lib/game-context";
+import { useAuth, markOnboardingCompleted } from "@/lib/auth-context";
 
 const mascots = [
     { id: "cat", emoji: "🐱", name: "Mèo Sao Băng", desc: "Nhanh nhẹn, thông minh, thích khám phá!" },
@@ -41,40 +41,37 @@ const classes = [
     },
 ];
 
-const steps = ["welcome", "mascot", "quiz", "class", "ready"] as const;
+// Removed "quiz" step – Smart Survey now handles grade assessment
+const steps = ["welcome", "mascot", "class", "ready"] as const;
 type Step = (typeof steps)[number];
 
 export default function OnboardingPage() {
     const router = useRouter();
     const { updatePlayer } = useGame();
+    const { playerDbId, surveyCompleted, onboardingComplete } = useAuth();
     const [currentStep, setCurrentStep] = useState<Step>("welcome");
     const [mascot, setMascot] = useState<string | null>(null);
     const [selectedClass, setSelectedClass] = useState<string | null>(null);
-    const [quizIndex, setQuizIndex] = useState(0);
-    const [score, setScore] = useState(0);
-    const [answered, setAnswered] = useState<number | null>(null);
+
+    // Redirect if already completed onboarding
+    useEffect(() => {
+        if (onboardingComplete) {
+            router.push("/portal");
+        }
+    }, [onboardingComplete, router]);
+
+    // Redirect if survey not completed yet
+    useEffect(() => {
+        if (!surveyCompleted) {
+            router.push("/survey");
+        }
+    }, [surveyCompleted, router]);
 
     const stepIndex = steps.indexOf(currentStep);
 
     const nextStep = () => {
         const next = steps[stepIndex + 1];
         if (next) setCurrentStep(next);
-    };
-
-    const handleQuizAnswer = (optionIndex: number) => {
-        if (answered !== null) return;
-        setAnswered(optionIndex);
-        if (optionIndex === mockOnboardingQuestions[quizIndex].correct) {
-            setScore((s) => s + 1);
-        }
-        setTimeout(() => {
-            setAnswered(null);
-            if (quizIndex < mockOnboardingQuestions.length - 1) {
-                setQuizIndex((i) => i + 1);
-            } else {
-                nextStep();
-            }
-        }, 1000);
     };
 
     return (
@@ -103,18 +100,19 @@ export default function OnboardingPage() {
                         >
                             <div className="text-7xl mb-6 animate-float">🦉</div>
                             <h1 className="text-3xl sm:text-4xl font-bold font-[var(--font-heading)] neon-text mb-4">
-                                Chào mừng Tân binh!
+                                Chuẩn bị Phiêu lưu!
                             </h1>
                             <GlassCard glow="cyan" className="mb-8">
                                 <p className="text-white/80 text-lg leading-relaxed">
-                                    Ta là <span className="text-neon-gold font-bold">Chỉ huy Trưởng Cú Mèo</span>!
-                                    Vũ trụ Tri thức đang bị Băng đảng Lười Biếng xâm chiếm!
-                                    Ta cần em giúp thu thập các <span className="text-neon-cyan font-bold">Mảnh ghép Mosaic</span> để
-                                    thắp sáng lại các hành tinh. Sẵn sàng chưa?
+                                    <span className="text-neon-gold font-bold">Chỉ huy Cú Mèo</span> đã hiểu rõ
+                                    năng lực của em từ bài khảo sát! Giờ hãy chọn
+                                    <span className="text-neon-cyan font-bold"> bạn đồng hành</span> và
+                                    <span className="text-neon-magenta font-bold"> lớp nhân vật</span> để
+                                    bắt đầu chinh phục vũ trụ tri thức!
                                 </p>
                             </GlassCard>
                             <NeonButton variant="cyan" size="lg" onClick={nextStep}>
-                                Sẵn sàng! 🚀
+                                Bắt đầu! 🚀
                             </NeonButton>
                         </motion.div>
                     )}
@@ -159,81 +157,6 @@ export default function OnboardingPage() {
                         </motion.div>
                     )}
 
-                    {/* STEP: Quiz */}
-                    {currentStep === "quiz" && (
-                        <motion.div
-                            key="quiz"
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -30 }}
-                            className="text-center"
-                        >
-                            <div className="flex items-center justify-center gap-2 mb-2">
-                                <span className="text-3xl">🚀</span>
-                                <h2 className="text-xl sm:text-2xl font-bold font-[var(--font-heading)] neon-text">
-                                    Khởi động Tàu Vũ trụ!
-                                </h2>
-                            </div>
-                            <p className="text-white/50 mb-6 text-sm">
-                                Câu {quizIndex + 1} / {mockOnboardingQuestions.length}
-                            </p>
-
-                            <AnimatePresence mode="wait">
-                                <motion.div
-                                    key={quizIndex}
-                                    initial={{ opacity: 0, x: 50 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: -50 }}
-                                >
-                                    <GlassCard glow="gold" className="mb-6">
-                                        <p className="text-white text-lg font-semibold">
-                                            {mockOnboardingQuestions[quizIndex].question}
-                                        </p>
-                                    </GlassCard>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        {mockOnboardingQuestions[quizIndex].options.map((opt, i) => {
-                                            const isCorrect = i === mockOnboardingQuestions[quizIndex].correct;
-                                            const isSelected = answered === i;
-                                            let bg = "glass-card hover:border-white/30";
-                                            if (answered !== null) {
-                                                if (isCorrect) bg = "bg-green-500/20 border border-green-400";
-                                                else if (isSelected) bg = "bg-red-500/20 border border-red-400";
-                                            }
-                                            return (
-                                                <button
-                                                    key={i}
-                                                    onClick={() => handleQuizAnswer(i)}
-                                                    className={`${bg} p-4 rounded-xl text-white text-left transition-all ${answered === null ? "cursor-pointer hover:scale-[1.02]" : ""
-                                                        }`}
-                                                    disabled={answered !== null}
-                                                >
-                                                    <span className="text-white/50 text-sm mr-2">{String.fromCharCode(65 + i)}.</span>
-                                                    {opt}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </motion.div>
-                            </AnimatePresence>
-
-                            {/* Progress dots */}
-                            <div className="flex justify-center gap-2 mt-6">
-                                {mockOnboardingQuestions.map((_, i) => (
-                                    <div
-                                        key={i}
-                                        className={`w-2.5 h-2.5 rounded-full transition-all ${i === quizIndex
-                                            ? "bg-neon-gold scale-125"
-                                            : i < quizIndex
-                                                ? "bg-neon-green"
-                                                : "bg-white/20"
-                                            }`}
-                                    />
-                                ))}
-                            </div>
-                        </motion.div>
-                    )}
-
                     {/* STEP: Class Selection */}
                     {currentStep === "class" && (
                         <motion.div
@@ -247,7 +170,7 @@ export default function OnboardingPage() {
                                 Chọn Lớp Nhân Vật!
                             </h2>
                             <p className="text-white/50 mb-8 text-sm">
-                                Kết quả khởi động: {score}/{mockOnboardingQuestions.length} ⭐ – Mỗi lớp có năng lực đặc biệt!
+                                Mỗi lớp có năng lực đặc biệt riêng!
                             </p>
 
                             <div className="grid grid-cols-1 gap-4 mb-8">
@@ -321,13 +244,15 @@ export default function OnboardingPage() {
                             <NeonButton
                                 variant="cyan"
                                 size="lg"
-                                onClick={() => {
+                                onClick={async () => {
                                     updatePlayer({
                                         mascot: mascot as "cat" | "dog",
                                         playerClass: selectedClass as "warrior" | "wizard" | "hunter",
                                         onboardingComplete: true,
-                                        onboardingQuizScore: score,
                                     });
+                                    if (playerDbId) {
+                                        await markOnboardingCompleted(playerDbId);
+                                    }
                                     router.push("/portal");
                                 }}
                             >

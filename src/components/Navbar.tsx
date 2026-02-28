@@ -20,10 +20,10 @@ export default function Navbar() {
                 {/* Desktop Nav */}
                 <div className="hidden md:flex items-center gap-6">
                     <Link
-                        href="/onboarding"
+                        href="/login"
                         className="text-sm text-white/70 hover:text-neon-cyan transition-colors duration-300"
                     >
-                        Bắt đầu
+                        Đăng nhập
                     </Link>
                     <Link
                         href="/portal"
@@ -38,7 +38,7 @@ export default function Navbar() {
                         Phụ huynh
                     </Link>
                     <Link
-                        href="/onboarding"
+                        href="/login"
                         className="ml-2 px-5 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-neon-cyan to-neon-magenta text-space-deep hover:opacity-90 transition-opacity"
                     >
                         Chơi ngay 🚀
@@ -69,8 +69,8 @@ export default function Navbar() {
             {/* Mobile menu */}
             {menuOpen && (
                 <div className="md:hidden glass-card-strong border-t border-white/10 px-4 py-4 space-y-3" style={{ borderRadius: 0 }}>
-                    <Link href="/onboarding" className="block text-white/70 hover:text-neon-cyan transition-colors">
-                        Bắt đầu
+                    <Link href="/login" className="block text-white/70 hover:text-neon-cyan transition-colors">
+                        Đăng nhập
                     </Link>
                     <Link href="/portal" className="block text-white/70 hover:text-neon-cyan transition-colors">
                         Bản đồ Vũ trụ
@@ -79,13 +79,14 @@ export default function Navbar() {
                         Phụ huynh
                     </Link>
                     <Link
-                        href="/onboarding"
+                        href="/login"
                         className="block text-center px-5 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-neon-cyan to-neon-magenta text-space-deep"
                     >
                         Chơi ngay 🚀
                     </Link>
                 </div>
-            )}
-        </nav>
+            )
+            }
+        </nav >
     );
 }

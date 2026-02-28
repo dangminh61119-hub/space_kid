@@ -68,6 +68,7 @@ export interface DBPlayer {
     id: string;
     auth_id: string | null;
     name: string;
+    email: string | null;
     mascot: "cat" | "dog" | null;
     player_class: "warrior" | "wizard" | "hunter" | null;
     grade: number;
@@ -75,6 +76,8 @@ export interface DBPlayer {
     streak: number;
     onboarding_complete: boolean;
     onboarding_quiz_score: number;
+    survey_completed: boolean;
+    estimated_grade: number | null;
 }
 
 export interface DBPlanetProgress {
@@ -83,4 +86,42 @@ export interface DBPlanetProgress {
     planet_id: string;
     completed_levels: number;
     last_played_at: string | null;
+}
+
+export interface DBSurveyQuestion {
+    id: string;
+    subject: string;
+    grade: number;
+    difficulty: "easy" | "medium" | "hard";
+    question_text: string;
+    options: string[];
+    correct_answer: number;
+}
+
+export interface DBSurveyResponse {
+    id: string;
+    player_id: string;
+    question_id: string;
+    selected_answer: number;
+    is_correct: boolean;
+    answered_at: string;
+}
+
+export interface DBPlayerProficiency {
+    id: string;
+    player_id: string;
+    subject: string;
+    estimated_grade: number;
+    mastery_score: number;
+    total_correct: number;
+    total_attempted: number;
+    updated_at: string;
+}
+
+export interface DBAnswerHistory {
+    id: string;
+    player_id: string;
+    question_id: string;
+    is_correct: boolean;
+    answered_at: string;
 }

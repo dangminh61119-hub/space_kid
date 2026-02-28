@@ -92,7 +92,7 @@ export default function HomePage() {
           transition={{ delay: 0.6, duration: 0.6 }}
           className="flex flex-col sm:flex-row gap-6"
         >
-          <NeonButton href="/onboarding" variant="orange" size="lg">
+          <NeonButton href="/login" variant="orange" size="lg">
             BẮT ĐẦU HÀNH TRÌNH
           </NeonButton>
           <NeonButton href="/dashboard" variant="cyan" size="lg">
@@ -248,7 +248,7 @@ export default function HomePage() {
           <p className="text-slate-400 text-lg mb-2">
             Tham gia ngay hành trình tri thức cùng hàng nghìn bạn nhỏ khắp Việt Nam!
           </p>
-          <NeonButton href="/onboarding" variant="green" size="lg">
+          <NeonButton href="/login" variant="green" size="lg">
             BẮT ĐẦU MIỄN PHÍ
           </NeonButton>
         </motion.div>

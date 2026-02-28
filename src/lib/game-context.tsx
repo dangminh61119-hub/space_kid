@@ -21,6 +21,8 @@ export interface PlayerData {
     totalPlayHours: number;
     onboardingComplete: boolean;
     onboardingQuizScore: number;
+    surveyCompleted: boolean;
+    estimatedGrade: number;
     planetsProgress: Record<string, PlanetProgress>;
 }
 
@@ -48,6 +50,8 @@ const DEFAULT_PLAYER: PlayerData = {
     totalPlayHours: 0,
     onboardingComplete: false,
     onboardingQuizScore: 0,
+    surveyCompleted: false,
+    estimatedGrade: 3,
     planetsProgress: {
         "ha-long": { completedLevels: 0, totalLevels: 20 },
         "hue": { completedLevels: 0, totalLevels: 25 },

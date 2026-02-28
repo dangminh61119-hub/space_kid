@@ -5,10 +5,11 @@ import Link from "next/link";
 interface NeonButtonProps {
     children: React.ReactNode;
     href?: string;
-    onClick?: () => void;
+    onClick?: (e?: React.FormEvent) => void;
     variant?: "cyan" | "magenta" | "gold" | "green" | "orange";
     size?: "sm" | "md" | "lg";
     className?: string;
+    disabled?: boolean;
 }
 
 const bgColors = {
@@ -48,6 +49,7 @@ export default function NeonButton({
     variant = "cyan",
     size = "md",
     className = "",
+    disabled = false,
 }: NeonButtonProps) {
     const baseClasses = `
     relative group inline-flex items-center justify-center gap-2 rounded-xl font-bold
@@ -70,7 +72,7 @@ export default function NeonButton({
     }
 
     return (
-        <button onClick={onClick} className={baseClasses}>
+        <button onClick={onClick} disabled={disabled} className={`${baseClasses} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}>
             <span className="relative z-10 flex items-center gap-2">{children}</span>
             {innerGlow}
         </button>
