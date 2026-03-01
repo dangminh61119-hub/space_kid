@@ -71,8 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setSession(s);
             setUser(s?.user ?? null);
             if (s?.user) {
-                setProfileCompleted(s.user.user_metadata?.profile_completed ?? false);
-                loadPlayerData(s.user.id);
+                loadPlayerData(s.user.id, s.user.email ?? "");
             } else {
                 setLoading(false);
             }
@@ -83,8 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setSession(s);
             setUser(s?.user ?? null);
             if (s?.user) {
-                setProfileCompleted(s.user.user_metadata?.profile_completed ?? false);
-                loadPlayerData(s.user.id);
+                loadPlayerData(s.user.id, s.user.email ?? "");
             } else {
                 setPlayerDbId(null);
                 setSurveyCompleted(false);
@@ -96,28 +94,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return () => subscription.unsubscribe();
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Load player data from DB
-    const loadPlayerData = useCallback(async (authId: string) => {
+    // Load player data from DB — auto-creates record if missing
+    const loadPlayerData = useCallback(async (authId: string, email: string) => {
         if (!supabase) return;
         try {
+            // Try to find existing player
             const { data, error } = await supabase
                 .from("players")
-                .select("id, survey_completed, onboarding_complete")
+                .select("id, profile_completed, survey_completed, onboarding_complete")
                 .eq("auth_id", authId)
                 .single();
 
             if (!error && data) {
+                console.log("[auth] loadPlayerData: found existing player", data.id);
                 setPlayerDbId(data.id);
+                setProfileCompleted(data.profile_completed);
                 setSurveyCompleted(data.survey_completed);
                 setOnboardingComplete(data.onboarding_complete);
+            } else {
+                // No player record found — auto-create one
+                console.log("[auth] loadPlayerData: no player found, auto-creating...");
+                const { data: newPlayer, error: insertErr } = await supabase
+                    .from("players")
+                    .insert({ auth_id: authId, name: "Tân Binh", grade: 3, email })
+                    .select("id")
+                    .single();
+
+                if (insertErr) {
+                    console.error("[auth] auto-create player error:", insertErr);
+                } else if (newPlayer) {
+                    console.log("[auth] auto-created player:", newPlayer.id);
+                    setPlayerDbId(newPlayer.id);
+                    setProfileCompleted(false);
+                    setSurveyCompleted(false);
+                    setOnboardingComplete(false);
+                }
             }
-        } catch { /* ignore */ }
+        } catch (err) {
+            console.error("[auth] loadPlayerData exception:", err);
+        }
         setLoading(false);
     }, []);
 
     // Create player record in DB
     const createPlayerRecord = useCallback(async (authId: string, name: string, grade: number, email: string) => {
-        if (!supabase) return null;
+        if (!supabase) {
+            console.error("[auth] createPlayerRecord: supabase client is null");
+            return null;
+        }
+        console.log("[auth] createPlayerRecord called:", { authId, name, grade, email });
         const { data, error } = await supabase
             .from("players")
             .insert({ auth_id: authId, name, grade, email })
@@ -128,6 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.error("[auth] createPlayerRecord error:", error);
             return null;
         }
+        console.log("[auth] createPlayerRecord success:", data);
         return data?.id ?? null;
     }, []);
 
@@ -146,14 +172,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return { error: null };
         }
 
+        console.log("[auth] signUp called with email:", email);
         const { data, error } = await supabase.auth.signUp({ email, password });
+        console.log("[auth] signUp result:", { user: data?.user?.id, session: !!data?.session, error });
         if (error) return { error: error.message };
         if (data.user) {
+            console.log("[auth] User created, creating player record...");
             const playerId = await createPlayerRecord(data.user.id, name, grade, email);
+            console.log("[auth] Player record created with id:", playerId);
             setPlayerDbId(playerId);
             setProfileCompleted(false);
             setSurveyCompleted(false);
             setOnboardingComplete(false);
+        } else {
+            console.warn("[auth] signUp returned no user object");
         }
         return { error: null };
     }, [createPlayerRecord]);
@@ -272,27 +304,25 @@ export async function saveProfileData(playerDbId: string, data: ProfileFormData)
         return;
     }
 
-    // Update name and grade in players table
-    await supabase
+    // Save ALL profile fields to the players table
+    const { error } = await supabase
         .from("players")
         .update({
             name: data.childName,
             grade: data.grade,
-        })
-        .eq("id", playerDbId);
-
-    // Update the rest in Auth user metadata
-    await supabase.auth.updateUser({
-        data: {
             birthday: data.birthday || null,
             school: data.school || null,
-            favorite_subjects: data.favoriteSubjects || [],
+            favorite_subjects: data.favoriteSubjects || null,
             parent_email: data.parentEmail,
             parent_name: data.parentName || null,
             parent_phone: data.parentPhone || null,
             profile_completed: true,
-        }
-    });
+        })
+        .eq("id", playerDbId);
+
+    if (error) {
+        console.error("[auth] saveProfileData error:", error);
+    }
 }
 
 /* ─── Helper: Update survey/onboarding status ─── */
