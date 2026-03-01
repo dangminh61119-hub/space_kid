@@ -3,6 +3,8 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import { useAuth } from "./auth-context";
 import { supabase, isMockMode } from "./supabase";
+import { getMasteryForPlayer } from "./db";
+
 
 /* ─── Types ─── */
 export interface PlanetProgress {
@@ -32,6 +34,9 @@ export interface PlayerData {
     parentName?: string;
     parentPhone?: string;
     favoriteSubjects?: string[];
+    calmMode: boolean;                 // Giảm kích thích giác quan cho trẻ nhạy cảm
+    masteryByTopic: Record<string, number>;       // topic key → mastery % (0–100)
+    bloomLevelReached: Record<string, number>;     // topic key → Bloom level (1–6)
     planetsProgress: Record<string, PlanetProgress>;
 }
 
@@ -44,6 +49,7 @@ interface GameContextType {
     classAbilityAvailable: boolean;
     resetClassAbility: () => void;
     resetGame: () => void;
+    setCalmMode: (enabled: boolean) => void;  // Toggle Calm Mode
 }
 
 /* ─── Defaults ─── */
@@ -68,6 +74,9 @@ const DEFAULT_PLAYER: PlayerData = {
     parentName: "",
     parentPhone: "",
     favoriteSubjects: [],
+    calmMode: false,                   // Will be auto-enabled for grade ≤ 2
+    masteryByTopic: {},                // Loaded from Supabase mastery table
+    bloomLevelReached: {},             // Loaded from Supabase mastery table
     planetsProgress: {
         "ha-long": { completedLevels: 0, totalLevels: 20 },
         "hue": { completedLevels: 0, totalLevels: 25 },
@@ -81,6 +90,7 @@ const DEFAULT_PLAYER: PlayerData = {
 };
 
 const STORAGE_KEY = "cosmomosaic_player";
+const CALM_MODE_KEY = "cosmomosaic_calm_mode";
 const XP_PER_LEVEL = 500;
 
 /* ─── Context ─── */
@@ -99,7 +109,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const [classAbilityAvailable, setClassAbilityAvailable] = useState(true);
     const [isHydrated, setIsHydrated] = useState(false);
 
-    const { playerDbId } = useAuth(); // NEW: Get playerDbId from AuthContext
+    const { playerDbId } = useAuth();
 
     // 1. Initial Load: Merge local storage data with Supabase data
     useEffect(() => {
@@ -116,6 +126,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
                     if (isMounted) {
                         setPlayer(prev => ({ ...prev, ...localData }));
                     }
+                }
+
+                // Restore calm mode from dedicated key (faster access)
+                const savedCalmMode = localStorage.getItem(CALM_MODE_KEY);
+                if (savedCalmMode !== null) {
+                    const calmEnabled = JSON.parse(savedCalmMode) as boolean;
+                    if (calmEnabled) document.documentElement.classList.add("calm-mode");
+                    if (isMounted) setPlayer(prev => ({ ...prev, calmMode: calmEnabled }));
+                } else if (localData.grade !== undefined && localData.grade <= 2) {
+                    // Auto-enable calm mode for grade ≤ 2 (approx. 6-7 years old)
+                    document.documentElement.classList.add("calm-mode");
+                    if (isMounted) setPlayer(prev => ({ ...prev, calmMode: true }));
                 }
             } catch {
                 // ignore parse errors
@@ -194,6 +216,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
                             return updated;
                         });
                     }
+
+                    // Load mastery data (Bloom Taxonomy, migration 006)
+                    const mastery = await getMasteryForPlayer(playerDbId);
+                    if (isMounted && (Object.keys(mastery.masteryByTopic).length > 0)) {
+                        setPlayer(prev => ({
+                            ...prev,
+                            masteryByTopic: mastery.masteryByTopic,
+                            bloomLevelReached: mastery.bloomLevelReached,
+                        }));
+                    }
+
                 } catch (err) {
                     console.error("[GameContext] Error fetching remote data:", err);
                 }
@@ -297,6 +330,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
         setPlayer(DEFAULT_PLAYER);
         setClassAbilityAvailable(true);
         localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(CALM_MODE_KEY);
+    }, []);
+
+    const setCalmMode = useCallback((enabled: boolean) => {
+        setPlayer(prev => ({ ...prev, calmMode: enabled }));
+        try {
+            localStorage.setItem(CALM_MODE_KEY, JSON.stringify(enabled));
+        } catch { /* ignore */ }
+        // Apply/remove CSS class on document root for global CSS override
+        if (enabled) {
+            document.documentElement.classList.add("calm-mode");
+        } else {
+            document.documentElement.classList.remove("calm-mode");
+        }
     }, []);
 
     // Don't render children until hydrated to avoid mismatch
@@ -315,6 +362,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
                 classAbilityAvailable,
                 resetClassAbility,
                 resetGame,
+                setCalmMode,
             }}
         >
             {children}

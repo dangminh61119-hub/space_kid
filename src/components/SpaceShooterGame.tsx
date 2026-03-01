@@ -65,6 +65,7 @@ interface Props {
     onExit?: () => void;
     playerClass?: "warrior" | "wizard" | "hunter" | null;
     onGameComplete?: (finalScore: number, levelsCompleted: number) => void;
+    onAnswered?: (isCorrect: boolean, subject: string, bloomLevel: number) => void;
 }
 
 /* ─── Constants ─── */
@@ -78,7 +79,7 @@ const BOMB_H = 50;
 const MAX_HP = 3;
 
 /* ─── Component ─── */
-export default function SpaceShooterGame({ levels, onExit, playerClass, onGameComplete }: Props) {
+export default function SpaceShooterGame({ levels, onExit, playerClass, onGameComplete, onAnswered }: Props) {
     const { playShoot, playHit, playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -385,12 +386,14 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                     setTimeout(() => setAbilityNotice(null), 2000);
                     playHit();
                     spawnExplosion(CANVAS_W / 2, CANVAS_H - 30, "#FFE066");
+                    onAnswered?.(false, levels[currentLevel]?.subject ?? "", 2);
                     advanceQuestion();
                 } else {
                     const newHp = hpRef.current - 1;
                     hpRef.current = newHp;
                     setHp(newHp);
                     playWrong();
+                    onAnswered?.(false, levels[currentLevel]?.subject ?? "", 2);
                     spawnExplosion(CANVAS_W / 2, CANVAS_H - 30, "#FF4444");
                     if (newHp <= 0) {
                         stopBGM();
@@ -425,6 +428,8 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                             playCorrect();
                             spawnExplosion(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, "#00F5FF", 2, 25);
                             spawnText("+100 XP!", bomb.x + bomb.width / 2, bomb.y, "#00F5FF");
+                            // Record mastery (default bloom=2 for word recall; question id would give exact bloom)
+                            onAnswered?.(true, levels[currentLevel]?.subject ?? "", 2);
                             advanceQuestion();
                         } else {
                             // Warrior shield check
@@ -441,6 +446,7 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                                 hpRef.current = newHp;
                                 setHp(newHp);
                                 playWrong();
+                                onAnswered?.(false, levels[currentLevel]?.subject ?? "", 2);
                                 spawnExplosion(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, "#FF4444", 1.5, 20);
                                 spawnText("Oops!", bomb.x + bomb.width / 2, bomb.y, "#FF4444");
                                 if (newHp <= 0) {
@@ -792,12 +798,24 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                                 Di chuyển tàu bằng chuột, nhấn để bắn!<br />
                                 Bắn vào từ <span className="text-neon-cyan font-bold">ĐÚNG</span>, né từ <span className="text-neon-magenta font-bold">SAI</span>!
                             </p>
+                            {/* Class ability intro */}
+                            {playerClass && (
+                                <div className="glass-card !p-3 !rounded-xl text-center border border-neon-cyan/20">
+                                    <p className="text-xs text-white/50 mb-1">Khả năng đặc biệt của bạn</p>
+                                    <p className="text-sm font-bold text-neon-cyan">
+                                        {playerClass === "warrior" && "🛡️ Lá Chắn Thép — Miễn 1 lần bị đánh mỗi level"}
+                                        {playerClass === "wizard" && "⏳ Ngưng Đọng Thời Gian — Bom rơi chậm hơn 30%"}
+                                        {playerClass === "hunter" && "🎯 Mắt Đại Bàng — Loại 1 từ sai mỗi câu"}
+                                    </p>
+                                </div>
+                            )}
                             {level && (
                                 <div className="glass-card !p-3 !rounded-xl text-center">
                                     <p className="text-xs text-white/50">Level {level.level} · {level.planet}</p>
                                     <p className="text-sm font-bold text-white">{level.title}</p>
                                 </div>
                             )}
+
                             <button
                                 onClick={startGame}
                                 className="px-8 py-3 rounded-full bg-gradient-to-r from-neon-cyan to-neon-magenta text-white font-bold text-lg tracking-wide hover:scale-105 transition-transform shadow-[0_0_25px_rgba(0,245,255,0.4)]"

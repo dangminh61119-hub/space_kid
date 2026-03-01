@@ -1,13 +1,14 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
 import StarField from "@/components/StarField";
 import NeonButton from "@/components/NeonButton";
 import MathForgeGame from "@/components/MathForgeGame";
 import LevelIntro from "@/components/LevelIntro";
 import { useGame } from "@/lib/game-context";
-import { getMathLevels, type MathLevel } from "@/lib/db";
+import { useAuth } from "@/lib/auth-context";
+import { getMathLevels, updateMastery, type MathLevel } from "@/lib/db";
 
 const PLANET_NAMES: Record<string, { name: string; emoji: string }> = {
     "giong": { name: "Làng Gióng", emoji: "⚔️" },
@@ -18,6 +19,7 @@ function MathPlayContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { player, addXP, updatePlanetProgress } = useGame();
+    const { playerDbId } = useAuth();
     const [showIntro, setShowIntro] = useState(true);
     const [levels, setLevels] = useState<MathLevel[]>([]);
     const [loading, setLoading] = useState(true);
@@ -25,16 +27,16 @@ function MathPlayContent() {
     const planetId = searchParams.get("planet") || "giong";
     const planetInfo = PLANET_NAMES[planetId] || { name: "Làng Gióng", emoji: "⚔️" };
 
-    // Load levels from DB (or mock fallback) based on player grade
+    // Load levels with mastery-adaptive Bloom selection
     useEffect(() => {
         setLoading(true);
-        getMathLevels(planetId, player.grade)
+        getMathLevels(planetId, player.grade, player.masteryByTopic)
             .then((data) => {
                 setLevels(data);
                 setLoading(false);
             })
             .catch(() => setLoading(false));
-    }, [planetId, player.grade]);
+    }, [planetId, player.grade, player.masteryByTopic]);
 
     const handleGameComplete = (finalScore: number, levelsCompleted: number) => {
         addXP(finalScore);
@@ -44,6 +46,13 @@ function MathPlayContent() {
             updatePlanetProgress(planetId, newCompleted, currentProgress.totalLevels);
         }
     };
+
+    // Fire-and-forget mastery update after each answer
+    const handleAnswered = useCallback((isCorrect: boolean, subject: string, bloomLevel: number) => {
+        if (playerDbId) {
+            updateMastery(playerDbId, planetId, subject, isCorrect, bloomLevel);
+        }
+    }, [playerDbId, planetId]);
 
     if (loading) {
         return (
@@ -102,6 +111,7 @@ function MathPlayContent() {
                         onExit={() => router.push("/portal")}
                         playerClass={player.playerClass}
                         onGameComplete={handleGameComplete}
+                        onAnswered={handleAnswered}
                     />
                 )}
             </div>

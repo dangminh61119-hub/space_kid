@@ -62,6 +62,11 @@ export interface DBQuestion {
     times_shown: number;
     times_wrong: number;
     order_index: number;
+    // Bloom Taxonomy (added in migration 006)
+    bloom_level: number;            // 1–6 (Remember → Create)
+    difficulty_score: number;       // 0.0–1.0 IRT score
+    curriculum_ref: string;         // e.g. 'SGK-Toan-3'
+    reviewed_by_teacher: boolean;   // Only show reviewed questions
 }
 
 export interface DBPlayer {
@@ -132,4 +137,17 @@ export interface DBAnswerHistory {
     question_id: string;
     is_correct: boolean;
     answered_at: string;
+}
+
+/* Mastery tracking (migration 006) */
+export interface DBMastery {
+    id: string;
+    player_id: string;
+    planet_id: string;
+    subject: string;
+    mastery_score: number;    // 0–100
+    bloom_reached: number;    // 1–6
+    correct_count: number;
+    total_attempts: number;
+    updated_at: string;
 }

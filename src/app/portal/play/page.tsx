@@ -1,13 +1,14 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
 import StarField from "@/components/StarField";
 import NeonButton from "@/components/NeonButton";
 import SpaceShooterGame from "@/components/SpaceShooterGame";
 import LevelIntro from "@/components/LevelIntro";
 import { useGame } from "@/lib/game-context";
-import { getShooterLevels, type GameLevel } from "@/lib/db";
+import { useAuth } from "@/lib/auth-context";
+import { getShooterLevels, updateMastery, type GameLevel } from "@/lib/db";
 
 const PLANET_NAMES: Record<string, { name: string; emoji: string }> = {
     "hue": { name: "Cố đô Huế", emoji: "🏯" },
@@ -20,6 +21,7 @@ function PlayContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { player, addXP, updatePlanetProgress } = useGame();
+    const { playerDbId } = useAuth();
     const [showIntro, setShowIntro] = useState(true);
     const [levels, setLevels] = useState<GameLevel[]>([]);
     const [loading, setLoading] = useState(true);
@@ -27,16 +29,16 @@ function PlayContent() {
     const planetId = searchParams.get("planet") || "hue";
     const planetInfo = PLANET_NAMES[planetId] || { name: "Cố đô Huế", emoji: "🏯" };
 
-    // Load levels from DB (or mock fallback) based on player grade
+    // Load levels with mastery-adaptive Bloom selection
     useEffect(() => {
         setLoading(true);
-        getShooterLevels(planetId, player.grade)
+        getShooterLevels(planetId, player.grade, player.masteryByTopic)
             .then((data) => {
                 setLevels(data);
                 setLoading(false);
             })
             .catch(() => setLoading(false));
-    }, [planetId, player.grade]);
+    }, [planetId, player.grade, player.masteryByTopic]);
 
     const handleGameComplete = (finalScore: number, levelsCompleted: number) => {
         addXP(finalScore);
@@ -46,6 +48,13 @@ function PlayContent() {
             updatePlanetProgress(planetId, newCompleted, currentProgress.totalLevels);
         }
     };
+
+    // Fire-and-forget mastery update after each answer
+    const handleAnswered = useCallback((isCorrect: boolean, subject: string, bloomLevel: number) => {
+        if (playerDbId) {
+            updateMastery(playerDbId, planetId, subject, isCorrect, bloomLevel);
+        }
+    }, [playerDbId, planetId]);
 
     if (loading) {
         return (
@@ -104,6 +113,7 @@ function PlayContent() {
                         onExit={() => router.push("/portal")}
                         playerClass={player.playerClass}
                         onGameComplete={handleGameComplete}
+                        onAnswered={handleAnswered}
                     />
                 )}
             </div>

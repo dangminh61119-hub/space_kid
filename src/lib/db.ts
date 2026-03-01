@@ -8,7 +8,7 @@
  * This ensures the app always works, even without a DB connection.
  */
 
-import { supabase, isMockMode, type DBLevel, type DBQuestion, type DBPlanet } from "./supabase";
+import { supabase, isMockMode, type DBLevel, type DBQuestion, type DBPlanet, type DBMastery } from "./supabase";
 import {
     mockPlanets,
     mockGameLevels,
@@ -79,6 +79,20 @@ function difficultyForGrade(grade: number): ("easy" | "medium" | "hard")[] {
     return ["medium", "hard"];
 }
 
+/**
+ * bloomRangeForMastery — determines which Bloom levels to query
+ * based on the player's current mastery score for a topic.
+ * 
+ * mastery < 60%  → levels 1-2 (Remember, Understand) — consolidate basics
+ * mastery 60-79% → levels 2-3 (Understand, Apply)    — deepen understanding
+ * mastery ≥ 80%  → levels 3-5 (Apply, Analyze, Eval)  — stretch thinking
+ */
+function bloomRangeForMastery(mastery: number): [number, number] {
+    if (mastery < 60) return [1, 2];
+    if (mastery < 80) return [2, 3];
+    return [3, 5];
+}
+
 /* ─── Planet list ──────────────────────────────────────── */
 
 export async function getPlanetList(): Promise<Planet[]> {
@@ -136,7 +150,8 @@ export async function getPlanetList(): Promise<Planet[]> {
 
 export async function getShooterLevels(
     planetId: string,
-    grade: number = 3
+    grade: number = 3,
+    masteryByTopic: Record<string, number> = {}
 ): Promise<GameLevel[]> {
     if (isMockMode || !supabase) {
         return getMockShooterLevels(planetId);
@@ -149,8 +164,8 @@ export async function getShooterLevels(
         .from("levels")
         .select("*")
         .eq("planet_id", planetId)
-        .lte("grade_min", grade + 1)   // Slightly above grade is OK
-        .gte("grade_max", grade - 1)   // Slightly below grade is OK
+        .lte("grade_min", grade + 1)
+        .gte("grade_max", grade - 1)
         .order("order_index");
 
     if (levelsError || !levelsData || levelsData.length === 0) {
@@ -161,12 +176,21 @@ export async function getShooterLevels(
     const levels: GameLevel[] = [];
 
     for (const level of levelsData as DBLevel[]) {
+        // Use topic mastery to select appropriate Bloom level range
+        const topicKey = `${planetId}:${level.subject}`;
+        const mastery = masteryByTopic[topicKey] ?? 50;
+        const [bloomMin, bloomMax] = bloomRangeForMastery(mastery);
+
         const { data: questionsData, error: questionsError } = await supabase
             .from("questions")
             .select("*")
             .eq("level_id", level.id)
             .eq("type", "word")
+            .eq("reviewed_by_teacher", true)
             .in("difficulty", allowedDifficulties)
+            .gte("bloom_level", bloomMin)
+            .lte("bloom_level", bloomMax)
+            .order("difficulty_score")  // easier within range first
             .order("order_index");
 
         if (questionsError || !questionsData) continue;
@@ -183,7 +207,7 @@ export async function getShooterLevels(
         levels.push({
             id: level.id,
             level: level.level_number,
-            planet: "", // will be filled by planet name lookup if needed
+            planet: "",
             subject: level.subject,
             title: level.title,
             speed: level.speed,
@@ -191,7 +215,6 @@ export async function getShooterLevels(
         });
     }
 
-    // Fallback to mock if DB returned empty
     if (levels.length === 0) return getMockShooterLevels(planetId);
     return levels;
 }
@@ -200,7 +223,8 @@ export async function getShooterLevels(
 
 export async function getMathLevels(
     planetId: string,
-    grade: number = 3
+    grade: number = 3,
+    masteryByTopic: Record<string, number> = {}
 ): Promise<MathLevel[]> {
     if (isMockMode || !supabase) {
         return getMockMathLevels(planetId);
@@ -224,12 +248,20 @@ export async function getMathLevels(
     const levels: MathLevel[] = [];
 
     for (const level of levelsData as DBLevel[]) {
+        const topicKey = `${planetId}:${level.subject}`;
+        const mastery = masteryByTopic[topicKey] ?? 50;
+        const [bloomMin, bloomMax] = bloomRangeForMastery(mastery);
+
         const { data: questionsData, error: questionsError } = await supabase
             .from("questions")
             .select("*")
             .eq("level_id", level.id)
             .eq("type", "math")
+            .eq("reviewed_by_teacher", true)
             .in("difficulty", allowedDifficulties)
+            .gte("bloom_level", bloomMin)
+            .lte("bloom_level", bloomMax)
+            .order("difficulty_score")
             .order("order_index");
 
         if (questionsError || !questionsData) continue;
@@ -367,4 +399,59 @@ function getMockStarLevels(planetId: string): GameLevel[] {
 export async function recordWrongAnswer(questionId: string): Promise<void> {
     if (isMockMode || !supabase || !questionId) return;
     await supabase.rpc("record_wrong_answer", { q_id: questionId });
+}
+
+/* ─── Mastery helpers (migration 006) ────────────────────── */
+
+/**
+ * updateMastery — fire-and-forget call after every correct/wrong answer.
+ * Calls the update_mastery() Postgres function.
+ */
+export async function updateMastery(
+    playerDbId: string,
+    planetId: string,
+    subject: string,
+    isCorrect: boolean,
+    bloomLevel: number = 1
+): Promise<void> {
+    if (isMockMode || !supabase || !playerDbId) return;
+    const { error } = await supabase.rpc("update_mastery", {
+        p_player_id: playerDbId,
+        p_planet_id: planetId,
+        p_subject: subject,
+        p_is_correct: isCorrect,
+        p_bloom_level: bloomLevel,
+    });
+    if (error) console.error("[db] updateMastery error:", error);
+}
+
+/**
+ * getMasteryForPlayer — loads all mastery rows for a player.
+ * Returns { masteryByTopic, bloomLevelReached } keyed as `${planetId}:${subject}`.
+ */
+export async function getMasteryForPlayer(playerDbId: string): Promise<{
+    masteryByTopic: Record<string, number>;
+    bloomLevelReached: Record<string, number>;
+}> {
+    const empty = { masteryByTopic: {}, bloomLevelReached: {} };
+    if (isMockMode || !supabase || !playerDbId) return empty;
+
+    const { data, error } = await supabase
+        .from("mastery")
+        .select("planet_id, subject, mastery_score, bloom_reached")
+        .eq("player_id", playerDbId);
+
+    if (error || !data) {
+        console.error("[db] getMasteryForPlayer error:", error);
+        return empty;
+    }
+
+    const masteryByTopic: Record<string, number> = {};
+    const bloomLevelReached: Record<string, number> = {};
+    for (const row of data as DBMastery[]) {
+        const key = `${row.planet_id}:${row.subject}`;
+        masteryByTopic[key] = row.mastery_score;
+        bloomLevelReached[key] = row.bloom_reached;
+    }
+    return { masteryByTopic, bloomLevelReached };
 }

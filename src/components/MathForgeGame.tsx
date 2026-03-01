@@ -26,13 +26,14 @@ interface Props {
     onExit?: () => void;
     playerClass?: "warrior" | "wizard" | "hunter" | null;
     onGameComplete?: (finalScore: number, levelsCompleted: number) => void;
+    onAnswered?: (isCorrect: boolean, subject: string, bloomLevel: number) => void;
 }
 
 /* ─── Constants ─── */
 const MAX_HP = 3;
 
 /* ─── Component ─── */
-export default function MathForgeGame({ levels, onExit, playerClass, onGameComplete }: Props) {
+export default function MathForgeGame({ levels, onExit, playerClass, onGameComplete, onAnswered }: Props) {
     const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
     const [gameState, setGameState] = useState<"ready" | "playing" | "levelComplete" | "gameOver" | "win">("ready");
     const [currentLevel, setCurrentLevel] = useState(0);
@@ -47,6 +48,7 @@ export default function MathForgeGame({ levels, onExit, playerClass, onGameCompl
     const [shakeWrong, setShakeWrong] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [shieldUsed, setShieldUsed] = useState(false);
+    const [abilityNotice, setAbilityNotice] = useState<string | null>(null);
     const [hunterEliminated, setHunterEliminated] = useState<number | null>(null);
 
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -106,15 +108,20 @@ export default function MathForgeGame({ levels, onExit, playerClass, onGameCompl
             setScore(s => s + 100 + comboBonus);
             setComboCount(c => c + 1);
             setDroppedAnswer(value);
+            // Record mastery (bloom=2 for Apply-level math; exact bloom would come from question record)
+            onAnswered?.(true, level?.subject ?? "", 2);
         } else {
             playWrong();
             setFeedback("wrong");
             setComboCount(0);
             setShakeWrong(true);
+            onAnswered?.(false, level?.subject ?? "", 2);
 
             // Warrior shield: absorb first wrong
             if (playerClass === "warrior" && !shieldUsed) {
                 setShieldUsed(true);
+                setAbilityNotice("🛡️ Lá chắn thép đã bảo vệ bạn!");
+                setTimeout(() => setAbilityNotice(null), 2000);
                 // Don't lose HP
             } else {
                 setHp(prev => {
@@ -172,6 +179,7 @@ export default function MathForgeGame({ levels, onExit, playerClass, onGameCompl
         setFeedback(null);
         setSelectedAnswer(null);
         setDroppedAnswer(null);
+        setShieldUsed(false);  // Warrior shield resets every level
         setGameState("playing");
     };
 
@@ -274,7 +282,25 @@ export default function MathForgeGame({ levels, onExit, playerClass, onGameCompl
                             ❤️
                         </span>
                     ))}
+                    {/* Warrior shield indicator */}
+                    {playerClass === "warrior" && !shieldUsed && (
+                        <span className="text-xl ml-1 animate-pulse" title="Lá chắn thép – miễn 1 lần sai">🛡️</span>
+                    )}
                 </div>
+
+                {/* Ability notice overlay */}
+                <AnimatePresence>
+                    {abilityNotice && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute top-14 left-1/2 -translate-x-1/2 z-30 glass-card !px-4 !py-2 !rounded-xl text-sm font-bold text-neon-gold whitespace-nowrap"
+                        >
+                            {abilityNotice}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* Timer */}
                 {gameState === "playing" && (
@@ -436,8 +462,8 @@ export default function MathForgeGame({ levels, onExit, playerClass, onGameCompl
                             className="absolute top-1/4 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
                         >
                             <div className="text-center">
-                                <div className="text-5xl mb-2">💥</div>
-                                <p className="text-red-400 font-bold text-xl">Sai rồi!</p>
+                                <div className="text-5xl mb-2">💪</div>
+                                <p className="text-neon-orange font-bold text-xl">Gần đúng rồi!</p>
                                 <p className="text-white/40 text-sm">Đáp án: <span className="text-neon-cyan font-bold">{question?.answer}</span></p>
                             </div>
                         </motion.div>
@@ -462,6 +488,17 @@ export default function MathForgeGame({ levels, onExit, playerClass, onGameCompl
                                 Kéo thả số vào ô trống để hoàn thành phương trình!<br />
                                 Rèn vũ khí <span className="text-neon-gold font-bold">tri thức</span> cho đội vũ trụ! ⚡
                             </p>
+                            {/* Class ability intro */}
+                            {playerClass && (
+                                <div className="glass-card !p-3 !rounded-xl text-center border border-neon-gold/20">
+                                    <p className="text-xs text-white/50 mb-1">Khả năng đặc biệt của bạn</p>
+                                    <p className="text-sm font-bold text-neon-gold">
+                                        {playerClass === "warrior" && "🛡️ Lá Chắn Thép — Miễn 1 lần sai mỗi level"}
+                                        {playerClass === "wizard" && "⏳ Ngưng Đọng Thời Gian — +5 giây mỗi câu"}
+                                        {playerClass === "hunter" && "🎯 Mắt Đại Bàng — Loại 1 đáp án sai mỗi câu"}
+                                    </p>
+                                </div>
+                            )}
                             {level && (
                                 <div className="glass-card !p-3 !rounded-xl text-center">
                                     <p className="text-xs text-white/50">Level {level.level} · {level.planet}</p>

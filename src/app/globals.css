@@ -281,3 +281,67 @@ h6 {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 245, 255, 0.5);
 }
+
+/* ============================================
+   CALM MODE — Giảm kích thích giác quan
+   Bật bằng cách thêm class .calm-mode lên <html>
+   ============================================ */
+.calm-mode {
+  /* Giảm độ bão hòa màu toàn trang xuống 30% */
+  filter: saturate(0.35) brightness(0.95);
+}
+
+/* Giữ lại màu bình thường cho text quan trọng */
+.calm-mode .neon-text {
+  animation-duration: 8s; /* Gradient shift chậm hơn */
+}
+
+/* Giảm độ sáng neon glow 50% */
+.calm-mode .neon-glow {
+  box-shadow:
+    0 0 3px rgba(0, 245, 255, 0.15),
+    0 0 8px rgba(0, 245, 255, 0.08);
+}
+
+.calm-mode .neon-glow-magenta {
+  box-shadow:
+    0 0 3px rgba(255, 107, 255, 0.15),
+    0 0 8px rgba(255, 107, 255, 0.08);
+}
+
+.calm-mode .neon-glow-gold {
+  box-shadow:
+    0 0 3px rgba(255, 224, 102, 0.15),
+    0 0 8px rgba(255, 224, 102, 0.08);
+}
+
+/* Animation chậm hơn 1.5× khi calm mode */
+.calm-mode .animate-float {
+  animation-duration: 4.5s; /* 3s × 1.5 */
+}
+
+.calm-mode .animate-float-slow {
+  animation-duration: 7.5s; /* 5s × 1.5 */
+}
+
+.calm-mode .animate-glow-pulse {
+  animation-duration: 3s;   /* 2s × 1.5 */
+}
+
+/* Ngôi sao (StarField particles) mờ hơn */
+.calm-mode .star {
+  opacity: 0.4;
+}
+
+/* Banner nhỏ thông báo calm mode đang bật */
+.calm-mode-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: rgba(176, 123, 255, 0.15);
+  border: 1px solid rgba(176, 123, 255, 0.3);
+  border-radius: 99px;
+  font-size: 11px;
+  color: rgba(212, 191, 255, 0.9);
+}
