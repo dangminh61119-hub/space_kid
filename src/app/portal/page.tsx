@@ -62,6 +62,14 @@ export default function PortalPage() {
             .finally(() => setLoading(false));
     }, []);
 
+    /* ── Filter planets by player grade ── */
+    const availablePlanets = planets.filter(
+        (p) => player.grade >= p.gradeRange[0] && player.grade <= p.gradeRange[1]
+    );
+    const lockedPlanets = planets.filter(
+        (p) => player.grade < p.gradeRange[0] || player.grade > p.gradeRange[1]
+    );
+
     const mascotEmoji = player.mascot ? MASCOT_INFO[player.mascot].emoji : "🚀";
     const classInfo = player.playerClass ? CLASS_ABILITIES[player.playerClass] : null;
     const planetsCompleted = Object.values(player.planetsProgress).filter(
@@ -182,101 +190,149 @@ export default function PortalPage() {
                                 </div>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                                {planets.map((planet, i) => (
-                                    <motion.div
-                                        key={planet.id}
-                                        custom={i}
-                                        variants={fadeUp}
-                                        initial="hidden"
-                                        animate="visible"
-                                    >
-                                        <Link href={playUrl(planet)}>
-                                            <GlassCard
-                                                glow="none"
-                                                className="planet-card cursor-pointer group relative overflow-hidden"
-                                            >
-                                                {/* Glow background */}
-                                                <div
-                                                    className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-500 rounded-2xl"
-                                                    style={{
-                                                        background: `radial-gradient(circle at center, ${planet.color1}, transparent 70%)`,
-                                                    }}
-                                                />
+                            <>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                    {availablePlanets.map((planet, i) => (
+                                        <motion.div
+                                            key={planet.id}
+                                            custom={i}
+                                            variants={fadeUp}
+                                            initial="hidden"
+                                            animate="visible"
+                                        >
+                                            <Link href={playUrl(planet)}>
+                                                <GlassCard
+                                                    glow="none"
+                                                    className="planet-card cursor-pointer group relative overflow-hidden"
+                                                >
+                                                    {/* Glow background */}
+                                                    <div
+                                                        className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-500 rounded-2xl"
+                                                        style={{
+                                                            background: `radial-gradient(circle at center, ${planet.color1}, transparent 70%)`,
+                                                        }}
+                                                    />
 
-                                                <div className="relative flex items-start gap-4">
-                                                    <div className="shrink-0 animate-float" style={{ animationDelay: `${i * 0.5}s` }}>
-                                                        <PlanetIcon
-                                                            color1={planet.color1}
-                                                            color2={planet.color2}
-                                                            ringColor={planet.ringColor}
-                                                            size={70}
-                                                        />
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <span className="text-lg">{planet.emoji}</span>
-                                                            <h3 className="text-base font-bold text-white truncate">{planet.name}</h3>
+                                                    <div className="relative flex items-start gap-4">
+                                                        <div className="shrink-0 animate-float" style={{ animationDelay: `${i * 0.5}s` }}>
+                                                            <PlanetIcon
+                                                                color1={planet.color1}
+                                                                color2={planet.color2}
+                                                                ringColor={planet.ringColor}
+                                                                size={70}
+                                                            />
                                                         </div>
-                                                        <p className="text-white/50 text-xs mb-2">{planet.description}</p>
-                                                        <div className="flex flex-wrap gap-1 mb-3">
-                                                            {planet.subjects.map((s) => (
-                                                                <span
-                                                                    key={s}
-                                                                    className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white/60"
-                                                                >
-                                                                    {s}
-                                                                </span>
-                                                            ))}
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <span className="text-lg">{planet.emoji}</span>
+                                                                <h3 className="text-base font-bold text-white truncate">{planet.name}</h3>
+                                                            </div>
+                                                            <p className="text-white/50 text-xs mb-2">{planet.description}</p>
+                                                            <div className="flex flex-wrap gap-1 mb-3">
+                                                                {planet.subjects.map((s) => (
+                                                                    <span
+                                                                        key={s}
+                                                                        className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white/60"
+                                                                    >
+                                                                        {s}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                            {/* Cách chơi */}
+                                                            {(() => {
+                                                                const info = GAME_HOW_TO_PLAY[planet.gameType];
+                                                                if (!info) return null;
+                                                                return (
+                                                                    <div
+                                                                        className="flex items-start gap-2 mb-3 p-2 rounded-xl border border-white/5"
+                                                                        style={{ background: `linear-gradient(135deg, ${planet.color1}10, ${planet.color2}08)` }}
+                                                                    >
+                                                                        <span className="text-base shrink-0">{info.icon}</span>
+                                                                        <div className="min-w-0">
+                                                                            <div className="text-[10px] font-bold text-white/70 uppercase tracking-wider">{info.label}</div>
+                                                                            <p className="text-[10px] text-white/40 leading-tight">{info.howTo}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })()}
+                                                            {/* Progress */}
+                                                            {(() => {
+                                                                const pp = player.planetsProgress[planet.id];
+                                                                const completed = pp?.completedLevels ?? 0;
+                                                                const total = pp?.totalLevels ?? planet.totalLevels;
+                                                                const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+                                                                return (
+                                                                    <div>
+                                                                        <div className="flex justify-between text-[10px] text-white/50 mb-1">
+                                                                            <span>{completed}/{total} cấp</span>
+                                                                            <span>{progress}%</span>
+                                                                        </div>
+                                                                        <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                                                            <div
+                                                                                className="h-full rounded-full transition-all"
+                                                                                style={{
+                                                                                    width: `${progress}%`,
+                                                                                    background: `linear-gradient(90deg, ${planet.color1}, ${planet.color2})`,
+                                                                                }}
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })()}
                                                         </div>
-                                                        {/* Cách chơi */}
-                                                        {(() => {
-                                                            const info = GAME_HOW_TO_PLAY[planet.gameType];
-                                                            if (!info) return null;
-                                                            return (
-                                                                <div
-                                                                    className="flex items-start gap-2 mb-3 p-2 rounded-xl border border-white/5"
-                                                                    style={{ background: `linear-gradient(135deg, ${planet.color1}10, ${planet.color2}08)` }}
-                                                                >
-                                                                    <span className="text-base shrink-0">{info.icon}</span>
-                                                                    <div className="min-w-0">
-                                                                        <div className="text-[10px] font-bold text-white/70 uppercase tracking-wider">{info.label}</div>
-                                                                        <p className="text-[10px] text-white/40 leading-tight">{info.howTo}</p>
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })()}
-                                                        {/* Progress */}
-                                                        {(() => {
-                                                            const pp = player.planetsProgress[planet.id];
-                                                            const completed = pp?.completedLevels ?? 0;
-                                                            const total = pp?.totalLevels ?? planet.totalLevels;
-                                                            const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
-                                                            return (
-                                                                <div>
-                                                                    <div className="flex justify-between text-[10px] text-white/50 mb-1">
-                                                                        <span>{completed}/{total} cấp</span>
-                                                                        <span>{progress}%</span>
-                                                                    </div>
-                                                                    <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                                                                        <div
-                                                                            className="h-full rounded-full transition-all"
-                                                                            style={{
-                                                                                width: `${progress}%`,
-                                                                                background: `linear-gradient(90deg, ${planet.color1}, ${planet.color2})`,
-                                                                            }}
-                                                                        />
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })()}
                                                     </div>
-                                                </div>
-                                            </GlassCard>
-                                        </Link>
-                                    </motion.div>
-                                ))}
-                            </div>
+                                                </GlassCard>
+                                            </Link>
+                                        </motion.div>
+                                    ))}
+                                </div>
+
+                                {/* Locked planets */}
+                                {lockedPlanets.length > 0 && (
+                                    <div className="mt-8">
+                                        <h2 className="text-lg font-bold text-white/40 mb-4 flex items-center gap-2">
+                                            🔒 Hành tinh chưa mở khóa
+                                        </h2>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                            {lockedPlanets.map((planet, i) => (
+                                                <motion.div
+                                                    key={planet.id}
+                                                    custom={i + availablePlanets.length}
+                                                    variants={fadeUp}
+                                                    initial="hidden"
+                                                    animate="visible"
+                                                >
+                                                    <GlassCard
+                                                        glow="none"
+                                                        className="relative overflow-hidden opacity-50 cursor-not-allowed"
+                                                    >
+                                                        <div className="flex items-start gap-4">
+                                                            <div className="shrink-0">
+                                                                <PlanetIcon
+                                                                    color1={planet.color1}
+                                                                    color2={planet.color2}
+                                                                    ringColor={planet.ringColor}
+                                                                    size={60}
+                                                                />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                    <span className="text-lg">{planet.emoji}</span>
+                                                                    <h3 className="text-base font-bold text-white/60 truncate">{planet.name}</h3>
+                                                                    <span className="text-xs">🔒</span>
+                                                                </div>
+                                                                <p className="text-white/30 text-xs">
+                                                                    Dành cho lớp {planet.gradeRange[0]}–{planet.gradeRange[1]}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </GlassCard>
+                                                </motion.div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </main>
                 </div>
@@ -284,3 +340,4 @@ export default function PortalPage() {
         </div>
     );
 }
+

@@ -68,6 +68,7 @@ export interface Planet {
     ringColor: string;
     description: string;
     totalLevels: number;
+    gradeRange: [number, number];
 }
 
 /* ─── Grade/Difficulty mapping ─── */
@@ -108,6 +109,7 @@ export async function getPlanetList(): Promise<Planet[]> {
             ringColor: p.ringColor,
             description: p.description,
             totalLevels: p.totalLevels,
+            gradeRange: p.gradeRange ?? [1, 5] as [number, number],
         }));
     }
 
@@ -129,6 +131,7 @@ export async function getPlanetList(): Promise<Planet[]> {
             ringColor: p.ringColor,
             description: p.description,
             totalLevels: p.totalLevels,
+            gradeRange: p.gradeRange ?? [1, 5] as [number, number],
         }));
     }
 
@@ -143,6 +146,9 @@ export async function getPlanetList(): Promise<Planet[]> {
         ringColor: p.ring_color,
         description: p.description,
         totalLevels: p.total_levels,
+        gradeRange: p.grade_range && p.grade_range.length >= 2
+            ? [p.grade_range[0], p.grade_range[1]] as [number, number]
+            : [1, 5] as [number, number],
     }));
 }
 

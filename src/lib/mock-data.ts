@@ -69,6 +69,7 @@ export const mockPlanets = [
         completedLevels: 10,
         description: "Khám phá vịnh kỳ diệu qua ngôn ngữ quốc tế!",
         emoji: "🏝️",
+        gradeRange: [1, 3] as [number, number],
     },
     {
         id: "hue",
@@ -82,6 +83,7 @@ export const mockPlanets = [
         completedLevels: 16,
         description: "Du hành thời gian về kinh thành tráng lệ!",
         emoji: "🏯",
+        gradeRange: [2, 4] as [number, number],
     },
     {
         id: "giong",
@@ -95,6 +97,7 @@ export const mockPlanets = [
         completedLevels: 15,
         description: "Rèn luyện trí tuệ tại lò rèn vũ trụ!",
         emoji: "⚔️",
+        gradeRange: [3, 5] as [number, number],
     },
     {
         id: "phong-nha",
@@ -108,6 +111,7 @@ export const mockPlanets = [
         completedLevels: 4,
         description: "Khám phá hang động bí ẩn dưới lòng đất!",
         emoji: "🦇",
+        gradeRange: [1, 3] as [number, number],
     },
     {
         id: "hoi-an",
@@ -121,6 +125,7 @@ export const mockPlanets = [
         completedLevels: 2,
         description: "Vẽ nên thế giới lung linh bằng ngôn ngữ!",
         emoji: "🏮",
+        gradeRange: [1, 2] as [number, number],
     },
     {
         id: "sapa",
@@ -134,6 +139,7 @@ export const mockPlanets = [
         completedLevels: 0,
         description: "Giải mật mã ruộng bậc thang bằng Toán học!",
         emoji: "🌾",
+        gradeRange: [3, 5] as [number, number],
     },
     {
         id: "hanoi",
@@ -147,6 +153,7 @@ export const mockPlanets = [
         completedLevels: 0,
         description: "Khám phá thủ đô ngàn năm văn hiến!",
         emoji: "🌆",
+        gradeRange: [1, 5] as [number, number],
     },
     {
         id: "mekong",
@@ -160,6 +167,7 @@ export const mockPlanets = [
         completedLevels: 0,
         description: "Bí ẩn vùng sông nước phương Nam!",
         emoji: "🌊",
+        gradeRange: [1, 5] as [number, number],
     },
 ];
 

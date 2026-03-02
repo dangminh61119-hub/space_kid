@@ -1,39 +1,54 @@
 "use client";
 
-import { mockStudent } from "@/lib/mock-data";
+import { useGame } from "@/lib/game-context";
 
-const stats = [
-    {
-        label: "Tổng XP",
-        value: mockStudent.xp.toLocaleString(),
-        icon: "⭐",
-        color: "#FFE066",
-        bg: "#FFFBEB",
-    },
-    {
-        label: "Streak",
-        value: `${mockStudent.streak} ngày`,
-        icon: "🔥",
-        color: "#FB923C",
-        bg: "#FFF7ED",
-    },
-    {
-        label: "Giờ chơi",
-        value: `${mockStudent.totalPlayHours}h`,
-        icon: "⏱️",
-        color: "#60A5FA",
-        bg: "#EFF6FF",
-    },
-    {
-        label: "Hành tinh",
-        value: `${mockStudent.planetsCompleted}/${mockStudent.totalPlanets}`,
-        icon: "🪐",
-        color: "#A78BFA",
-        bg: "#F5F3FF",
-    },
-];
+interface StatItem {
+    label: string;
+    value: string;
+    icon: string;
+    color: string;
+    bg: string;
+}
 
 export default function StatsCards() {
+    const { player } = useGame();
+
+    const planetsCompleted = Object.values(player.planetsProgress).filter(
+        (p) => p.completedLevels >= p.totalLevels
+    ).length;
+    const totalPlanets = Object.keys(player.planetsProgress).length;
+
+    const stats: StatItem[] = [
+        {
+            label: "Tổng XP",
+            value: player.xp.toLocaleString(),
+            icon: "⭐",
+            color: "#FFE066",
+            bg: "#FFFBEB",
+        },
+        {
+            label: "Streak",
+            value: `${player.streak} ngày`,
+            icon: "🔥",
+            color: "#FB923C",
+            bg: "#FFF7ED",
+        },
+        {
+            label: "Giờ chơi",
+            value: `${player.totalPlayHours}h`,
+            icon: "⏱️",
+            color: "#60A5FA",
+            bg: "#EFF6FF",
+        },
+        {
+            label: "Hành tinh",
+            value: `${planetsCompleted}/${totalPlanets}`,
+            icon: "🪐",
+            color: "#A78BFA",
+            bg: "#F5F3FF",
+        },
+    ];
+
     return (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {stats.map((stat) => (

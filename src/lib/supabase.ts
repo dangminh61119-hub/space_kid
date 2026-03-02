@@ -27,6 +27,7 @@ export interface DBPlanet {
     description: string;
     total_levels: number;
     order_index: number;
+    grade_range?: number[];
 }
 
 export interface DBLevel {

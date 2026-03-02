@@ -4,9 +4,16 @@ import StatsCards from "@/components/dashboard/StatsCards";
 import ProgressChart from "@/components/dashboard/ProgressChart";
 import AIInsights from "@/components/dashboard/AIInsights";
 import SubjectBreakdown from "@/components/dashboard/SubjectBreakdown";
-import { mockStudent } from "@/lib/mock-data";
+import { useGame, MASCOT_INFO, CLASS_ABILITIES } from "@/lib/game-context";
 
 export default function DashboardPage() {
+    const { player } = useGame();
+
+    const mascotEmoji = player.mascot ? MASCOT_INFO[player.mascot].emoji : "🚀";
+    const className = player.playerClass
+        ? CLASS_ABILITIES[player.playerClass].name
+        : "Tân Binh";
+
     return (
         <div className="space-y-6 max-w-6xl">
             {/* Student info header */}
@@ -15,14 +22,14 @@ export default function DashboardPage() {
                 style={{ borderColor: "var(--dash-border)" }}
             >
                 <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center text-3xl">
-                    {mockStudent.avatar}
+                    {mascotEmoji}
                 </div>
                 <div className="flex-1">
                     <h2 className="text-xl font-bold" style={{ fontFamily: "var(--font-heading)" }}>
-                        {mockStudent.name}
+                        {player.name}
                     </h2>
                     <p className="text-sm" style={{ color: "var(--dash-muted)" }}>
-                        Lớp {mockStudent.grade} · {mockStudent.class} · Level {mockStudent.level}
+                        Lớp {player.grade} · {className} · Level {player.level}
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
