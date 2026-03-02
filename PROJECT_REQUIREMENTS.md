@@ -318,8 +318,8 @@ src/
 | `--neon-green` | `#7BFF7B` | Success, correct |
 
 ### 10.2 Typography
-- **Headings**: `Outfit` (700–900)
-- **Body**: `Inter` (300–600)
+- **Headings**: `Baloo 2` (600–800)
+- **Body**: `Nunito` (400–700)
 
 ### 10.3 UI Patterns
 - **Glass Cards**: `glass-card`, `glass-card-strong`
@@ -341,4 +341,4 @@ Trước khi phát triển bất kỳ tính năng mới nào, kiểm tra:
 - [ ] LevelIntro hiển thị trước khi bắt đầu game
 - [ ] Chỉ huy Cú Mèo 🦉 xuất hiện trong narrative mới
 - [ ] Dashboard phụ huynh phản ánh dữ liệu mới (khi applicable)
-- [ ] Tuân thủ design system: neon colors, glass cards, Outfit/Inter fonts
+- [ ] Tuân thủ design system: neon colors, glass cards, Baloo 2/Nunito fonts

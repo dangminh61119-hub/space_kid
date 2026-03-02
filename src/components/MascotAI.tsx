@@ -3,8 +3,8 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useCallback } from "react";
 import { useGame, MASCOT_INFO } from "@/lib/game-context";
-import { logAIFeedback } from "@/lib/analytics";
-import { useAuth } from "@/lib/auth-context";
+import { logAIFeedback } from "@/lib/analytics/learning-events";
+import { useAuth } from "@/lib/services/auth-context";
 
 /* ─── Types ─── */
 interface MascotMessage {

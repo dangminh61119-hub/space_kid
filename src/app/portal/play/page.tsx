@@ -7,8 +7,8 @@ import NeonButton from "@/components/NeonButton";
 import SpaceShooterGame from "@/components/SpaceShooterGame";
 import LevelIntro from "@/components/LevelIntro";
 import { useGame } from "@/lib/game-context";
-import { useAuth } from "@/lib/auth-context";
-import { getShooterLevels, updateMastery, type GameLevel } from "@/lib/db";
+import { useAuth } from "@/lib/services/auth-context";
+import { getShooterLevels, updateMastery, type GameLevel } from "@/lib/services/db";
 
 const PLANET_NAMES: Record<string, { name: string; emoji: string }> = {
     "hue": { name: "Cố đô Huế", emoji: "🏯" },

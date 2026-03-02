@@ -27,7 +27,7 @@
 | Charts | Recharts 3 | Parent dashboard |
 | Backend/DB | Supabase (Auth, PostgreSQL, Storage, RLS) | Row-level security bắt buộc |
 | AI | Vercel AI SDK + Grok API / Gemini Flash | Guardrail system prompt nghiêm ngặt |
-| Fonts | Outfit (headings), Inter (body) | Google Fonts |
+| Fonts | Baloo 2 (headings), Nunito (body) | Google Fonts |
 | Hosting | Vercel | Edge functions cho AI routes |
 
 ---
@@ -322,8 +322,8 @@ Xưng hô: "Cú Mèo" và "bạn nhỏ"
 
 ### 8.2 Typography
 
-- **Headings:** `Outfit` 700–900
-- **Body:** `Inter` 300–600
+- **Headings:** `Baloo 2` 600–800
+- **Body:** `Nunito` 400–700
 - **Min font size:** 16px (accessibility cho trẻ em)
 - **Line height:** 1.6 (readability cho người đọc mới)
 

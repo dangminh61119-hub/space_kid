@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import type { GameLevel } from "@/lib/db";
+import type { GameLevel } from "@/lib/services/db";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 // ─── Types ───────────────────────────────────────────────

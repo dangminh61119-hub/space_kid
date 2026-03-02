@@ -7,9 +7,9 @@ import Navbar from "@/components/Navbar";
 import GlassCard from "@/components/GlassCard";
 import PlanetIcon from "@/components/PlanetIcon";
 import NeonButton from "@/components/NeonButton";
-import { mockDailyQuest } from "@/lib/mock-data";
+import { mockDailyQuest } from "@/lib/data/mock-data";
 import { useGame, MASCOT_INFO, CLASS_ABILITIES } from "@/lib/game-context";
-import { getPlanetList, type Planet } from "@/lib/db";
+import { getPlanetList, type Planet } from "@/lib/services/db";
 import Link from "next/link";
 
 const fadeUp = {

@@ -7,8 +7,8 @@ import StarField from "@/components/StarField";
 import GlassCard from "@/components/GlassCard";
 import NeonButton from "@/components/NeonButton";
 import { useGame } from "@/lib/game-context";
-import { useAuth, markSurveyCompleted } from "@/lib/auth-context";
-import { saveSurveyProficiency } from "@/lib/proficiency";
+import { useAuth, markSurveyCompleted } from "@/lib/services/auth-context";
+import { saveSurveyProficiency } from "@/lib/services/proficiency";
 import {
     type SurveyResponse,
     getNextSubject,
@@ -17,8 +17,8 @@ import {
     calculateSurveyResults,
     getTotalSurveyQuestions,
     type SurveyResult,
-} from "@/lib/survey-engine";
-import { SUBJECT_EMOJIS, SURVEY_SUBJECTS } from "@/lib/survey-questions";
+} from "@/lib/services/survey-engine";
+import { SUBJECT_EMOJIS, SURVEY_SUBJECTS } from "@/lib/data/survey-questions";
 
 type SurveyStep = "intro" | "questioning" | "results";
 

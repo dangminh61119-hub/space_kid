@@ -8,8 +8,8 @@ import GlassCard from "@/components/GlassCard";
 import NeonButton from "@/components/NeonButton";
 import ParentConsentModal from "@/components/ParentConsentModal";
 import { useGame } from "@/lib/game-context";
-import { useAuth, saveProfileData, type ProfileFormData } from "@/lib/auth-context";
-import { recordParentConsent, logAuditEvent } from "@/lib/analytics";
+import { useAuth, saveProfileData, type ProfileFormData } from "@/lib/services/auth-context";
+import { recordParentConsent, logAuditEvent } from "@/lib/analytics/learning-events";
 
 const GRADES = [1, 2, 3, 4, 5];
 const SUBJECTS = [

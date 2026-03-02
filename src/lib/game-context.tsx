@@ -1,9 +1,9 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
-import { useAuth } from "./auth-context";
-import { supabase, isMockMode } from "./supabase";
-import { getMasteryForPlayer } from "./db";
+import { useAuth } from "./services/auth-context";
+import { supabase, isMockMode } from "./services/supabase";
+import { getMasteryForPlayer } from "./services/db";
 
 
 /* ─── Types ─── */

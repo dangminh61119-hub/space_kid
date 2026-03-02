@@ -7,8 +7,8 @@ import NeonButton from "@/components/NeonButton";
 import MathForgeGame from "@/components/MathForgeGame";
 import LevelIntro from "@/components/LevelIntro";
 import { useGame } from "@/lib/game-context";
-import { useAuth } from "@/lib/auth-context";
-import { getMathLevels, updateMastery, type MathLevel } from "@/lib/db";
+import { useAuth } from "@/lib/services/auth-context";
+import { getMathLevels, updateMastery, type MathLevel } from "@/lib/services/db";
 
 const PLANET_NAMES: Record<string, { name: string; emoji: string }> = {
     "giong": { name: "Làng Gióng", emoji: "⚔️" },

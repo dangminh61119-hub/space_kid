@@ -7,7 +7,7 @@ import NeonButton from "@/components/NeonButton";
 import StarHunterGame from "@/components/StarHunterGame";
 import LevelIntro from "@/components/LevelIntro";
 import { useGame } from "@/lib/game-context";
-import { getStarHunterLevels, type GameLevel } from "@/lib/db";
+import { getStarHunterLevels, type GameLevel } from "@/lib/services/db";
 
 const PLANET_NAMES: Record<string, { name: string; emoji: string }> = {
     "hanoi": { name: "Hà Nội", emoji: "🌆" },

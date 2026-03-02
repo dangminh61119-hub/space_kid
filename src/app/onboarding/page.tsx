@@ -7,7 +7,7 @@ import StarField from "@/components/StarField";
 import NeonButton from "@/components/NeonButton";
 import GlassCard from "@/components/GlassCard";
 import { useGame } from "@/lib/game-context";
-import { useAuth, markOnboardingCompleted } from "@/lib/auth-context";
+import { useAuth, markOnboardingCompleted } from "@/lib/services/auth-context";
 
 const mascots = [
     { id: "cat", emoji: "🐱", name: "Mèo Sao Băng", desc: "Nhanh nhẹn, thông minh, thích khám phá!" },

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&family=Nunito:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -35,8 +35,8 @@
   --dash-hist: #A78BFA;
 
   /* === TYPOGRAPHY === */
-  --font-heading: 'Outfit', sans-serif;
-  --font-body: 'Inter', sans-serif;
+  --font-heading: 'Baloo 2', cursive, sans-serif;
+  --font-body: 'Nunito', sans-serif;
 }
 
 @theme inline {
@@ -293,7 +293,8 @@ h6 {
 
 /* Giữ lại màu bình thường cho text quan trọng */
 .calm-mode .neon-text {
-  animation-duration: 8s; /* Gradient shift chậm hơn */
+  animation-duration: 8s;
+  /* Gradient shift chậm hơn */
 }
 
 /* Giảm độ sáng neon glow 50% */
@@ -317,15 +318,18 @@ h6 {
 
 /* Animation chậm hơn 1.5× khi calm mode */
 .calm-mode .animate-float {
-  animation-duration: 4.5s; /* 3s × 1.5 */
+  animation-duration: 4.5s;
+  /* 3s × 1.5 */
 }
 
 .calm-mode .animate-float-slow {
-  animation-duration: 7.5s; /* 5s × 1.5 */
+  animation-duration: 7.5s;
+  /* 5s × 1.5 */
 }
 
 .calm-mode .animate-glow-pulse {
-  animation-duration: 3s;   /* 2s × 1.5 */
+  animation-duration: 3s;
+  /* 2s × 1.5 */
 }
 
 /* Ngôi sao (StarField particles) mờ hơn */

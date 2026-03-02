@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import StarField from "@/components/StarField";
 import GlassCard from "@/components/GlassCard";
 import NeonButton from "@/components/NeonButton";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth } from "@/lib/services/auth-context";
 
 type AuthTab = "login" | "register";
 
