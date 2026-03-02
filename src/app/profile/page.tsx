@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation";
 import StarField from "@/components/StarField";
 import GlassCard from "@/components/GlassCard";
 import NeonButton from "@/components/NeonButton";
+import ParentConsentModal from "@/components/ParentConsentModal";
 import { useGame } from "@/lib/game-context";
 import { useAuth, saveProfileData, type ProfileFormData } from "@/lib/auth-context";
+import { recordParentConsent, logAuditEvent } from "@/lib/analytics";
 
 const GRADES = [1, 2, 3, 4, 5];
 const SUBJECTS = [
@@ -37,6 +39,7 @@ export default function ProfilePage() {
     const [parentPhone, setParentPhone] = useState("");
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showConsent, setShowConsent] = useState(false);
 
     // Redirect if already completed
     useEffect(() => {
@@ -63,17 +66,23 @@ export default function ProfilePage() {
         );
     };
 
-    const handleSubmit = async () => {
+    /* Show consent modal before saving */
+    const handleSubmitClick = () => {
         if (!parentEmail.trim()) {
             setError("Vui lòng nhập email phụ huynh!");
             return;
         }
-        // Basic email validation
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(parentEmail)) {
             setError("Email không hợp lệ!");
             return;
         }
         setError(null);
+        setShowConsent(true);
+    };
+
+    /* Actually save after consent is given */
+    const handleConsentAndSave = async () => {
+        setShowConsent(false);
         setSaving(true);
 
         const data: ProfileFormData = {
@@ -90,6 +99,12 @@ export default function ProfilePage() {
         try {
             if (playerDbId) {
                 await saveProfileData(playerDbId, data);
+                // Record consent and audit event
+                await recordParentConsent(playerDbId, data.parentEmail, "full_consent");
+                await logAuditEvent(playerDbId, "profile_updated", {
+                    has_consent: true,
+                    grade: data.grade,
+                });
             }
             updatePlayer({
                 name: data.childName,
@@ -358,7 +373,7 @@ export default function ProfilePage() {
                                     <NeonButton
                                         variant="magenta"
                                         size="lg"
-                                        onClick={handleSubmit}
+                                        onClick={handleSubmitClick}
                                         disabled={saving}
                                     >
                                         {saving ? "Đang lưu..." : "Hoàn tất ✨"}
@@ -369,6 +384,16 @@ export default function ProfilePage() {
                     )}
                 </AnimatePresence>
             </div>
+
+            {/* Parent Consent Modal */}
+            {showConsent && (
+                <ParentConsentModal
+                    parentEmail={parentEmail}
+                    childName={childName || "Tân Binh"}
+                    onConsent={handleConsentAndSave}
+                    onCancel={() => setShowConsent(false)}
+                />
+            )}
         </div>
     );
 }
