@@ -40,30 +40,54 @@
 src/
 ├── app/
 │   ├── layout.tsx              ← Wrap <Providers>
-│   ├── providers.tsx           ← Client: GameProvider + CalmModeProvider
+│   ├── providers.tsx           ← Client: GameProvider + AuthProvider
 │   ├── page.tsx                ← Landing page
 │   ├── globals.css             ← Design tokens + Calm Mode CSS vars
-│   ├── onboarding/page.tsx     ← 5-step onboarding + parent consent
+│   ├── login/page.tsx          ← Đăng nhập Supabase Auth
+│   ├── auth/callback/page.tsx  ← OAuth callback handler
+│   ├── survey/page.tsx         ← Diagnostic survey (xác định trình độ)
+│   ├── profile/page.tsx        ← Profile + parent consent
+│   ├── onboarding/page.tsx     ← 5-step onboarding (mascot + class)
 │   ├── portal/
 │   │   ├── page.tsx            ← Planet map + player sidebar
 │   │   └── play/
 │   │       ├── page.tsx        ← SpaceShooter (?planet=)
-│   │       └── math/page.tsx   ← MathForge (?planet=)
-│   ├── dashboard/page.tsx      ← Parent dashboard (PDF export)
+│   │       ├── math/page.tsx   ← MathForge (?planet=)
+│   │       ├── star/page.tsx   ← StarHunter (?planet=)
+│   │       └── heritage/page.tsx ← HeritagePuzzle (?planet=)
+│   ├── dashboard/
+│   │   ├── layout.tsx          ← Dashboard layout
+│   │   └── page.tsx            ← Parent dashboard (PDF export)
 │   └── api/
 │       └── ai/route.ts         ← AI mascot endpoint (guardrailed)
 ├── components/
-│   ├── SpaceShooterGame.tsx
-│   ├── MathForgeGame.tsx
-│   ├── LevelIntro.tsx
-│   ├── CalmModeToggle.tsx      ← NEW v2.0
-│   ├── ParentConsentModal.tsx  ← NEW v2.0
-│   └── dashboard/
+│   ├── SpaceShooterGame.tsx    ← Canvas-based shooter
+│   ├── MathForgeGame.tsx       ← Drag-n-drop math
+│   ├── StarHunterGame.tsx      ← Star hunter mini-game
+│   ├── HeritagePuzzleGame.tsx  ← Heritage puzzle mini-game
+│   ├── LevelIntro.tsx          ← Story intro trước game
+│   ├── CalmModeToggle.tsx      ← Calm Mode toggle 🌙/☀️
+│   ├── ParentConsentModal.tsx  ← Parent consent flow
+│   ├── MascotAI.tsx            ← AI mascot chat widget
+│   ├── Navbar.tsx              ← Navigation bar
+│   ├── GlassCard.tsx           ← Glass morphism card
+│   ├── NeonButton.tsx          ← Styled neon button
+│   ├── PlanetIcon.tsx          ← SVG planet icon
+│   ├── StarField.tsx           ← Star particle background
+│   ├── ChallengePlanets.tsx    ← Landing page planets
+│   └── dashboard/              ← Dashboard sub-components
+│       ├── AIInsights.tsx
+│       ├── ProgressChart.tsx
+│       ├── StatsCards.tsx
+│       └── SubjectBreakdown.tsx
+├── hooks/
+│   ├── usePdfExport.ts         ← PDF export cho dashboard
+│   └── useSoundEffects.ts      ← Sound effects management
 └── lib/
-    ├── data/                   ← mock-data.ts, curriculum-map.ts
-    ├── services/               ← supabase.ts, auth.ts, progress.ts
-    ├── ai/                     ← mascot.ts, guardrails.ts, prompts.ts
-    ├── analytics/              ← learning-events.ts, audit-log.ts
+    ├── data/                   ← mock-data.ts, curriculum-map.ts, survey-questions.ts
+    ├── services/               ← supabase.ts, auth-context.tsx, db.ts, proficiency.ts, survey-engine.ts
+    ├── ai/                     ← guardrails.ts, prompts.ts
+    ├── analytics/              ← learning-events.ts
     └── game-context.tsx        ← ⭐ STATE DUY NHẤT
 ```
 
