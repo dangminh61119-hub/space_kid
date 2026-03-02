@@ -91,26 +91,39 @@ interface PlayerData {
 
 ## 4. Hệ thống Hành tinh
 
-### 4.1 Bản đồ hành tinh
+### 4.1 Bản đồ hành tinh (đã cập nhật grade_range)
 
-| ID | Tên | Emoji | Môn học | Game Type | Levels |
-|---|---|---|---|---|---|
-| `ha-long` | Vịnh Hạ Long | 🏝️ | Tiếng Anh, Địa lý | SpaceShooter | 20 |
-| `hue` | Cố đô Huế | 🏯 | Lịch sử, Tiếng Việt | SpaceShooter | 25 |
-| `giong` | Làng Gióng | ⚔️ | Toán, Tin học | MathForge | 20 |
-| `phong-nha` | Phong Nha | 🦇 | Khoa học, Địa lý | SpaceShooter | 18 |
-| `hoi-an` | Phố cổ Hội An | 🏮 | Mỹ thuật, Tiếng Anh | SpaceShooter | 15 |
-| `sapa` | Ruộng bậc thang Sa Pa | 🌾 | Toán, Khoa học | MathForge | 22 |
+| ID | Tên | Emoji | Môn học | Bloom Focus | Game Type | Levels | Phù hợp Lớp (grade_range) |
+|---|---|---|---|---|---|---|---|
+| `ha-long` | Vịnh Hạ Long | 🏝️ | Tiếng Anh, Địa lý | L1–L3 | SpaceShooter | 20 | 1–3 |
+| `hue` | Cố đô Huế | 🏯 | Lịch sử, Tiếng Việt | L1–L4 | SpaceShooter | 25 | 2–4 |
+| `giong` | Làng Gióng | ⚔️ | Toán, Tin học | L2–L4 | MathForge | 20 | 3–5 |
+| `phong-nha` | Phong Nha | 🦇 | Khoa học, Địa lý | L1–L3 | SpaceShooter | 18 | 1–3 |
+| `hoi-an` | Phố cổ Hội An | 🏮 | Mỹ thuật, Tiếng Anh | L1–L2 | SpaceShooter | 15 | 1–2 |
+| `sapa` | Ruộng bậc thang Sa Pa | 🌾 | Toán, Khoa học | L2–L4 | MathForge | 22 | 3–5 |
 
-### 4.2 Quy tắc thêm hành tinh mới
-1. Thêm entry vào `mockPlanets` trong `mock-data.ts`
+> **grade_range**: Dùng để lọc hành tinh phù hợp với lớp của trẻ (trẻ lớp 1–2 không vào được hành tinh Sa Pa vì quá khó).
+
+### 4.2 Question Selection & Adaptive Difficulty (v2.0)
+
+Khi load câu hỏi cho người chơi:
+- **Bắt buộc**: chỉ lấy câu hỏi có `grade === player.grade`
+- **Kiểm tra thêm**: hành tinh phải nằm trong `grade_range` của trẻ
+- **Adaptive**: 
+  - Nếu mastery ≥ 80% → tự động đưa câu hỏi bloom level cao hơn (vẫn cùng lớp).
+  - Nếu mastery ≤ 40% → ưu tiên câu dễ hơn.
+- Mỗi session tối đa 20% câu “thử thách” (bloom level cao).
+- **Mục tiêu**: Câu hỏi luôn vừa sức, không quá dễ gây chán, không quá khó gây nản.
+
+### 4.3 Quy tắc thêm hành tinh mới
+1. Thêm entry vào `mockPlanets` trong `mock-data.ts` (cần có `grade_range`)
 2. Thêm `PlanetProgress` vào `DEFAULT_PLAYER.planetsProgress` trong `game-context.tsx`
 3. Tạo level data (`mockXxxLevels`) trong `mock-data.ts`
 4. Thêm vào `PLANET_LEVELS` + `PLANET_NAMES` trong page tương ứng (`play/page.tsx` hoặc `play/math/page.tsx`)
 5. Routing tự động qua query param `?planet=<id>`
 6. Thêm story intro vào `storyIntros` trong `LevelIntro.tsx`
 
-### 4.3 Planet Routing Logic
+### 4.4 Planet Routing Logic
 ```
 Portal page.tsx:
   planet.id ∈ {"giong", "sapa"} → /portal/play/math?planet=<id>   (MathForge)
