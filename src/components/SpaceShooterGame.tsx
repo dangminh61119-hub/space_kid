@@ -66,6 +66,7 @@ interface Props {
     playerClass?: "warrior" | "wizard" | "hunter" | null;
     onGameComplete?: (finalScore: number, levelsCompleted: number) => void;
     onAnswered?: (isCorrect: boolean, subject: string, bloomLevel: number) => void;
+    calmMode?: boolean;
 }
 
 /* ─── Constants ─── */
@@ -79,7 +80,7 @@ const BOMB_H = 50;
 const MAX_HP = 3;
 
 /* ─── Component ─── */
-export default function SpaceShooterGame({ levels, onExit, playerClass, onGameComplete, onAnswered }: Props) {
+export default function SpaceShooterGame({ levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false }: Props) {
     const { playShoot, playHit, playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -208,7 +209,8 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
 
     /* ─── Explosion particles & Text ─── */
     const spawnExplosion = useCallback((x: number, y: number, color: string, scale = 1, count = 12) => {
-        for (let i = 0; i < count; i++) {
+        const actualCount = calmMode ? Math.ceil(count / 2) : count;
+        for (let i = 0; i < actualCount; i++) {
             const angle = (Math.PI * 2 * i) / count + Math.random() * 0.3;
             const speed = (1.5 + Math.random() * 2.5) * scale;
             particles.current.push({
@@ -772,7 +774,7 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
             )}
 
             {/* ─ Canvas ─ */}
-            <div className="relative rounded-2xl overflow-hidden border border-white/10" style={{ aspectRatio: `${CANVAS_W}/${CANVAS_H}` }}>
+            <div className="relative rounded-2xl overflow-hidden border border-white/10" style={{ aspectRatio: `${CANVAS_W}/${CANVAS_H}`, filter: calmMode ? "saturate(0.3)" : "none" }}>
                 <canvas
                     ref={canvasRef}
                     width={CANVAS_W}

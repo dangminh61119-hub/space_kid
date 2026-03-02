@@ -32,6 +32,7 @@ interface Props {
     onExit?: () => void;
     playerClass?: "warrior" | "wizard" | "hunter" | null;
     onGameComplete?: (finalScore: number, levelsCompleted: number) => void;
+    calmMode?: boolean;
 }
 
 // ─── Constants ───────────────────────────────────────────
@@ -52,7 +53,7 @@ const COMBO_MULTIPLIERS = [1, 1, 2, 3, 4];
 function uid() { return Math.random().toString(36).slice(2, 9); }
 
 // ─── Component ───────────────────────────────────────────
-export default function StarHunterGame({ levels, onExit, playerClass, onGameComplete }: Props) {
+export default function StarHunterGame({ levels, onExit, playerClass, onGameComplete, calmMode = false }: Props) {
     const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
 
     // ── Game state ──
@@ -252,7 +253,7 @@ export default function StarHunterGame({ levels, onExit, playerClass, onGameComp
             // Particle burst at star position
             const pos = starPosRef.current[starIdx];
             const style = STAR_STYLES[star.colorIdx];
-            const newParticles = Array.from({ length: 10 }, (_, i) => ({
+            const newParticles = Array.from({ length: calmMode ? 5 : 10 }, (_, i) => ({
                 id: uid(), x: pos.x + STAR_D / 2, y: pos.y + STAR_D / 2,
                 color: style.border, angle: (i / 10) * 360,
             }));
@@ -462,7 +463,7 @@ export default function StarHunterGame({ levels, onExit, playerClass, onGameComp
             <div
                 ref={containerRef}
                 className="relative flex-1 overflow-hidden rounded-2xl mx-3 mb-3"
-                style={{ background: "radial-gradient(ellipse at 50% 30%, #1a0a3a 0%, #06040f 100%)" }}
+                style={{ background: "radial-gradient(ellipse at 50% 30%, #1a0a3a 0%, #06040f 100%)", filter: calmMode ? 'saturate(0.3)' : 'none' }}
             >
                 {/* Level indicator */}
                 <div className="absolute top-3 left-3 glass-card !p-1 !px-3 !rounded-full !text-xs text-white/50 z-10">

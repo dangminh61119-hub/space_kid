@@ -27,13 +27,14 @@ interface Props {
     playerClass?: "warrior" | "wizard" | "hunter" | null;
     onGameComplete?: (finalScore: number, levelsCompleted: number) => void;
     onAnswered?: (isCorrect: boolean, subject: string, bloomLevel: number) => void;
+    calmMode?: boolean;
 }
 
 /* ─── Constants ─── */
 const MAX_HP = 3;
 
 /* ─── Component ─── */
-export default function MathForgeGame({ levels, onExit, playerClass, onGameComplete, onAnswered }: Props) {
+export default function MathForgeGame({ levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false }: Props) {
     const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
     const [gameState, setGameState] = useState<"ready" | "playing" | "levelComplete" | "gameOver" | "win">("ready");
     const [currentLevel, setCurrentLevel] = useState(0);
@@ -351,7 +352,7 @@ export default function MathForgeGame({ levels, onExit, playerClass, onGameCompl
             )}
 
             {/* Main game area */}
-            <div className={`relative rounded-2xl overflow-hidden border border-white/10 bg-space-deep flex flex-col ${isFullscreen ? 'max-w-[800px] w-full mx-auto flex-1 my-4 min-h-[500px]' : 'min-h-[450px] sm:min-h-[500px]'}`}>
+            <div className={`relative rounded-2xl overflow-hidden border border-white/10 bg-space-deep flex flex-col ${isFullscreen ? 'max-w-[800px] w-full mx-auto flex-1 my-4 min-h-[500px]' : 'min-h-[450px] sm:min-h-[500px]'}`} style={{ filter: calmMode ? 'saturate(0.3)' : 'none' }}>
                 {/* Background decorations */}
                 <div className="absolute inset-0 pointer-events-none">
                     <div className="absolute top-10 left-10 w-32 h-32 bg-neon-gold/5 rounded-full blur-3xl" />
