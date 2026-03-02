@@ -11,12 +11,21 @@ interface LevelIntroProps {
     subject: string;
     onStart: () => void;
     playerClass?: "warrior" | "wizard" | "hunter" | null;
+    gameMode?: "shooter" | "star-hunter" | "math-forge" | "meteor" | "rush";
 }
 
 const classMessages = {
     warrior: "🛡️ Lá chắn thép sẵn sàng bảo vệ bạn 1 lần!",
     wizard: "⏳ Thời gian đã được làm chậm cho bạn!",
     hunter: "🎯 Một đáp án sai đã bị loại bỏ!",
+};
+
+const MODE_INTRO = {
+    "shooter": { icon: "🚀", label: "Bắn Từ Không Gian" },
+    "star-hunter": { icon: "⭐", label: "Săn Sao Vũ Trụ" },
+    "math-forge": { icon: "⚒️", label: "Lò Rèn Vũ Trụ" },
+    "meteor": { icon: "☄️", label: "Mưa Thiên Thạch" },
+    "rush": { icon: "⚡", label: "Đố Nhanh Vũ Trụ" },
 };
 
 const storyIntros: Record<string, string> = {
@@ -36,9 +45,11 @@ export default function LevelIntro({
     subject,
     onStart,
     playerClass,
+    gameMode,
 }: LevelIntroProps) {
     const storyText = storyIntros[planetName] || "Hành tinh này cần sự giúp đỡ của bạn!";
     const classMsg = playerClass ? classMessages[playerClass] : null;
+    const modeInfo = gameMode ? MODE_INTRO[gameMode] : null;
 
     return (
         <AnimatePresence>
@@ -71,6 +82,13 @@ export default function LevelIntro({
                                 {planetName}
                             </h3>
                         </div>
+                        {modeInfo && (
+                            <div className="flex justify-center mb-3">
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-xs font-bold text-neon-gold border border-white/20">
+                                    <span>{modeInfo.icon}</span> {modeInfo.label}
+                                </span>
+                            </div>
+                        )}
                         <p className="text-white/70 text-sm leading-relaxed mb-3">
                             <span className="text-neon-gold font-bold">Chỉ huy Cú Mèo:</span>{" "}
                             &ldquo;{storyText}&rdquo;

@@ -8,6 +8,7 @@ import GlassCard from "@/components/GlassCard";
 import PlanetIcon from "@/components/PlanetIcon";
 import MascotAI from "@/components/MascotAI";
 import ChallengePlanets from "@/components/ChallengePlanets";
+import Spaceship from "@/components/Spaceship";
 
 const features = [
   {
@@ -41,11 +42,14 @@ const fadeUp = {
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen relative overflow-hidden bg-slate-950">
+    <div className="min-h-screen relative overflow-hidden bg-[#060B1E]">
       {/* Background Elements */}
-      <StarField count={100} />
+      <StarField count={120} />
+      {/* Animated Spaceships */}
+      <Spaceship count={3} />
+
       {/* Grid Pattern Overlay */}
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0wIDBoNDB2NDBIMHoiIGZpbGw9Im5vbmUiLz4KPHBhdGggZD0iTTAgMGg0MHYxSDB6TTAgMHY0MGgxVjB6IiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDUpIi8+Cjwvc3ZnPg==')] opacity-20 pointer-events-none" />
+      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0wIDBoNDB2NDBIMHoiIGZpbGw9Im5vbmUiLz4KPHBhdGggZD0iTTAgMGg0MHYxSDB6TTAgMHY0MGgxVjB6IiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDMpIi8+Cjwvc3ZnPg==')] opacity-15 pointer-events-none" />
 
       <Navbar />
       <MascotAI />
@@ -60,9 +64,22 @@ export default function HomePage() {
         >
           <div className="flex items-center justify-center gap-4 mb-6 relative">
             {/* Glowing orb behind planets */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-cyan-500/20 rounded-full blur-2xl pointer-events-none" />
-            <PlanetIcon color1="#00F5FF" color2="#0077B6" size={60} ringColor="#00F5FF" className="animate-float" />
-            <PlanetIcon color1="#FF6BFF" color2="#9D174D" size={45} ringColor="#FF6BFF" className="animate-float-slow" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-cyan-500/20 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-orange-500/15 rounded-full blur-2xl pointer-events-none" />
+
+            {/* Animated Hero Planets */}
+            <motion.div
+              animate={{ y: [0, -15, 0], rotate: [0, 5, -5, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <PlanetIcon color1="#00F5FF" color2="#0077B6" size={70} ringColor="#00F5FF" />
+            </motion.div>
+            <motion.div
+              animate={{ y: [0, -10, 5, 0], rotate: [0, -3, 3, 0] }}
+              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+            >
+              <PlanetIcon color1="#FF8A4C" color2="#C2410C" size={50} ringColor="#FF8A4C" />
+            </motion.div>
           </div>
           <h1 className="text-5xl sm:text-7xl md:text-8xl font-black font-[var(--font-heading)] neon-text leading-tight tracking-wide text-white">
             CosmoMosaic
@@ -93,10 +110,10 @@ export default function HomePage() {
           className="flex flex-col sm:flex-row gap-6"
         >
           <NeonButton href="/login" variant="orange" size="lg">
-            BẮT ĐẦU HÀNH TRÌNH
+            🚀 BẮT ĐẦU HÀNH TRÌNH
           </NeonButton>
           <NeonButton href="/dashboard" variant="cyan" size="lg">
-            PHỤ HUYNH
+            👨‍👩‍👧 PHỤ HUYNH
           </NeonButton>
         </motion.div>
 
@@ -235,7 +252,7 @@ export default function HomePage() {
       </section>
 
       {/* CTA Footer */}
-      <section className="relative z-10 text-center py-32 px-6 bg-slate-900/50 border-t border-white/5">
+      <section className="relative z-10 text-center py-32 px-6 bg-[#060B1E]/80 border-t border-white/5">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -249,7 +266,7 @@ export default function HomePage() {
             Tham gia ngay hành trình tri thức cùng hàng nghìn bạn nhỏ khắp Việt Nam!
           </p>
           <NeonButton href="/login" variant="green" size="lg">
-            BẮT ĐẦU MIỄN PHÍ
+            🌟 BẮT ĐẦU MIỄN PHÍ
           </NeonButton>
         </motion.div>
 

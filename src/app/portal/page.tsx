@@ -24,9 +24,9 @@ const fadeUp = {
 /* ─── Game type info: icon, label, how-to-play ─── */
 const GAME_HOW_TO_PLAY: Record<string, { icon: string; label: string; howTo: string }> = {
     shooter: {
-        icon: "🚀",
-        label: "Bắn Từ Không Gian",
-        howTo: "Di chuyển tàu bằng chuột, nhấn để bắn vào từ ĐÚNG!",
+        icon: "🎮",
+        label: "Đa Chế Độ Tăng Dần",
+        howTo: "Xoay vòng giữa Bắn Từ Không Gian và Săn Sao xuyên suốt các màn chơi!",
     },
     math: {
         icon: "⚒️",
@@ -34,9 +34,9 @@ const GAME_HOW_TO_PLAY: Record<string, { icon: string; label: string; howTo: str
         howTo: "Kéo thả số vào ô trống hoặc nhấn để chọn đáp án đúng!",
     },
     "star-hunter": {
-        icon: "⭐",
-        label: "Săn Sao Vũ Trụ",
-        howTo: "Nhấn vào ngôi sao chứa đáp án đúng trước khi hết giờ!",
+        icon: "🎮",
+        label: "Đa Chế Độ Tăng Dần",
+        howTo: "Xoay vòng giữa Bắn Từ Không Gian và Săn Sao xuyên suốt các màn chơi!",
     },
 };
 

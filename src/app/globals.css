@@ -3,9 +3,9 @@
 
 :root {
   /* === SPACE BACKGROUNDS === */
-  --space-deep: #0A0E27;
-  --space-mid: #131842;
-  --space-surface: #1a1f4e;
+  --space-deep: #060B1E;
+  --space-mid: #0D1333;
+  --space-surface: #151B4A;
 
   /* === NEON ACCENTS === */
   --neon-cyan: #00F5FF;
@@ -158,6 +158,80 @@ h6 {
   }
 }
 
+@keyframes star-drift {
+  0% {
+    transform: translateY(0) translateX(0);
+    opacity: var(--star-opacity, 0.8);
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(calc(var(--drift-y, 40px))) translateX(calc(var(--drift-x, 20px)));
+    opacity: var(--star-opacity, 0.8);
+  }
+}
+
+@keyframes shooting-star {
+  0% {
+    transform: translateX(0) translateY(0) rotate(-35deg);
+    opacity: 1;
+    width: 80px;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(300px) translateY(200px) rotate(-35deg);
+    opacity: 0;
+    width: 200px;
+  }
+}
+
+@keyframes spaceship-fly {
+  0% {
+    transform: translateX(-150px) translateY(30px) rotate(-5deg);
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  50% {
+    transform: translateX(50vw) translateY(-20px) rotate(2deg);
+    opacity: 1;
+  }
+  95% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(calc(100vw + 150px)) translateY(10px) rotate(-3deg);
+    opacity: 0;
+  }
+}
+
+@keyframes planet-bob {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-8px) rotate(1deg);
+  }
+  75% {
+    transform: translateY(6px) rotate(-1deg);
+  }
+}
+
+@keyframes engine-glow {
+  0%, 100% {
+    opacity: 0.7;
+    filter: blur(2px);
+  }
+  50% {
+    opacity: 1;
+    filter: blur(4px);
+  }
+}
+
 @keyframes slide-up {
   from {
     opacity: 0;
@@ -260,8 +334,32 @@ h6 {
   position: absolute;
   border-radius: 50%;
   background: white;
-  animation: twinkle var(--duration, 3s) ease-in-out infinite;
+  animation:
+    twinkle var(--duration, 3s) ease-in-out infinite,
+    star-drift var(--drift-duration, 12s) ease-in-out infinite alternate;
   animation-delay: var(--delay, 0s);
+}
+
+/* Shooting star */
+.shooting-star {
+  position: absolute;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.9), rgba(0,245,255,0.6), transparent);
+  border-radius: 2px;
+  animation: shooting-star var(--shoot-duration, 3s) ease-in var(--shoot-delay, 0s) infinite;
+  pointer-events: none;
+}
+
+/* Spaceship */
+.spaceship-container {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  animation: spaceship-fly var(--fly-duration, 18s) linear var(--fly-delay, 5s) infinite;
+}
+
+.engine-exhaust {
+  animation: engine-glow 0.4s ease-in-out infinite;
 }
 
 /* === SCROLLBAR === */

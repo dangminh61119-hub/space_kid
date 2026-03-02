@@ -102,6 +102,7 @@ function MathPlayContent() {
                             levelNumber={levels[0]?.level || 1}
                             subject={levels[0]?.subject || ""}
                             playerClass={player.playerClass}
+                            gameMode="math-forge"
                             onStart={() => setShowIntro(false)}
                         />
                     </div>

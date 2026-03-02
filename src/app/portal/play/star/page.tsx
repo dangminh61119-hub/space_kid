@@ -4,8 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState, useEffect } from "react";
 import StarField from "@/components/StarField";
 import NeonButton from "@/components/NeonButton";
-import StarHunterGame from "@/components/StarHunterGame";
-import LevelIntro from "@/components/LevelIntro";
+import GameModeController from "@/components/GameModeController";
 import { useGame } from "@/lib/game-context";
 import { getStarHunterLevels, type GameLevel } from "@/lib/services/db";
 
@@ -18,7 +17,6 @@ function StarPlayContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { player, addXP, updatePlanetProgress } = useGame();
-    const [showIntro, setShowIntro] = useState(true);
     const [levels, setLevels] = useState<GameLevel[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -80,28 +78,14 @@ function StarPlayContent() {
 
             {/* Game area */}
             <div className="relative z-10 flex-1 flex flex-col p-4 sm:p-6">
-                {showIntro ? (
-                    <div className="flex-1 flex items-center justify-center">
-                        <div className="w-full max-w-5xl mx-auto relative min-h-[500px] rounded-2xl overflow-hidden border border-white/10 bg-space-deep flex items-center justify-center">
-                            <LevelIntro
-                                planetName={planetInfo.name}
-                                planetEmoji={planetInfo.emoji}
-                                levelTitle={levels[0]?.title || ""}
-                                levelNumber={levels[0]?.level || 1}
-                                subject={levels[0]?.subject || ""}
-                                playerClass={player.playerClass}
-                                onStart={() => setShowIntro(false)}
-                            />
-                        </div>
-                    </div>
-                ) : (
-                    <StarHunterGame
-                        levels={levels}
-                        onExit={() => router.push("/portal")}
-                        playerClass={player.playerClass}
-                        onGameComplete={handleGameComplete}
-                    />
-                )}
+                <GameModeController
+                    levels={levels}
+                    onExit={() => router.push("/portal")}
+                    playerClass={player.playerClass}
+                    onGameComplete={handleGameComplete}
+                    planetName={planetInfo.name}
+                    planetEmoji={planetInfo.emoji}
+                />
             </div>
         </div>
     );
