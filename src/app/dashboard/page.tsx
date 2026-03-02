@@ -5,9 +5,11 @@ import ProgressChart from "@/components/dashboard/ProgressChart";
 import AIInsights from "@/components/dashboard/AIInsights";
 import SubjectBreakdown from "@/components/dashboard/SubjectBreakdown";
 import { useGame, MASCOT_INFO, CLASS_ABILITIES } from "@/lib/game-context";
+import { usePdfExport } from "@/hooks/usePdfExport";
 
 export default function DashboardPage() {
     const { player } = useGame();
+    const { exportPdf } = usePdfExport();
 
     const mascotEmoji = player.mascot ? MASCOT_INFO[player.mascot].emoji : "🚀";
     const className = player.playerClass
@@ -33,6 +35,12 @@ export default function DashboardPage() {
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
+                    <button
+                        onClick={exportPdf}
+                        className="text-xs font-bold px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
+                    >
+                        📄 Xuất PDF
+                    </button>
                     <span
                         className="text-xs font-bold px-3 py-1.5 rounded-full bg-green-50 text-green-600"
                     >

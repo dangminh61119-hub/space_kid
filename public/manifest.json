@@ -1,0 +1,30 @@
+{
+    "name": "CosmoMosaic",
+    "short_name": "CosmoMosaic",
+    "description": "Ghép tri thức, thắp sáng vũ trụ! – Ứng dụng giáo dục game vũ trụ cho học sinh tiểu học Việt Nam.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0A0E27",
+    "theme_color": "#00F5FF",
+    "orientation": "any",
+    "lang": "vi",
+    "categories": [
+        "education",
+        "games",
+        "kids"
+    ],
+    "icons": [
+        {
+            "src": "/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}
