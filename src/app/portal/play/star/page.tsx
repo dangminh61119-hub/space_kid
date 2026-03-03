@@ -85,6 +85,8 @@ function StarPlayContent() {
                     onGameComplete={handleGameComplete}
                     planetName={planetInfo.name}
                     planetEmoji={planetInfo.emoji}
+                    completedLevels={player.planetsProgress[planetId]?.completedLevels ?? 0}
+                    isFirstVisit={(player.planetsProgress[planetId]?.completedLevels ?? 0) === 0}
                 />
             </div>
         </div>
