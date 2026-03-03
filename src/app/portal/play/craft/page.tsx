@@ -6,9 +6,11 @@ import StarField from "@/components/StarField";
 import NeonButton from "@/components/NeonButton";
 import WordCraftGame from "@/components/WordCraftGame";
 import LevelIntro from "@/components/LevelIntro";
+import PlanetStoryIntro from "@/components/PlanetStoryIntro";
 import { useGame } from "@/lib/game-context";
 import { useAuth } from "@/lib/services/auth-context";
 import { getCraftLevels, updateMastery, type CraftLevel } from "@/lib/services/db";
+import { getPlanetVideo } from "@/lib/data/planet-videos";
 
 const PLANET_NAMES: Record<string, { name: string; emoji: string }> = {
     "hanoi": { name: "Thủ đô Hà Nội", emoji: "🏛️" },
@@ -19,12 +21,13 @@ function CraftPlayContent() {
     const searchParams = useSearchParams();
     const { player, addXP, updatePlanetProgress } = useGame();
     const { playerDbId } = useAuth();
-    const [showIntro, setShowIntro] = useState(true);
-    const [levels, setLevels] = useState<CraftLevel[]>([]);
-    const [loading, setLoading] = useState(true);
-
     const planetId = searchParams.get("planet") || "hanoi";
     const planetInfo = PLANET_NAMES[planetId] || { name: "Hà Nội", emoji: "🏛️" };
+
+    const videoSrc = getPlanetVideo(planetInfo.name);
+    const [phase, setPhase] = useState<"video" | "intro" | "playing">(videoSrc ? "video" : "intro");
+    const [levels, setLevels] = useState<CraftLevel[]>([]);
+    const [loading, setLoading] = useState(true);
 
     // Load levels
     useEffect(() => {
@@ -103,7 +106,16 @@ function CraftPlayContent() {
 
             {/* Game area */}
             <div className="relative z-10 flex-1 flex items-center justify-center p-4 sm:p-8">
-                {showIntro ? (
+                {phase === "video" && videoSrc ? (
+                    <div className="w-full max-w-5xl mx-auto relative min-h-[500px] rounded-2xl overflow-hidden border border-white/10 bg-space-deep">
+                        <PlanetStoryIntro
+                            planetName={planetInfo.name}
+                            planetEmoji={planetInfo.emoji}
+                            videoSrc={videoSrc}
+                            onStart={() => setPhase("intro")}
+                        />
+                    </div>
+                ) : phase === "intro" ? (
                     <div className="w-full max-w-4xl mx-auto relative min-h-[500px] rounded-2xl overflow-hidden border border-white/10 bg-space-deep flex items-center justify-center">
                         <LevelIntro
                             planetName={planetInfo.name}
@@ -113,7 +125,7 @@ function CraftPlayContent() {
                             subject={levels[0]?.subject || ""}
                             playerClass={player.playerClass}
                             gameMode="word-craft"
-                            onStart={() => setShowIntro(false)}
+                            onStart={() => setPhase("playing")}
                         />
                     </div>
                 ) : (

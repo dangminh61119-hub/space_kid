@@ -31,12 +31,27 @@ export default function PlanetStoryIntro({ planetName, planetEmoji, videoSrc, on
     // Auto-play video when phase changes
     useEffect(() => {
         if (phase === "video" && videoRef.current) {
-            videoRef.current.play().catch(() => { });
+            // Browsers require muted for autoplay; unmute after play starts
+            videoRef.current.muted = true;
+            videoRef.current.play()
+                .then(() => {
+                    // Successfully playing, unmute
+                    if (videoRef.current) videoRef.current.muted = false;
+                })
+                .catch(() => {
+                    // Autoplay blocked or error → skip to ready
+                    setPhase("ready");
+                });
         }
     }, [phase]);
 
     // When video ends → ready
     const handleVideoEnd = () => {
+        setPhase("ready");
+    };
+
+    // If video fails to load → skip to ready
+    const handleVideoError = () => {
         setPhase("ready");
     };
 
@@ -114,8 +129,10 @@ export default function PlanetStoryIntro({ planetName, planetEmoji, videoSrc, on
                                     ref={videoRef}
                                     src={videoSrc}
                                     onEnded={handleVideoEnd}
+                                    onError={handleVideoError}
                                     playsInline
-                                    muted={false}
+                                    autoPlay
+                                    muted
                                     className="w-full rounded-2xl"
                                     style={{ maxHeight: "300px", objectFit: "cover" }}
                                 />

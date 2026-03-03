@@ -36,17 +36,7 @@ function getModeForLevel(levelNum: number): GameMode {
     return MODE_ORDER[(levelNum - 1) % MODE_ORDER.length];
 }
 
-/* ─── Video intros per planet ─── */
-/* Place your video clips in /public/videos/planets/{key}.mp4 */
-const PLANET_VIDEOS: Record<string, string> = {
-    "Cố đô Huế": "/videos/planets/hue.mp4",
-    "Vịnh Hạ Long": "/videos/planets/halong.mp4",
-    "Làng Gióng": "/videos/planets/giong.mp4",
-    "Phong Nha": "/videos/planets/phongnha.mp4",
-    "Phố cổ Hội An": "/videos/planets/hoian.mp4",
-    "Ruộng bậc thang Sa Pa": "/videos/planets/sapa.mp4",
-    "Thủ đô Hà Nội": "/videos/planets/hanoi.mp4",
-};
+import { PLANET_VIDEOS } from "@/lib/data/planet-videos";
 
 export default function GameModeController({
     levels,
@@ -60,8 +50,10 @@ export default function GameModeController({
     completedLevels = 0,
     isFirstVisit = false,
 }: GameModeControllerProps) {
+    // Always show planet intro if there's a video for this planet
+    const hasVideo = !!PLANET_VIDEOS[planetName];
     const [state, setState] = useState<ControllerState>(
-        isFirstVisit ? "planetIntro" : "levelIntro"
+        (isFirstVisit || hasVideo) ? "planetIntro" : "levelIntro"
     );
     const startIdx = Math.min(completedLevels, Math.max(0, levels.length - 1));
     const [currentLevelIdx, setCurrentLevelIdx] = useState(startIdx);

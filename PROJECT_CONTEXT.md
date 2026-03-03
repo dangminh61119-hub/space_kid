@@ -1,5 +1,5 @@
 # PROJECT_CONTEXT.md — CosmoMosaic v2.0
-> Senior EdTech Architect Reference · Cập nhật: 2026-03-01 · Phiên bản: 2.0
+> Senior EdTech Architect Reference · Cập nhật: 2026-03-03 · Phiên bản: 2.1
 ## Hướng dẫn sử dụng
 - Đây là **Single Source of Truth** cho mọi AI agent.
 - Luôn đọc file này + CLAUDE_INSTRUCTIONS.md trước khi làm bất kỳ task nào.
@@ -45,27 +45,44 @@ src/
 │   ├── globals.css             ← Design tokens + Calm Mode CSS vars
 │   ├── login/page.tsx          ← Đăng nhập Supabase Auth
 │   ├── auth/callback/page.tsx  ← OAuth callback handler
-│   ├── survey/page.tsx         ← Diagnostic survey (xác định trình độ)
+│   ├── survey/page.tsx         ← Diagnostic survey (tùy chọn)
 │   ├── profile/page.tsx        ← Profile + parent consent
 │   ├── onboarding/page.tsx     ← 5-step onboarding (mascot + class)
 │   ├── portal/
 │   │   ├── page.tsx            ← Planet map + player sidebar
+│   │   ├── player/page.tsx     ← Player management
 │   │   └── play/
-│   │       ├── page.tsx        ← SpaceShooter (?planet=)
+│   │       ├── page.tsx        ← Multi-mode via GameModeController (?planet=)
 │   │       ├── math/page.tsx   ← MathForge (?planet=)
-│   │       ├── star/page.tsx   ← StarHunter (?planet=)
+│   │       ├── star/page.tsx   ← Multi-mode via GameModeController (?planet=)
+│   │       ├── craft/page.tsx  ← WordCraft (?planet=)
 │   │       └── heritage/page.tsx ← HeritagePuzzle (?planet=)
 │   ├── dashboard/
 │   │   ├── layout.tsx          ← Dashboard layout
-│   │   └── page.tsx            ← Parent dashboard (PDF export)
+│   │   ├── page.tsx            ← Parent dashboard (PDF export)
+│   │   ├── controls/page.tsx   ← Parent controls
+│   │   ├── history/page.tsx    ← Learning history
+│   │   ├── link/page.tsx       ← Link child account
+│   │   └── settings/page.tsx   ← Dashboard settings
 │   └── api/
-│       └── ai/route.ts         ← AI mascot endpoint (guardrailed)
+│       ├── ai/route.ts         ← AI mascot endpoint (guardrailed)
+│       └── ai/chat/route.ts    ← AI chat endpoint
+│       └── ai/tts/route.ts     ← Text-to-speech endpoint
 ├── components/
-│   ├── SpaceShooterGame.tsx    ← Canvas-based shooter
-│   ├── MathForgeGame.tsx       ← Drag-n-drop math
-│   ├── StarHunterGame.tsx      ← Star hunter mini-game
+│   ├── GameModeController.tsx  ← ⭐ State machine: planetIntro→levelIntro→playing→result
+│   ├── PlanetStoryIntro.tsx    ← Video intro khi vào hành tinh
+│   ├── LevelTransition.tsx     ← Win/Lose overlay giữa các level
+│   ├── LevelIntro.tsx          ← Level briefing trước game
+│   ├── SpaceShooterGame.tsx    ← Canvas-based shooter (Bắn Từ Không Gian)
+│   ├── MathForgeGame.tsx       ← Drag-n-drop math (Lò Rèn Vũ Trụ)
+│   ├── StarHunterGame.tsx      ← Star hunter (Đa Chế Độ Tăng Dần)
+│   ├── TimeBombGame.tsx        ← Bomb timer quiz (Bom Hẹn Giờ)
+│   ├── GalaxySortGame.tsx      ← Sort/classify (Phân Loại Thiên Hà)
+│   ├── CosmoBridgeGame.tsx     ← Bridge building (Cầu Nối Tri Thức)
+│   ├── MeteorShowerGame.tsx    ← Meteor shower (Mưa Sao Băng)
+│   ├── WordRushGame.tsx        ← Word rush (Chạy Đua Từ Vựng)
+│   ├── WordCraftGame.tsx       ← Writing craft (Xưởng Chữ Vũ Trụ)
 │   ├── HeritagePuzzleGame.tsx  ← Heritage puzzle mini-game
-│   ├── LevelIntro.tsx          ← Story intro trước game
 │   ├── CalmModeToggle.tsx      ← Calm Mode toggle 🌙/☀️
 │   ├── ParentConsentModal.tsx  ← Parent consent flow
 │   ├── MascotAI.tsx            ← AI mascot chat widget
@@ -82,13 +99,20 @@ src/
 │       └── SubjectBreakdown.tsx
 ├── hooks/
 │   ├── usePdfExport.ts         ← PDF export cho dashboard
+│   ├── useRequireRole.ts       ← Role-based auth guard
 │   └── useSoundEffects.ts      ← Sound effects management
 └── lib/
-    ├── data/                   ← mock-data.ts, curriculum-map.ts, survey-questions.ts
+    ├── data/                   ← mock-data.ts, curriculum-map.ts, survey-questions.ts, planet-videos.ts
     ├── services/               ← supabase.ts, auth-context.tsx, db.ts, proficiency.ts, survey-engine.ts
     ├── ai/                     ← guardrails.ts, prompts.ts
     ├── analytics/              ← learning-events.ts
     └── game-context.tsx        ← ⭐ STATE DUY NHẤT
+
+public/
+└── videos/
+    └── planets/                ← Video intro clips (~10s mỗi file)
+        ├── hue.mp4, halong.mp4, giong.mp4, phongnha.mp4
+        ├── hoian.mp4, sapa.mp4, hanoi.mp4, mekong.mp4
 ```
 
 ### 3.2 State Management — GameContext
@@ -158,16 +182,20 @@ interface PlayerData {
 
 ### 4.2 Planet–Curriculum Mapping (đã cập nhật grade_range)
 
-| ID        | Hành tinh            | Môn                  | Bloom Focus | Game Type     | Levels | grade_range |
-|-----------|----------------------|----------------------|-------------|---------------|--------|-------------|
-| ha-long   | Vịnh Hạ Long 🏝️     | Tiếng Anh, Địa lý    | L1–L3       | SpaceShooter  | 20     | 1–3         |
-| hue       | Cố đô Huế 🏯         | Lịch sử, Tiếng Việt  | L1–L4       | SpaceShooter  | 25     | 2–4         |
-| giong     | Làng Gióng ⚔️        | Toán, Tin học        | L2–L4       | MathForge     | 20     | 3–5         |
-| phong-nha | Phong Nha 🦇         | Khoa học, Địa lý     | L1–L3       | SpaceShooter  | 18     | 1–3         |
-| hoi-an    | Phố cổ Hội An 🏮     | Mỹ thuật, Tiếng Anh  | L1–L2       | SpaceShooter  | 15     | 1–2         |
-| sapa      | Sa Pa 🌾             | Toán, Khoa học       | L2–L4       | MathForge     | 22     | 3–5         |
+| ID        | Hành tinh            | Môn                  | Bloom Focus | Play Route      | Levels | grade_range |
+|-----------|----------------------|----------------------|-------------|-----------------|--------|-------------|
+| ha-long   | Vịnh Hạ Long 🏝️     | Tiếng Anh, Địa lý    | L1–L3       | play (multi)    | 20     | 1–3         |
+| hue       | Cố đô Huế 🏯         | Lịch sử, Tiếng Việt  | L1–L4       | play (multi)    | 25     | 2–4         |
+| giong     | Làng Gióng ⚔️        | Toán, Tin học        | L2–L4       | play/math       | 20     | 3–5         |
+| phong-nha | Phong Nha 🦇         | Khoa học, Địa lý     | L1–L3       | play (multi)    | 18     | 1–3         |
+| hoi-an    | Phố cổ Hội An 🏮     | Mỹ thuật, Tiếng Anh  | L1–L2       | play (multi)    | 15     | 1–2         |
+| sapa      | Sa Pa 🌾             | Toán, Khoa học       | L2–L4       | play/math       | 22     | 3–5         |
+| hanoi     | Hà Nội 🌆            | Lịch sử, Địa lý     | L2–L4       | play/star+craft | 20     | 2–4         |
+| mekong    | Đồng bằng Mê Kông 🌊 | Khoa học, Địa lý     | L1–L3       | play/star       | 18     | 1–3         |
 
 **grade_range**: Dùng để lọc hành tinh phù hợp với lớp của trẻ (trẻ lớp 1–2 không vào được hành tinh Sa Pa vì quá khó).
+
+**Play Route "multi"**: Dùng `GameModeController` → 7 game mode luân phiên theo level.
 
 ### 4.3 Question Selection & Adaptive Difficulty
 
@@ -228,11 +256,11 @@ Mục tiêu: Trẻ luôn cảm thấy "vừa sức nhưng thú vị".
 
 ### 5.2 Class System
 
-| Class | Hiệu ứng SpaceShooter | Hiệu ứng MathForge | Mọi game mode mới |
-|---|---|---|---|
-| `warrior` 🛡️ | Miễn 1 lần sai/level | Miễn 1 lần sai/level | Shield 1 lần sai |
-| `wizard` ⏳ | Bomb chậm 30% | +5 giây/câu | Thêm thời gian/giảm tốc |
-| `hunter` 🎯 | Loại 1 từ sai/câu | Loại 1 đáp án sai | Eliminate 1 wrong option |
+| Class | Hiệu ứng | Mô tả |
+|---|---|---|
+| `warrior` 🛡️ | Shield 1 lần sai | Miễn 1 lần trả lời sai, áp dụng cho mọi game mode |
+| `wizard` ⏳ | Thêm thời gian | +5 giây hoặc giảm tốc 30%, áp dụng cho mọi game mode |
+| `hunter` 🎯 | Loại 1 đáp án sai | Eliminate 1 wrong option, áp dụng cho mọi game mode |
 
 ### 5.3 XP & Level System
 
@@ -244,6 +272,7 @@ xpToNext = level × 500
 Nguồn XP:
   SpaceShooter: +100 XP/từ đúng
   MathForge:    +100 × combo XP/câu đúng (×1.5 khi ≥3 liên tiếp)
+  Các game mode khác: +100 XP/câu đúng
 ```
 
 ---
@@ -370,31 +399,54 @@ Xưng hô: "Cú Mèo" và "bạn nhỏ"
 
 ## 9. User Flow
 
-### 9.1 Flow Chính
+### 9.1 Flow Chính (Multi-Level Progression)
 
 ```
-Landing (/) → Onboarding (/onboarding) → Portal (/portal)
-                                              ↓
-                                         LevelIntro
-                                              ↓
-                                    SpaceShooter hoặc MathForge
-                                              ↓
-                                    onGameComplete → Portal
+Portal → Click hành tinh → PlanetStoryIntro (video clip ~10s)
+  → LevelIntro (Level 1) → Game Mode A → Thắng/Thua
+  → LevelTransition → LevelIntro (Level 2) → Game Mode B → ...
+  → Hoàn thành tất cả level → Về Portal
 ```
 
-### 9.2 Onboarding (5 bước)
+**State Machine** (`GameModeController`):
+```
+planetIntro → levelIntro → playing → levelWin / levelLose
+                                         ↓ win      ↓ lose
+                                    levelIntro(+1)   retry/exit
+```
+
+**7 Game Mode luân phiên theo level:**
+1. TimeBomb (Bom Hẹn Giờ)
+2. SpaceShooter (Bắn Từ Không Gian)
+3. CosmoBridge (Cầu Nối Tri Thức)
+4. StarHunter (Đa Chế Độ Tăng Dần)
+5. GalaxySort (Phân Loại Thiên Hà)
+6. MeteorShower (Mưa Sao Băng)
+7. WordRush (Chạy Đua Từ Vựng)
+
+### 9.2 Video Intro System
+
+- Mỗi hành tinh có 1 video intro clip (~10s) trong `public/videos/planets/`
+- Config mapping: `src/lib/data/planet-videos.ts`
+- Flow: 🚀 Spaceship animation → 🎬 Video clip (có nút "Bỏ qua") → 🌟 Nút bắt đầu
+- Video phát mỗi lần vào hành tinh (không chỉ lần đầu)
+- Nếu không có file video → skip thẳng sang LevelIntro
+
+### 9.3 Onboarding (5 bước)
 
 1. **Welcome** — Intro "Tân Binh" + parent consent trigger (nếu có auth)
 2. **Mascot** — Chọn cat/dog
-3. **Quiz** — 4 câu (Toán, Tiếng Anh, Địa lý, Tiếng Việt) → xác định `grade`
+3. **Quiz** — 4 câu (Toán, Tiếng Anh, Địa lý, Tiếng Việt) → xác định `grade` (tùy chọn)
 4. **Class** — Warrior/Wizard/Hunter
 5. **Ready** — `updatePlayer()` → navigate `/portal`
 
-### 9.3 Planet Routing
+### 9.4 Planet Routing
 
 ```
-planet.id ∈ {"giong", "sapa"} → /portal/play/math?planet=<id>
-planet.id ∈ {còn lại}         → /portal/play?planet=<id>
+planet.id ∈ {"giong", "sapa"}        → /portal/play/math?planet=<id>   (MathForge)
+planet.id ∈ {"hanoi"} (craft)        → /portal/play/craft?planet=<id>  (WordCraft)
+planet.id ∈ {"hanoi", "mekong"}      → /portal/play/star?planet=<id>   (Multi-mode)
+planet.id ∈ {"hue","ha-long",...}    → /portal/play?planet=<id>        (Multi-mode)
 ```
 
 ---
@@ -432,8 +484,9 @@ Trước mọi PR, kiểm tra:
 
 - [ ] Player data qua `GameContext` (KHÔNG useState riêng)
 - [ ] Field mới → cập nhật `DEFAULT_PLAYER`
-- [ ] Hành tinh mới → mockPlanets + DEFAULT_PLAYER + routing + storyIntros + curriculum mapping
-- [ ] Game mode mới → 3 class abilities + `onGameComplete` + Calm Mode support
+- [ ] Hành tinh mới → curriculum-map.ts + planet-videos.ts + PLANET_NAMES trong play page + routing
+- [ ] Game mode mới → 3 class abilities + `onGameComplete(score, levels)` ngay lập tức + Calm Mode support
+- [ ] Game gọi `onGameComplete` **ngay khi kết thúc** (không delay) để controller chuyển state
 - [ ] Mascot/class mới → MASCOT_INFO / CLASS_ABILITIES + onboarding
 - [ ] XP chỉ qua `addXP()`
 - [ ] Bloom level tagged trong question data
@@ -442,3 +495,28 @@ Trước mọi PR, kiểm tra:
 - [ ] AI content → qua guardrail prompt, log vào ai_feedback
 - [ ] Data mới → có RLS policy trong Supabase
 - [ ] Teacher review = true trước khi câu hỏi lên prod
+- [ ] Video intro → thêm entry vào `planet-videos.ts` + đặt file `.mp4` vào `public/videos/planets/`
+
+## 12. Quy tắc Game Component
+
+### 12.1 onGameComplete Contract
+
+Mọi game component PHẢI gọi `onGameComplete(score, levelsCompleted)` **ngay lập tức** khi game kết thúc:
+- **Thắng**: `onGameComplete(score, 1)` — score > 0, levels > 0
+- **Thua**: `onGameComplete(score, 0)` — levels = 0
+- KHÔNG delay, KHÔNG để trong setTimeout sau overlay
+- `GameModeController` sẽ unmount game và hiện `LevelTransition`
+
+### 12.2 GameModeController sử dụng
+
+Controller dùng `gameKey` để force-remount game khi chuyển level. Mỗi game nhận:
+- `levels`: mảng chỉ 1 level hiện tại
+- `onGameComplete`: callback, chỉ được gọi 1 lần (có `handledRef` chặn double-fire)
+- `onExit`: khi người chơi bấm thoát → controller chuyển sang `levelLose`
+
+### 12.3 Thêm Game Mode Mới
+
+1. Tạo component `NewGame.tsx` với props: `levels, onExit, playerClass, onGameComplete, onAnswered?, calmMode?`
+2. Thêm vào `MODE_ORDER` trong `GameModeController.tsx`
+3. Thêm `case` trong switch render
+4. Ensure `onGameComplete` được gọi đúng contract (mục 12.1)

@@ -6,9 +6,11 @@ import StarField from "@/components/StarField";
 import NeonButton from "@/components/NeonButton";
 import MathForgeGame from "@/components/MathForgeGame";
 import LevelIntro from "@/components/LevelIntro";
+import PlanetStoryIntro from "@/components/PlanetStoryIntro";
 import { useGame } from "@/lib/game-context";
 import { useAuth } from "@/lib/services/auth-context";
 import { getMathLevels, updateMastery, type MathLevel } from "@/lib/services/db";
+import { getPlanetVideo } from "@/lib/data/planet-videos";
 
 const PLANET_NAMES: Record<string, { name: string; emoji: string }> = {
     "giong": { name: "Làng Gióng", emoji: "⚔️" },
@@ -20,12 +22,13 @@ function MathPlayContent() {
     const searchParams = useSearchParams();
     const { player, addXP, updatePlanetProgress } = useGame();
     const { playerDbId } = useAuth();
-    const [showIntro, setShowIntro] = useState(true);
-    const [levels, setLevels] = useState<MathLevel[]>([]);
-    const [loading, setLoading] = useState(true);
-
     const planetId = searchParams.get("planet") || "giong";
     const planetInfo = PLANET_NAMES[planetId] || { name: "Làng Gióng", emoji: "⚔️" };
+
+    const videoSrc = getPlanetVideo(planetInfo.name);
+    const [phase, setPhase] = useState<"video" | "intro" | "playing">(videoSrc ? "video" : "intro");
+    const [levels, setLevels] = useState<MathLevel[]>([]);
+    const [loading, setLoading] = useState(true);
 
     // Load levels with mastery-adaptive Bloom selection
     useEffect(() => {
@@ -93,7 +96,16 @@ function MathPlayContent() {
 
             {/* Game area */}
             <div className="relative z-10 flex-1 flex items-center justify-center p-4 sm:p-8">
-                {showIntro ? (
+                {phase === "video" && videoSrc ? (
+                    <div className="w-full max-w-5xl mx-auto relative min-h-[500px] rounded-2xl overflow-hidden border border-white/10 bg-space-deep">
+                        <PlanetStoryIntro
+                            planetName={planetInfo.name}
+                            planetEmoji={planetInfo.emoji}
+                            videoSrc={videoSrc}
+                            onStart={() => setPhase("intro")}
+                        />
+                    </div>
+                ) : phase === "intro" ? (
                     <div className="w-full max-w-4xl mx-auto relative min-h-[500px] rounded-2xl overflow-hidden border border-white/10 bg-space-deep flex items-center justify-center">
                         <LevelIntro
                             planetName={planetInfo.name}
@@ -103,7 +115,7 @@ function MathPlayContent() {
                             subject={levels[0]?.subject || ""}
                             playerClass={player.playerClass}
                             gameMode="math-forge"
-                            onStart={() => setShowIntro(false)}
+                            onStart={() => setPhase("playing")}
                         />
                     </div>
                 ) : (

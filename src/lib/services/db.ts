@@ -178,7 +178,8 @@ export async function getShooterLevels(
     masteryByTopic: Record<string, number> = {}
 ): Promise<GameLevel[]> {
     if (isMockMode || !supabase) {
-        return getMockShooterLevels(planetId);
+        console.error("[db] getShooterLevels: mock mode or no supabase");
+        return [];
     }
 
     const allowedDifficulties = difficultyForGrade(grade);
@@ -194,7 +195,7 @@ export async function getShooterLevels(
 
     if (levelsError || !levelsData || levelsData.length === 0) {
         console.error("[db] getShooterLevels error:", levelsError);
-        return getMockShooterLevels(planetId);
+        return [];
     }
 
     const levels: GameLevel[] = [];
@@ -211,6 +212,7 @@ export async function getShooterLevels(
             .eq("level_id", level.id)
             .eq("type", "word")
             .eq("reviewed_by_teacher", true)
+            .eq("status", "approved")
             .in("difficulty", allowedDifficulties)
             .gte("bloom_level", bloomMin)
             .lte("bloom_level", bloomMax)
@@ -239,7 +241,7 @@ export async function getShooterLevels(
         });
     }
 
-    if (levels.length === 0) return getMockShooterLevels(planetId);
+    if (levels.length === 0) return [];
     return levels;
 }
 
@@ -251,7 +253,8 @@ export async function getMathLevels(
     masteryByTopic: Record<string, number> = {}
 ): Promise<MathLevel[]> {
     if (isMockMode || !supabase) {
-        return getMockMathLevels(planetId);
+        console.error("[db] getMathLevels: mock mode or no supabase");
+        return [];
     }
 
     const allowedDifficulties = difficultyForGrade(grade);
@@ -266,7 +269,7 @@ export async function getMathLevels(
 
     if (levelsError || !levelsData || levelsData.length === 0) {
         console.error("[db] getMathLevels error:", levelsError);
-        return getMockMathLevels(planetId);
+        return [];
     }
 
     const levels: MathLevel[] = [];
@@ -282,6 +285,7 @@ export async function getMathLevels(
             .eq("level_id", level.id)
             .eq("type", "math")
             .eq("reviewed_by_teacher", true)
+            .eq("status", "approved")
             .in("difficulty", allowedDifficulties)
             .gte("bloom_level", bloomMin)
             .lte("bloom_level", bloomMax)
@@ -310,7 +314,7 @@ export async function getMathLevels(
         });
     }
 
-    if (levels.length === 0) return getMockMathLevels(planetId);
+    if (levels.length === 0) return [];
     return levels;
 }
 
@@ -353,6 +357,7 @@ export async function getCraftLevels(
             .eq("level_id", level.id)
             .eq("type", "open-ended")
             .eq("reviewed_by_teacher", true)
+            .eq("status", "approved")
             .in("difficulty", allowedDifficulties)
             .gte("bloom_level", bloomMin)
             .lte("bloom_level", bloomMax)
@@ -436,7 +441,8 @@ export async function getStarHunterLevels(
     grade: number = 3
 ): Promise<GameLevel[]> {
     if (isMockMode || !supabase) {
-        return getMockStarLevels(planetId);
+        console.error("[db] getStarLevels: mock mode or no supabase");
+        return [];
     }
     // Star Hunter uses the same 'word' question type as SpaceShooter
     const allowedDifficulties = difficultyForGrade(grade);
@@ -450,7 +456,7 @@ export async function getStarHunterLevels(
 
     if (levelsError || !levelsData || levelsData.length === 0) {
         console.error("[db] getStarHunterLevels error:", levelsError);
-        return getMockStarLevels(planetId);
+        return [];
     }
 
     const levels: GameLevel[] = [];
@@ -473,7 +479,7 @@ export async function getStarHunterLevels(
         if (questions.length === 0) continue;
         levels.push({ id: level.id, level: level.level_number, planet: "", subject: level.subject, title: level.title, speed: level.speed, questions });
     }
-    if (levels.length === 0) return getMockStarLevels(planetId);
+    if (levels.length === 0) return [];
     return levels;
 }
 

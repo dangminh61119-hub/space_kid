@@ -51,7 +51,7 @@ export interface DBQuestion {
     grade: number;
     difficulty: "easy" | "medium" | "hard";
     type: "word" | "math" | "open-ended";
-    // SpaceShooter
+    // SpaceShooter / StarHunter
     question_text: string | null;
     correct_word: string | null;
     wrong_words: string[] | null;
@@ -61,15 +61,19 @@ export interface DBQuestion {
     options: number[] | null;
     // WordCraft (open-ended)
     accept_answers: string[] | null;
+    grading_mode: string | null;        // exact | contains | keywords
     // Analytics
     times_shown: number;
     times_wrong: number;
     order_index: number;
-    // Bloom Taxonomy (added in migration 006)
-    bloom_level: number;            // 1–6 (Remember → Create)
-    difficulty_score: number;       // 0.0–1.0 IRT score
-    curriculum_ref: string;         // e.g. 'SGK-Toan-3'
-    reviewed_by_teacher: boolean;   // Only show reviewed questions
+    // Bloom Taxonomy (v3: 1–5, no Create)
+    bloom_level: number;                // 1–5 (Remember → Higher-order)
+    difficulty_score: number;           // 0.0–1.0 IRT score
+    curriculum_ref: string;             // e.g. 'SGK-Toan-3'
+    reviewed_by_teacher: boolean;       // Only show reviewed questions
+    // Data Rules v3
+    skill_tag: string;                  // nhận biết, tính nhẩm, so sánh...
+    explanation: string;                // AI Mascot & Parent Dashboard
 }
 
 export interface DBPlayer {

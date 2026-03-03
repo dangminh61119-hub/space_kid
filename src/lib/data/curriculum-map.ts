@@ -4,19 +4,42 @@
  * Defines the educational structure of CosmoMosaic: which subjects
  * are taught on which planets, their grade ranges, and Bloom's taxonomy
  * progression for adaptive difficulty.
+ *
+ * Data Rules v3: Bloom max is determined by SUBJECT × GRADE, not planet.
+ * Bloom 6 (Create) removed — not suitable for primary quiz format.
  */
 
-/* ─── Bloom's Taxonomy Levels ─── */
+/* ─── Bloom's Taxonomy Levels (5 levels — v3) ─── */
 export const BLOOM_LEVELS = {
     1: { name: "Nhớ", nameEn: "Remember", icon: "🧠", description: "Nhận biết, nhớ lại kiến thức cơ bản" },
     2: { name: "Hiểu", nameEn: "Understand", icon: "💡", description: "Giải thích, diễn giải ý nghĩa" },
     3: { name: "Áp dụng", nameEn: "Apply", icon: "🔧", description: "Sử dụng kiến thức vào tình huống mới" },
     4: { name: "Phân tích", nameEn: "Analyze", icon: "🔍", description: "So sánh, phân loại, tìm mối liên hệ" },
-    5: { name: "Đánh giá", nameEn: "Evaluate", icon: "⚖️", description: "Nhận xét, đánh giá, biện luận" },
-    6: { name: "Sáng tạo", nameEn: "Create", icon: "🎨", description: "Tạo ra sản phẩm, ý tưởng mới" },
+    5: { name: "Tư duy bậc cao", nameEn: "Higher-order", icon: "⚖️", description: "Lập luận, chọn phương án tốt nhất" },
 } as const;
 
 export type BloomLevel = keyof typeof BLOOM_LEVELS;
+
+/* ─── Bloom Max by Subject × Grade (v3) ─── */
+const BLOOM_MAX_BY_SUBJECT: Record<string, Record<number, BloomLevel>> = {
+    "Toán": { 1: 3, 2: 3, 3: 4, 4: 4, 5: 4 },
+    "Tiếng Việt": { 1: 2, 2: 3, 3: 3, 4: 4, 5: 4 },
+    "Tiếng Anh": { 1: 3, 2: 3, 3: 3, 4: 4, 5: 4 },
+    "Khoa học": { 1: 2, 2: 3, 3: 4, 4: 4, 5: 5 },
+    "Lịch sử": { 1: 2, 2: 3, 3: 3, 4: 5, 5: 5 },
+    "Địa lý": { 1: 2, 2: 3, 3: 3, 4: 5, 5: 5 },
+    "Mỹ thuật": { 1: 2, 2: 3, 3: 3, 4: 3, 5: 3 },
+    "Tin học": { 1: 2, 2: 3, 3: 3, 4: 4, 5: 4 },
+};
+
+/**
+ * Get max Bloom level for a subject at a given grade (v3 — subject-based)
+ */
+export function getMaxBloomForSubject(subject: string, grade: number): BloomLevel {
+    const subjectMap = BLOOM_MAX_BY_SUBJECT[subject];
+    if (!subjectMap) return 3 as BloomLevel;
+    return (subjectMap[grade] ?? 3) as BloomLevel;
+}
 
 /* ─── Subject Definitions ─── */
 export interface SubjectDef {
@@ -137,11 +160,18 @@ export function getPlanetCurriculum(planetId: string): PlanetCurriculum | undefi
 
 /**
  * Get max Bloom level for a player's grade on a planet
+ * Falls back to subject-based lookup (v3)
  */
 export function getMaxBloomLevel(planetId: string, grade: number): BloomLevel {
     const planet = getPlanetCurriculum(planetId);
     if (!planet) return 1;
-    return planet.bloomByGrade[grade] ?? 1;
+    // Try planet-specific first, then fall back to subject-based
+    if (planet.bloomByGrade[grade]) return planet.bloomByGrade[grade];
+    // Use first subject of the planet for subject-based lookup
+    if (planet.subjects.length > 0) {
+        return getMaxBloomForSubject(planet.subjects[0], grade);
+    }
+    return 1;
 }
 
 /**
@@ -154,16 +184,7 @@ export function getPlanetsForGrade(grade: number): PlanetCurriculum[] {
 }
 
 /**
- * Determine difficulty based on Bloom level
- */
-export function bloomToDifficulty(bloomLevel: BloomLevel): "easy" | "medium" | "hard" {
-    if (bloomLevel <= 2) return "easy";
-    if (bloomLevel <= 4) return "medium";
-    return "hard";
-}
-
-/**
- * Get next Bloom level (for progression)
+ * Get next Bloom level (for progression) — v3: uses subject-based max
  */
 export function getNextBloomLevel(
     currentBloom: BloomLevel,

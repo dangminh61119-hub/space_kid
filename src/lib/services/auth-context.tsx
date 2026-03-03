@@ -5,7 +5,7 @@ import { supabase, isMockMode } from "./supabase";
 import type { User, Session } from "@supabase/supabase-js";
 
 /* ─── Types ─── */
-export type UserRole = 'parent' | 'child' | null;
+export type UserRole = 'parent' | 'child' | 'admin' | null;
 
 interface AuthContextType {
     user: User | null;
