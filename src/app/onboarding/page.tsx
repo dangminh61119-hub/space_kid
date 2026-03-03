@@ -48,7 +48,7 @@ type Step = (typeof steps)[number];
 export default function OnboardingPage() {
     const router = useRouter();
     const { updatePlayer } = useGame();
-    const { playerDbId, surveyCompleted, onboardingComplete } = useAuth();
+    const { playerDbId, onboardingComplete } = useAuth();
     const [currentStep, setCurrentStep] = useState<Step>("welcome");
     const [mascot, setMascot] = useState<string | null>(null);
     const [selectedClass, setSelectedClass] = useState<string | null>(null);
@@ -60,12 +60,7 @@ export default function OnboardingPage() {
         }
     }, [onboardingComplete, router]);
 
-    // Redirect if survey not completed yet
-    useEffect(() => {
-        if (!surveyCompleted) {
-            router.push("/survey");
-        }
-    }, [surveyCompleted, router]);
+    // (Survey is now optional — no redirect to /survey)
 
     const stepIndex = steps.indexOf(currentStep);
 
@@ -104,11 +99,11 @@ export default function OnboardingPage() {
                             </h1>
                             <GlassCard glow="cyan" className="mb-8">
                                 <p className="text-white/80 text-lg leading-relaxed">
-                                    <span className="text-neon-gold font-bold">Chỉ huy Cú Mèo</span> đã hiểu rõ
-                                    năng lực của em từ bài khảo sát! Giờ hãy chọn
+                                    <span className="text-neon-gold font-bold">Chỉ huy Cú Mèo</span> chào đón em
+                                    đến với vũ trụ tri thức! Hãy chọn
                                     <span className="text-neon-cyan font-bold"> bạn đồng hành</span> và
                                     <span className="text-neon-magenta font-bold"> lớp nhân vật</span> để
-                                    bắt đầu chinh phục vũ trụ tri thức!
+                                    bắt đầu chinh phục các hành tinh!
                                 </p>
                             </GlassCard>
                             <NeonButton variant="cyan" size="lg" onClick={nextStep}>

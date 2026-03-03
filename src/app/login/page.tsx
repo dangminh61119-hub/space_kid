@@ -30,20 +30,18 @@ export default function LoginPage() {
                 router.push("/dashboard");
             } else if (!profileCompleted) {
                 router.push("/profile");
-            } else if (!surveyCompleted) {
-                router.push("/survey");
             } else if (!onboardingComplete) {
                 router.push("/onboarding");
             } else {
                 router.push("/portal");
             }
         }
-    }, [user, role, profileCompleted, surveyCompleted, onboardingComplete, router]);
+    }, [user, role, profileCompleted, onboardingComplete, router]);
 
     /** Determine where to redirect after successful auth */
-    const getRedirectPath = (isProfileDone: boolean, isSurveyDone: boolean, isOnboardingDone: boolean): string => {
+    const getRedirectPath = (isProfileDone: boolean, _isSurveyDone: boolean, isOnboardingDone: boolean): string => {
         if (!isProfileDone) return "/profile";
-        if (!isSurveyDone) return "/survey";
+        // Survey is now optional — skip it in registration flow
         if (!isOnboardingDone) return "/onboarding";
         return "/portal";
     };
@@ -161,8 +159,8 @@ export default function LoginPage() {
                                                     type="button"
                                                     onClick={() => setRegisterRole("child")}
                                                     className={`p-3 rounded-xl border text-center transition-all ${registerRole === "child"
-                                                            ? "border-cyan-500/60 bg-cyan-500/10 text-cyan-300"
-                                                            : "border-white/10 bg-white/5 text-white/50 hover:border-white/20"
+                                                        ? "border-cyan-500/60 bg-cyan-500/10 text-cyan-300"
+                                                        : "border-white/10 bg-white/5 text-white/50 hover:border-white/20"
                                                         }`}
                                                 >
                                                     <div className="text-2xl mb-1">👧</div>
@@ -172,8 +170,8 @@ export default function LoginPage() {
                                                     type="button"
                                                     onClick={() => setRegisterRole("parent")}
                                                     className={`p-3 rounded-xl border text-center transition-all ${registerRole === "parent"
-                                                            ? "border-purple-500/60 bg-purple-500/10 text-purple-300"
-                                                            : "border-white/10 bg-white/5 text-white/50 hover:border-white/20"
+                                                        ? "border-purple-500/60 bg-purple-500/10 text-purple-300"
+                                                        : "border-white/10 bg-white/5 text-white/50 hover:border-white/20"
                                                         }`}
                                                 >
                                                     <div className="text-2xl mb-1">👨‍👩‍👧</div>

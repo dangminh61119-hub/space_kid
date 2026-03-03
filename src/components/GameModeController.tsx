@@ -24,8 +24,8 @@ interface GameModeControllerProps {
     planetEmoji: string;
 }
 
-/* ─── Mode rotation: 7 modes cycling with variety ─── */
-const MODE_ORDER: GameMode[] = ["shooter", "star-hunter", "timebomb", "meteor", "cosmo-bridge", "rush", "galaxy-sort"];
+/* ─── Mode rotation: 7 modes – new games appear early ─── */
+const MODE_ORDER: GameMode[] = ["timebomb", "shooter", "cosmo-bridge", "star-hunter", "galaxy-sort", "meteor", "rush"];
 
 function getModeForLevel(levelNum: number): GameMode {
     return MODE_ORDER[(levelNum - 1) % MODE_ORDER.length];

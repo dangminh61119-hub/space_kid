@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Maximize, Minimize } from "lucide-react";
 import type { GameLevel } from "@/lib/services/db";
@@ -47,10 +47,22 @@ export default function TimeBombGame({
     const containerRef = useRef<HTMLDivElement>(null);
 
     const level = levels[currentLevel];
-    const allQuestions = levels.flatMap(l => l.questions); // Flatten all questions
+    const allQuestions = useMemo(() => levels.flatMap(l => l.questions), [levels]);
     const question = allQuestions[questionIdx];
     const totalQuestions = allQuestions.length;
     const progressPercent = totalQuestions > 0 ? (questionIdx / totalQuestions) * 100 : 0;
+
+    // Memoize shuffled options — shuffle ONCE per question, not every render
+    const shuffledOptions = useMemo(() => {
+        if (!question) return [];
+        const opts = new Set<string>();
+        opts.add(question.correctWord);
+        for (const w of question.wrongWords) {
+            if (opts.size >= 4) break;
+            opts.add(w);
+        }
+        return Array.from(opts).sort(() => Math.random() - 0.5);
+    }, [questionIdx, question?.correctWord]);
 
     // Bomb urgency level
     const urgency = bombTime <= 3 ? "critical" : bombTime <= 7 ? "warning" : "safe";
@@ -63,10 +75,9 @@ export default function TimeBombGame({
             setBombTime(prev => {
                 const next = Math.round((prev - 0.1) * 10) / 10;
                 if (next <= 0) {
-                    // BOOM!
+                    // BOOM! Show explosion overlay, don't navigate yet
                     clearInterval(timerRef.current!);
                     stopBGM();
-                    onGameComplete?.(score, currentLevel);
                     setGameState("gameOver");
                     return 0;
                 }
@@ -125,7 +136,6 @@ export default function TimeBombGame({
                     if (next <= 0) {
                         setTimeout(() => {
                             stopBGM();
-                            onGameComplete?.(score, currentLevel);
                             setGameState("gameOver");
                         }, 600);
                         return 0;
@@ -222,7 +232,7 @@ export default function TimeBombGame({
                                     💣
                                 </motion.span>
                                 <span className={`text-2xl font-mono font-black tabular-nums ${urgency === "critical" ? "text-red-400" :
-                                        urgency === "warning" ? "text-orange-400" : "text-emerald-400"
+                                    urgency === "warning" ? "text-orange-400" : "text-emerald-400"
                                     }`}>
                                     {bombTime.toFixed(1)}s
                                 </span>
@@ -266,8 +276,8 @@ export default function TimeBombGame({
                         <div className="h-3 bg-white/5 rounded-full overflow-hidden relative">
                             <motion.div
                                 className={`h-full rounded-full ${urgency === "critical" ? "bg-gradient-to-r from-red-600 to-red-400" :
-                                        urgency === "warning" ? "bg-gradient-to-r from-orange-600 to-yellow-400" :
-                                            "bg-gradient-to-r from-emerald-600 to-emerald-400"
+                                    urgency === "warning" ? "bg-gradient-to-r from-orange-600 to-yellow-400" :
+                                        "bg-gradient-to-r from-emerald-600 to-emerald-400"
                                     }`}
                                 animate={{ width: `${bombPercent}%` }}
                                 transition={{ duration: 0.1 }}
@@ -350,35 +360,32 @@ export default function TimeBombGame({
                             transition={{ delay: 0.05 }}
                             className="grid grid-cols-2 gap-3 w-full max-w-md"
                         >
-                            {[question.correctWord, ...question.wrongWords]
-                                .sort(() => Math.random() - 0.5) // Shuffle once per render
-                                .map((opt, i) => {
-                                    if (hunterEliminated === opt) return null;
-                                    const isCorrectOpt = feedback && opt === question.correctWord;
-                                    const isWrongSelected = feedback === "wrong" && opt !== question.correctWord && feedback;
+                            {shuffledOptions.map((opt) => {
+                                if (hunterEliminated === opt) return null;
+                                const isCorrectOpt = feedback && opt === question.correctWord;
 
-                                    return (
-                                        <motion.button
-                                            key={`${questionIdx}-${opt}`}
-                                            onClick={() => !feedback && handleAnswer(opt)}
-                                            disabled={!!feedback}
-                                            whileHover={!feedback ? { scale: 1.05 } : {}}
-                                            whileTap={!feedback ? { scale: 0.95 } : {}}
-                                            className={`
+                                return (
+                                    <motion.button
+                                        key={`${questionIdx}-${opt}`}
+                                        onClick={() => !feedback && handleAnswer(opt)}
+                                        disabled={!!feedback}
+                                        whileHover={!feedback ? { scale: 1.05 } : {}}
+                                        whileTap={!feedback ? { scale: 0.95 } : {}}
+                                        className={`
                                                 py-4 px-4 rounded-xl font-bold text-base
                                                 transition-all duration-200 border-2 text-center
                                                 ${isCorrectOpt
-                                                    ? "border-emerald-400 bg-emerald-400/20 text-emerald-400 shadow-[0_0_25px_rgba(52,211,153,0.4)] scale-105"
-                                                    : feedback && !isCorrectOpt
-                                                        ? "border-white/5 bg-white/3 text-white/20"
-                                                        : "border-white/10 bg-white/5 text-white hover:border-orange-400/40 hover:bg-orange-400/10 hover:shadow-[0_0_15px_rgba(251,146,60,0.2)]"
-                                                }
+                                                ? "border-emerald-400 bg-emerald-400/20 text-emerald-400 shadow-[0_0_25px_rgba(52,211,153,0.4)] scale-105"
+                                                : feedback && !isCorrectOpt
+                                                    ? "border-white/5 bg-white/3 text-white/20"
+                                                    : "border-white/10 bg-white/5 text-white hover:border-orange-400/40 hover:bg-orange-400/10 hover:shadow-[0_0_15px_rgba(251,146,60,0.2)]"
+                                            }
                                             `}
-                                        >
-                                            {opt}
-                                        </motion.button>
-                                    );
-                                })}
+                                    >
+                                        {opt}
+                                    </motion.button>
+                                );
+                            })}
                         </motion.div>
                     </div>
                 )}
@@ -463,8 +470,8 @@ export default function TimeBombGame({
                                     Thử lại 💣
                                 </button>
                                 {onExit && (
-                                    <button onClick={onExit} className="px-6 py-3 rounded-full border border-white/20 text-white/60 hover:bg-white/10 transition-colors">
-                                        Thoát
+                                    <button onClick={() => { onGameComplete?.(score, currentLevel); onExit(); }} className="px-6 py-3 rounded-full border border-white/20 text-white/60 hover:bg-white/10 transition-colors">
+                                        Về bản đồ 🗺
                                     </button>
                                 )}
                             </div>
