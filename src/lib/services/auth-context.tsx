@@ -5,15 +5,21 @@ import { supabase, isMockMode } from "./supabase";
 import type { User, Session } from "@supabase/supabase-js";
 
 /* ─── Types ─── */
+export type UserRole = 'parent' | 'child' | null;
+
 interface AuthContextType {
     user: User | null;
     session: Session | null;
     loading: boolean;
-    signUp: (email: string, password: string, name: string, grade: number) => Promise<{ error: string | null }>;
+    role: UserRole;
+    linkCode: string | null;         // Child's link code (6 chars)
+    linkedChildren: string[];        // Parent's linked child IDs
+    signUp: (email: string, password: string, name: string, grade: number, role?: 'parent' | 'child') => Promise<{ error: string | null }>;
     signIn: (email: string, password: string) => Promise<{ error: string | null }>;
     signInWithGoogle: () => Promise<{ error: string | null }>;
     signInWithFacebook: () => Promise<{ error: string | null }>;
     signOut: () => Promise<void>;
+    linkChild: (code: string) => Promise<{ error: string | null; childName?: string }>;
     playerDbId: string | null; // UUID from players table
     profileCompleted: boolean;
     surveyCompleted: boolean;
@@ -32,6 +38,8 @@ interface MockAuthData {
     email: string;
     name: string;
     grade: number;
+    role: 'parent' | 'child';
+    linkCode: string | null;
     profileCompleted: boolean;
     surveyCompleted: boolean;
     onboardingComplete: boolean;
@@ -43,6 +51,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [session, setSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(true);
     const [playerDbId, setPlayerDbId] = useState<string | null>(null);
+    const [role, setRole] = useState<UserRole>(null);
+    const [linkCode, setLinkCode] = useState<string | null>(null);
+    const [linkedChildren, setLinkedChildren] = useState<string[]>([]);
     const [profileCompleted, setProfileCompleted] = useState(false);
     const [surveyCompleted, setSurveyCompleted] = useState(false);
     const [onboardingComplete, setOnboardingComplete] = useState(false);
@@ -56,6 +67,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 if (saved) {
                     const data = JSON.parse(saved) as MockAuthData;
                     setUser({ id: "mock-user-id", email: data.email } as User);
+                    setRole(data.role || 'child');
+                    setLinkCode(data.linkCode || null);
                     setProfileCompleted(data.profileCompleted);
                     setSurveyCompleted(data.surveyCompleted);
                     setOnboardingComplete(data.onboardingComplete);
@@ -95,29 +108,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Load player data from DB — auto-creates record if missing
+    // Load linked children for parent accounts
+    const loadLinkedChildren = useCallback(async (parentPlayerId: string) => {
+        if (!supabase) return;
+        try {
+            const { data } = await supabase
+                .from("parent_child_link")
+                .select("child_id")
+                .eq("parent_id", parentPlayerId);
+            if (data) {
+                setLinkedChildren(data.map((d: { child_id: string }) => d.child_id));
+            }
+        } catch (err) {
+            console.error("[auth] loadLinkedChildren error:", err);
+        }
+    }, []);
+
     const loadPlayerData = useCallback(async (authId: string, email: string) => {
         if (!supabase) return;
         try {
             // Try to find existing player
             const { data, error } = await supabase
                 .from("players")
-                .select("id, profile_completed, survey_completed, onboarding_complete")
+                .select("id, role, link_code, profile_completed, survey_completed, onboarding_complete")
                 .eq("auth_id", authId)
                 .single();
 
             if (!error && data) {
-                console.log("[auth] loadPlayerData: found existing player", data.id);
+                console.log("[auth] loadPlayerData: found existing player", data.id, "role:", data.role);
                 setPlayerDbId(data.id);
+                setRole(data.role as UserRole);
+                setLinkCode(data.link_code || null);
                 setProfileCompleted(data.profile_completed);
                 setSurveyCompleted(data.survey_completed);
                 setOnboardingComplete(data.onboarding_complete);
+                // Load linked children if parent
+                if (data.role === 'parent') {
+                    await loadLinkedChildren(data.id);
+                }
             } else {
-                // No player record found — auto-create one
+                // No player record found — auto-create one (default child)
                 console.log("[auth] loadPlayerData: no player found, auto-creating...");
                 const { data: newPlayer, error: insertErr } = await supabase
                     .from("players")
-                    .insert({ auth_id: authId, name: "Tân Binh", grade: 3, email })
-                    .select("id")
+                    .insert({ auth_id: authId, name: "Tân Binh", grade: 3, email, role: 'child' })
+                    .select("id, link_code")
                     .single();
 
                 if (insertErr) {
@@ -125,6 +160,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 } else if (newPlayer) {
                     console.log("[auth] auto-created player:", newPlayer.id);
                     setPlayerDbId(newPlayer.id);
+                    setRole('child');
+                    setLinkCode(newPlayer.link_code || null);
                     setProfileCompleted(false);
                     setSurveyCompleted(false);
                     setOnboardingComplete(false);
@@ -134,19 +171,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.error("[auth] loadPlayerData exception:", err);
         }
         setLoading(false);
-    }, []);
+    }, [loadLinkedChildren]);
 
     // Create player record in DB
-    const createPlayerRecord = useCallback(async (authId: string, name: string, grade: number, email: string) => {
+    const createPlayerRecord = useCallback(async (authId: string, name: string, grade: number, email: string, playerRole: 'parent' | 'child' = 'child') => {
         if (!supabase) {
             console.error("[auth] createPlayerRecord: supabase client is null");
             return null;
         }
-        console.log("[auth] createPlayerRecord called:", { authId, name, grade, email });
+        console.log("[auth] createPlayerRecord called:", { authId, name, grade, email, playerRole });
         const { data, error } = await supabase
             .from("players")
-            .insert({ auth_id: authId, name, grade, email })
-            .select("id")
+            .insert({ auth_id: authId, name, grade, email, role: playerRole })
+            .select("id, link_code")
             .single();
 
         if (error) {
@@ -154,36 +191,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return null;
         }
         console.log("[auth] createPlayerRecord success:", data);
+        if (data) {
+            setRole(playerRole);
+            setLinkCode(data.link_code || null);
+        }
         return data?.id ?? null;
     }, []);
 
     /* ─── Auth methods ─── */
 
-    const signUp = useCallback(async (email: string, password: string, name: string, grade: number) => {
+    const signUp = useCallback(async (email: string, password: string, name: string, grade: number, userRole: 'parent' | 'child' = 'child') => {
         if (isMockMode || !supabase) {
             // Mock mode
-            const mockData: MockAuthData = { email, name, grade, profileCompleted: false, surveyCompleted: false, onboardingComplete: false };
+            const mockCode = userRole === 'child' ? Math.random().toString(36).substring(2, 8).toUpperCase() : null;
+            const mockData: MockAuthData = { email, name, grade, role: userRole, linkCode: mockCode, profileCompleted: false, surveyCompleted: false, onboardingComplete: false };
             localStorage.setItem(MOCK_AUTH_KEY, JSON.stringify(mockData));
             setUser({ id: "mock-user-id", email } as User);
             setPlayerDbId("mock-player-id");
+            setRole(userRole);
+            setLinkCode(mockCode);
             setProfileCompleted(false);
             setSurveyCompleted(false);
             setOnboardingComplete(false);
             return { error: null };
         }
 
-        console.log("[auth] signUp called with email:", email);
+        console.log("[auth] signUp called with email:", email, "role:", userRole);
         const { data, error } = await supabase.auth.signUp({ email, password });
         console.log("[auth] signUp result:", { user: data?.user?.id, session: !!data?.session, error });
         if (error) return { error: error.message };
         if (data.user) {
             console.log("[auth] User created, creating player record...");
-            const playerId = await createPlayerRecord(data.user.id, name, grade, email);
+            const playerId = await createPlayerRecord(data.user.id, name, grade, email, userRole);
             console.log("[auth] Player record created with id:", playerId);
             setPlayerDbId(playerId);
-            setProfileCompleted(false);
-            setSurveyCompleted(false);
-            setOnboardingComplete(false);
+            setProfileCompleted(userRole === 'parent'); // Parents skip profile
+            setSurveyCompleted(userRole === 'parent');   // Parents skip survey
+            setOnboardingComplete(userRole === 'parent'); // Parents skip onboarding
         } else {
             console.warn("[auth] signUp returned no user object");
         }
@@ -236,11 +280,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: null };
     }, []);
 
+    // Link a child account to this parent using the child's link code
+    const linkChild = useCallback(async (code: string): Promise<{ error: string | null; childName?: string }> => {
+        if (isMockMode || !supabase) {
+            // Mock mode: store in localStorage
+            const mockLinks = JSON.parse(localStorage.getItem('cosmomosaic_mock_links') || '[]');
+            mockLinks.push({ code, childId: 'mock-child-' + code });
+            localStorage.setItem('cosmomosaic_mock_links', JSON.stringify(mockLinks));
+            setLinkedChildren(prev => [...prev, 'mock-child-' + code]);
+            return { error: null, childName: 'Bé (mock)' };
+        }
+
+        if (!playerDbId) return { error: 'Chưa đăng nhập' };
+
+        // Find child by link_code
+        const { data: child, error: findErr } = await supabase
+            .from('players')
+            .select('id, name')
+            .eq('link_code', code.toUpperCase().trim())
+            .eq('role', 'child')
+            .single();
+
+        if (findErr || !child) {
+            return { error: 'Không tìm thấy mã liên kết. Vui lòng kiểm tra lại!' };
+        }
+
+        // Check if already linked
+        const { data: existing } = await supabase
+            .from('parent_child_link')
+            .select('id')
+            .eq('parent_id', playerDbId)
+            .eq('child_id', child.id)
+            .single();
+
+        if (existing) {
+            return { error: `Bé ${child.name} đã được liên kết trước đó!` };
+        }
+
+        // Create link
+        const { error: linkErr } = await supabase
+            .from('parent_child_link')
+            .insert({ parent_id: playerDbId, child_id: child.id });
+
+        if (linkErr) {
+            console.error('[auth] linkChild error:', linkErr);
+            return { error: 'Không thể liên kết. Vui lòng thử lại!' };
+        }
+
+        setLinkedChildren(prev => [...prev, child.id]);
+        return { error: null, childName: child.name };
+    }, [playerDbId]);
+
     const signOut = useCallback(async () => {
         if (isMockMode || !supabase) {
             localStorage.removeItem(MOCK_AUTH_KEY);
             setUser(null);
             setPlayerDbId(null);
+            setRole(null);
+            setLinkCode(null);
+            setLinkedChildren([]);
             setProfileCompleted(false);
             setSurveyCompleted(false);
             setOnboardingComplete(false);
@@ -255,8 +353,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return (
         <AuthContext.Provider value={{
-            user, session, loading,
-            signUp, signIn, signInWithGoogle, signInWithFacebook, signOut,
+            user, session, loading, role, linkCode, linkedChildren,
+            signUp, signIn, signInWithGoogle, signInWithFacebook, signOut, linkChild,
             playerDbId, profileCompleted, surveyCompleted, onboardingComplete,
             setSurveyDone, setOnboardingDone, setProfileDone,
         }}>

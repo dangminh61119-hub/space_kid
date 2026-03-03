@@ -9,22 +9,26 @@ import NeonButton from "@/components/NeonButton";
 import { useAuth } from "@/lib/services/auth-context";
 
 type AuthTab = "login" | "register";
+type RegisterRole = "child" | "parent";
 
 export default function LoginPage() {
     const router = useRouter();
-    const { signUp, signIn, signInWithGoogle, signInWithFacebook, loading: authLoading, user, profileCompleted, surveyCompleted, onboardingComplete } = useAuth();
+    const { signUp, signIn, signInWithGoogle, signInWithFacebook, loading: authLoading, user, role, profileCompleted, surveyCompleted, onboardingComplete } = useAuth();
 
     const [tab, setTab] = useState<AuthTab>("login");
+    const [registerRole, setRegisterRole] = useState<RegisterRole>("child");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState<string | null>(null);
 
-    // If already logged in, redirect based on status
+    // If already logged in, redirect based on role & status
     useEffect(() => {
         if (user) {
-            if (!profileCompleted) {
+            if (role === 'parent') {
+                router.push("/dashboard");
+            } else if (!profileCompleted) {
                 router.push("/profile");
             } else if (!surveyCompleted) {
                 router.push("/survey");
@@ -34,7 +38,7 @@ export default function LoginPage() {
                 router.push("/portal");
             }
         }
-    }, [user, profileCompleted, surveyCompleted, onboardingComplete, router]);
+    }, [user, role, profileCompleted, surveyCompleted, onboardingComplete, router]);
 
     /** Determine where to redirect after successful auth */
     const getRedirectPath = (isProfileDone: boolean, isSurveyDone: boolean, isOnboardingDone: boolean): string => {
@@ -52,13 +56,16 @@ export default function LoginPage() {
 
         try {
             if (tab === "register") {
-                const { error: err } = await signUp(email, password, email.split("@")[0], 3);
+                const { error: err } = await signUp(email, password, email.split("@")[0], 3, registerRole);
                 if (err) {
                     setError(err);
                 } else {
                     setSuccess("Đăng ký thành công!");
-                    // New user → always go to profile first
-                    setTimeout(() => router.push("/profile"), 800);
+                    if (registerRole === 'parent') {
+                        setTimeout(() => router.push("/dashboard/link"), 800);
+                    } else {
+                        setTimeout(() => router.push("/profile"), 800);
+                    }
                 }
             } else {
                 const { error: err } = await signIn(email, password);
@@ -143,6 +150,39 @@ export default function LoginPage() {
                                     exit={{ opacity: 0, x: tab === "register" ? -20 : 20 }}
                                     className="space-y-4"
                                 >
+                                    {/* Role selector for register */}
+                                    {tab === "register" && (
+                                        <div>
+                                            <label className="block text-white/60 text-xs mb-2 font-medium">
+                                                Bạn là ai? 🌟
+                                            </label>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setRegisterRole("child")}
+                                                    className={`p-3 rounded-xl border text-center transition-all ${registerRole === "child"
+                                                            ? "border-cyan-500/60 bg-cyan-500/10 text-cyan-300"
+                                                            : "border-white/10 bg-white/5 text-white/50 hover:border-white/20"
+                                                        }`}
+                                                >
+                                                    <div className="text-2xl mb-1">👧</div>
+                                                    <div className="text-xs font-bold">Học sinh</div>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setRegisterRole("parent")}
+                                                    className={`p-3 rounded-xl border text-center transition-all ${registerRole === "parent"
+                                                            ? "border-purple-500/60 bg-purple-500/10 text-purple-300"
+                                                            : "border-white/10 bg-white/5 text-white/50 hover:border-white/20"
+                                                        }`}
+                                                >
+                                                    <div className="text-2xl mb-1">👨‍👩‍👧</div>
+                                                    <div className="text-xs font-bold">Phụ huynh</div>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {/* Email */}
                                     <div>
                                         <label className="block text-white/60 text-xs mb-1.5 font-medium">

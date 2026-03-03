@@ -168,6 +168,13 @@ export default function PortalPage() {
                                 <div className="text-center pt-2">
                                     <span className="text-xs text-white/40">Lớp {player.grade} · Cấp {player.level}</span>
                                 </div>
+
+                                {/* Profile link */}
+                                <div className="pt-2">
+                                    <NeonButton variant="cyan" size="sm" href="/portal/player" className="w-full">
+                                        👤 Hồ sơ của tôi
+                                    </NeonButton>
+                                </div>
                             </div>
                         </GlassCard>
                     </motion.aside>

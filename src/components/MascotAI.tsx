@@ -37,137 +37,236 @@ const IDLE_MESSAGES = [
     "Cú Mèo tin bạn sẽ làm rất tốt! 💪",
 ];
 
-/* ─── Tech Cyber-Owl Mascot ─── */
+/* ─── Owl SVG Mascot (Reference Style) ─── */
 function OwlCharacter({ expression, calmMode }: { expression: Expression; calmMode: boolean }) {
+    /* Eye states based on expression */
+    const leftEye = useMemo<EyeState>(() => {
+        switch (expression) {
+            case "happy": return { pupilY: 30, lidClose: 0.4, sparkle: true, pupilSize: 7 };
+            case "sad": return { pupilY: 30, lidClose: 0.3, sparkle: false, pupilSize: 7.5 };
+            case "thinking": return { pupilY: 30, lidClose: 0, sparkle: false, pupilSize: 6, pupilX: -2 };
+            case "talking": return { pupilY: 30, lidClose: 0, sparkle: true, pupilSize: 7 };
+            case "wink": return { pupilY: 30, lidClose: 0.9, sparkle: false, pupilSize: 7 };
+            case "surprised": return { pupilY: 30, lidClose: 0, sparkle: true, pupilSize: 8.5 };
+            default: return { pupilY: 30, lidClose: 0, sparkle: true, pupilSize: 7 };
+        }
+    }, [expression]);
 
-    // Render high-tech digital eyes
-    const renderDigitalEye = (cx: number, cy: number, side: "left" | "right") => {
-        const isWinkLeft = expression === "wink" && side === "left";
-
-        if (expression === "happy") {
-            return <path d={`M ${cx - 4} ${cy + 1} Q ${cx} ${cy - 4} ${cx + 4} ${cy + 1}`} fill="none" stroke="#00F5FF" strokeWidth="2.5" strokeLinecap="round" filter="url(#neonGlow)" />
+    const rightEye = useMemo<EyeState>(() => {
+        switch (expression) {
+            case "happy": return { pupilY: 30, lidClose: 0.4, sparkle: true, pupilSize: 7 };
+            case "sad": return { pupilY: 30, lidClose: 0.3, sparkle: false, pupilSize: 7.5 };
+            case "thinking": return { pupilY: 30, lidClose: 0, sparkle: false, pupilSize: 6, pupilX: -2 };
+            case "talking": return { pupilY: 30, lidClose: 0, sparkle: true, pupilSize: 7 };
+            case "wink": return { pupilY: 30, lidClose: 0, sparkle: true, pupilSize: 7 };
+            case "surprised": return { pupilY: 30, lidClose: 0, sparkle: true, pupilSize: 8.5 };
+            default: return { pupilY: 30, lidClose: 0, sparkle: true, pupilSize: 7 };
         }
-        if (expression === "sad") {
-            return <path d={`M ${cx - 4} ${cy - 1} Q ${cx} ${cy + 4} ${cx + 4} ${cy - 1}`} fill="none" stroke="#00F5FF" strokeWidth="2.5" strokeLinecap="round" filter="url(#neonGlow)" />
-        }
-        if (isWinkLeft) {
-            return <line x1={cx - 5} y1={cy} x2={cx + 5} y2={cy} stroke="#00F5FF" strokeWidth="2.5" strokeLinecap="round" filter="url(#neonGlow)" />
-        }
-        if (expression === "thinking") {
-            // Processing/loading eye
-            return (
-                <g filter="url(#neonGlow)">
-                    <circle cx={cx} cy={cy} r="3.5" fill="none" stroke="#00F5FF" strokeWidth="1.5" strokeDasharray="3 3" />
-                    <circle cx={cx + 2} cy={cy - 2} r="2" fill="#00F5FF" />
-                </g>
-            )
-        }
-        if (expression === "surprised") {
-            return <circle cx={cx} cy={cy} r="4.5" fill="none" stroke="#00F5FF" strokeWidth="2" filter="url(#neonGlow)" />
-        }
-        // Default (idle, talking)
-        return <circle cx={cx} cy={cy} r="3.5" fill="#00F5FF" filter="url(#neonGlow)" />
-    };
+    }, [expression]);
 
     return (
-        <svg viewBox="0 0 100 110" className="w-full h-full drop-shadow-neon" style={{ filter: `drop-shadow(0 0 12px rgba(0,245,255,${calmMode ? "0.2" : "0.5"}))` }}>
+        <svg viewBox="0 0 100 110" className="w-full h-full drop-shadow-neon" style={{ filter: `drop-shadow(0 0 16px rgba(0,245,255,${calmMode ? "0.3" : "0.7"}))` }}>
             <defs>
-                {/* Tech Armor Gradient */}
-                <linearGradient id="armorGlow" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#1A2A54" />
-                    <stop offset="100%" stopColor="#080D1C" />
+                <radialGradient id="cyberBlue" cx="50%" cy="50%" r="60%">
+                    <stop offset="0%" stopColor="#2A4B8C" />
+                    <stop offset="60%" stopColor="#1B2A4A" />
+                    <stop offset="100%" stopColor="#0B152A" />
+                </radialGradient>
+                <linearGradient id="bronze" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#FAD6A5" />
+                    <stop offset="30%" stopColor="#D4A373" />
+                    <stop offset="70%" stopColor="#9C6644" />
+                    <stop offset="100%" stopColor="#5C3317" />
                 </linearGradient>
-                {/* Visor Glass Subsurface */}
-                <linearGradient id="visorGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#111B3D" />
-                    <stop offset="100%" stopColor="#040914" />
+                <radialGradient id="galaxy" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="#6C2B85" />
+                    <stop offset="40%" stopColor="#2E1B4A" />
+                    <stop offset="100%" stopColor="#0B152A" />
+                </radialGradient>
+                <linearGradient id="eyeGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#E0F7FA" />
+                    <stop offset="30%" stopColor="#00E5FF" />
+                    <stop offset="100%" stopColor="#0077B6" />
                 </linearGradient>
-                {/* Core Glow Effects */}
-                <filter id="neonGlow">
-                    <feGaussianBlur stdDeviation="2" result="blur" />
+                <linearGradient id="scrollGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#F5DEB3" />
+                    <stop offset="50%" stopColor="#FAEBD7" />
+                    <stop offset="100%" stopColor="#E6C280" />
+                </linearGradient>
+                <filter id="softGlow">
+                    <feGaussianBlur stdDeviation="1.5" result="blur" />
                     <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                </filter>
-                <filter id="orangeGlow">
-                    <feGaussianBlur stdDeviation="2" result="blur2" />
-                    <feComposite in="SourceGraphic" in2="blur2" operator="over" />
                 </filter>
             </defs>
 
-            {/* === TECH EARS (Antennae/Fins) === */}
+            {/* === LEGS & CLAWS (Bronze) === */}
             <g>
-                <path d="M 33 28 L 20 10 L 38 22 Z" fill="#080D1C" stroke="#00F5FF" strokeWidth="1.5" strokeLinejoin="round" />
-                <path d="M 31 25 L 23 15 L 35 21 Z" fill="#00F5FF" opacity="0.4" filter="url(#neonGlow)" />
-                <path d="M 67 28 L 80 10 L 62 22 Z" fill="#080D1C" stroke="#00F5FF" strokeWidth="1.5" strokeLinejoin="round" />
-                <path d="M 69 25 L 77 15 L 65 21 Z" fill="#00F5FF" opacity="0.4" filter="url(#neonGlow)" />
+                {/* Left Leg */}
+                <path d="M 38 78 L 33 92 C 32 96 28 97 28 97 C 32 97 35 99 35 99 C 36 96 39 94 40 92 L 44 78 Z" fill="url(#bronze)" stroke="#5C3317" strokeWidth="1" />
+                {/* Knee Joint */}
+                <circle cx="38" cy="80" r="3.5" fill="#1B2A4A" stroke="url(#bronze)" strokeWidth="1.5" />
+                <circle cx="38" cy="80" r="1.5" fill="#00E5FF" filter="url(#softGlow)" />
+                {/* Right Leg */}
+                <path d="M 62 78 L 67 92 C 68 96 72 97 72 97 C 68 97 65 99 65 99 C 64 96 61 94 60 92 L 56 78 Z" fill="url(#bronze)" stroke="#5C3317" strokeWidth="1" />
+                {/* Knee Joint */}
+                <circle cx="62" cy="80" r="3.5" fill="#1B2A4A" stroke="url(#bronze)" strokeWidth="1.5" />
+                <circle cx="62" cy="80" r="1.5" fill="#00E5FF" filter="url(#softGlow)" />
             </g>
 
-            {/* === HOVER WINGS (Anti-Gravity Panels) === */}
-            <motion.g animate={expression === 'happy' ? { rotate: [-15, 15, -15] } : { y: [0, -4, 0] }} transition={{ duration: expression === 'happy' ? 0.3 : 2.5, repeat: Infinity, ease: "easeInOut" }} style={{ transformOrigin: "13px 50px" }}>
-                <rect x="7" y="45" width="12" height="30" rx="6" fill="url(#armorGlow)" stroke="#00F5FF" strokeWidth="1.5" />
-                <rect x="11" y="50" width="4" height="20" rx="2" fill="#00F5FF" opacity="0.3" />
-                <rect x="11" y="50" width="4" height="20" rx="2" fill="none" stroke="#00F5FF" strokeWidth="1" filter="url(#neonGlow)" />
+            {/* === MAIN BODY === */}
+            {/* Base Armor Plate */}
+            <ellipse cx="50" cy="55" rx="34" ry="36" fill="url(#cyberBlue)" stroke="#0B152A" strokeWidth="2" />
+
+            {/* Galaxy Belly Panel */}
+            <path d="M 22 55 C 22 35 78 35 78 55 C 78 75 65 88 50 88 C 35 88 22 75 22 55 Z" fill="url(#galaxy)" stroke="url(#bronze)" strokeWidth="1.5" opacity="0.95" />
+            {/* Galaxy Stars */}
+            <circle cx="40" cy="50" r="0.8" fill="#FFF" opacity="0.9" filter="url(#softGlow)" />
+            <circle cx="60" cy="65" r="1.2" fill="#00E5FF" opacity="0.8" filter="url(#softGlow)" />
+            <circle cx="35" cy="60" r="1.5" fill="#FFF" opacity="0.7" filter="url(#softGlow)" />
+            <circle cx="55" cy="45" r="0.6" fill="#FFF" opacity="0.9" />
+            <circle cx="45" cy="70" r="1" fill="#D946EF" opacity="0.6" filter="url(#softGlow)" />
+            <circle cx="65" cy="55" r="0.8" fill="#FFF" opacity="0.5" />
+            {/* Nebula swoosh */}
+            <path d="M 30 65 Q 45 50 60 70 Q 55 75 45 65" fill="#00E5FF" opacity="0.2" filter="url(#softGlow)" />
+            <path d="M 45 45 Q 60 40 65 55 Q 55 50 50 55" fill="#D946EF" opacity="0.15" filter="url(#softGlow)" />
+
+            {/* Bronze Straps across chest */}
+            <path d="M 22 45 C 40 65 60 65 78 45" fill="none" stroke="url(#bronze)" strokeWidth="4" strokeLinecap="round" opacity="0.9" />
+            <path d="M 30 35 C 45 55 55 55 70 35" fill="none" stroke="url(#bronze)" strokeWidth="3" strokeLinecap="round" opacity="0.9" />
+
+            {/* Shield Emblem on Chest */}
+            <g transform="translate(50, 56)">
+                <path d="M -10 -10 L 10 -10 L 10 0 C 10 8 0 14 0 14 C 0 14 -10 8 -10 0 Z" fill="url(#cyberBlue)" stroke="url(#bronze)" strokeWidth="2.5" strokeLinejoin="round" />
+                {/* Cloud icon inside shield */}
+                <path d="M -3 3 Q -3 0 0 0 Q 4 0 4 3 Q 7 3 7 6 L -5 6 Q -7 6 -7 4 Q -7 3 -3 3 Z" fill="url(#bronze)" />
+            </g>
+
+            {/* === LEFT WING === */}
+            <motion.g
+                animate={expression === "happy" ? { rotate: [-5, 5, -5] } : { rotate: [0, 1, 0] }}
+                transition={{ duration: expression === "happy" ? 0.4 : 3, repeat: Infinity, ease: "easeInOut" }}
+                style={{ transformOrigin: "25px 45px" }}
+            >
+                <path d="M 22 42 C 10 50 5 65 10 80 C 15 90 28 75 30 65" fill="url(#cyberBlue)" stroke="#0B152A" strokeWidth="1.5" />
+                <path d="M 20 50 C 12 58 10 68 15 75 C 20 80 25 70 26 62" fill="#1B2A4A" stroke="#2A4B8C" strokeWidth="1" />
+                {/* Shoulder Armor Roundel */}
+                <circle cx="25" cy="48" r="8" fill="url(#cyberBlue)" stroke="url(#bronze)" strokeWidth="2" />
+                <path d="M 23 45 A 4 4 0 1 1 23 51" fill="none" stroke="#00E5FF" strokeWidth="2" filter="url(#softGlow)" opacity="0.8" />
             </motion.g>
-            <motion.g animate={expression === 'happy' ? { rotate: [15, -15, 15] } : { y: [0, -4, 0] }} transition={{ duration: expression === 'happy' ? 0.3 : 2.5, repeat: Infinity, ease: "easeInOut", delay: 0.2 }} style={{ transformOrigin: "87px 50px" }}>
-                <rect x="81" y="45" width="12" height="30" rx="6" fill="url(#armorGlow)" stroke="#00F5FF" strokeWidth="1.5" />
-                <rect x="85" y="50" width="4" height="20" rx="2" fill="#00F5FF" opacity="0.3" />
-                <rect x="85" y="50" width="4" height="20" rx="2" fill="none" stroke="#00F5FF" strokeWidth="1" filter="url(#neonGlow)" />
+
+            {/* === RIGHT WING & SCROLL === */}
+            <motion.g
+                animate={{ y: [0, -2, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+            >
+                {/* Right Wing Background */}
+                <path d="M 78 42 C 90 50 95 65 90 80 C 85 90 72 75 70 65" fill="url(#cyberBlue)" stroke="#0B152A" strokeWidth="1.5" />
+
+                {/* Detailed Parchment Scroll */}
+                <g transform="translate(68, 62) rotate(-15)">
+                    {/* Main Paper */}
+                    <path d="M 0 0 L 25 -5 L 20 30 L -5 35 Z" fill="url(#scrollGrad)" stroke="#9C6644" strokeWidth="1" />
+                    {/* Top Roll */}
+                    <path d="M -2 0 C -5 -3 0 -5 2 -3 L 25 -5 C 28 -8 32 -5 30 -2 L 5 0 Z" fill="#FAD6A5" stroke="#9C6644" strokeWidth="1" strokeLinejoin="round" />
+                    <circle cx="-1" cy="-2" r="1.5" fill="#5C3317" />
+                    {/* Bottom Roll */}
+                    <path d="M -5 35 C -8 32 -3 30 -1 32 L 20 30 C 17 27 22 25 24 28 L -1 37 Z" fill="#E6C280" stroke="#9C6644" strokeWidth="1" strokeLinejoin="round" />
+                    {/* Scroll Text Data Lines */}
+                    <line x1="5" y1="4" x2="20" y2="1" stroke="#5C3317" strokeWidth="1.2" strokeDasharray="3 1 2 2" opacity="0.6" />
+                    <line x1="3" y1="9" x2="18" y2="6" stroke="#5C3317" strokeWidth="1.2" strokeDasharray="4 2 1 1" opacity="0.6" />
+                    <line x1="1" y1="14" x2="16" y2="11" stroke="#5C3317" strokeWidth="1.2" strokeDasharray="2 2 4 1" opacity="0.6" />
+                    <line x1="-1" y1="19" x2="14" y2="16" stroke="#5C3317" strokeWidth="1.2" strokeDasharray="1 3 3 1" opacity="0.6" />
+                    <line x1="-3" y1="24" x2="12" y2="21" stroke="#00E5FF" strokeWidth="1.5" strokeDasharray="2 2 1 2" opacity="0.8" filter="url(#softGlow)" />
+                </g>
+
+                {/* Robotic Claws gripping the scroll */}
+                <path d="M 82 72 C 88 70 92 73 90 75 C 86 76 83 74 82 72 Z" fill="#1B2A4A" stroke="url(#bronze)" strokeWidth="1.5" strokeLinejoin="round" />
+                <path d="M 80 78 C 86 76 90 79 88 81 C 84 82 81 80 80 78 Z" fill="#1B2A4A" stroke="url(#bronze)" strokeWidth="1.5" strokeLinejoin="round" />
             </motion.g>
 
-            {/* === BODY (Sleek Drone Capsule) === */}
-            <rect x="25" y="25" width="50" height="60" rx="25" fill="url(#armorGlow)" stroke="#00F5FF" strokeWidth="2" />
-            <path d="M 25 50 Q 50 60 75 50" fill="none" stroke="#00F5FF" strokeWidth="1.5" opacity="0.5" />
+            {/* === HEAD & FACE BASE === */}
+            <ellipse cx="50" cy="32" rx="30" ry="26" fill="url(#cyberBlue)" stroke="#0B152A" strokeWidth="2" />
+            {/* Galaxy pattern on forehead */}
+            <path d="M 40 10 C 50 18 60 10 50 25 Z" fill="url(#galaxy)" opacity="0.8" filter="url(#softGlow)" />
 
-            {/* === CHEST ARMOR PLATING === */}
-            <path d="M 35 58 L 65 58 L 60 80 L 40 80 Z" fill="#040914" stroke="#00F5FF" strokeWidth="1" opacity="0.6" />
-            <path d="M 40 64 L 60 64" stroke="#00F5FF" strokeWidth="1" opacity="0.3" />
-            <path d="M 42 69 L 58 69" stroke="#00F5FF" strokeWidth="1" opacity="0.3" />
-            <path d="M 44 74 L 56 74" stroke="#00F5FF" strokeWidth="1" opacity="0.3" />
+            {/* V-Shape Blue Metal Brow Armor */}
+            <path d="M 24 18 C 35 25 45 32 50 35 C 55 32 65 25 76 18 C 80 20 75 14 74 12 C 65 18 55 24 50 28 C 45 24 35 18 26 12 C 25 14 20 20 24 18 Z" fill="url(#cyberBlue)" stroke="url(#bronze)" strokeWidth="1.5" strokeLinejoin="round" />
 
-            {/* === POWER CORE (Heart) === */}
-            <circle cx="50" cy="73" r="6" fill="#1A2A54" stroke="#00F5FF" strokeWidth="1.5" />
-            <motion.circle cx="50" cy="73" r="3" fill="#00F5FF" filter="url(#neonGlow)"
-                animate={{ scale: [1, 1.4, 1], opacity: [0.6, 1, 0.6] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            />
+            {/* Feathers/Ears sticking out top and sides */}
+            {/* Left Ears */}
+            <path d="M 28 22 C 20 12 15 5 28 15 Z" fill="url(#cyberBlue)" stroke="#1B2A4A" strokeWidth="1.5" />
+            <path d="M 25 20 C 18 12 16 8 26 14" fill="none" stroke="url(#bronze)" strokeWidth="1.5" />
+            {/* Right Ears */}
+            <path d="M 72 22 C 80 12 85 5 72 15 Z" fill="url(#cyberBlue)" stroke="#1B2A4A" strokeWidth="1.5" />
+            <path d="M 75 20 C 82 12 84 8 74 14" fill="none" stroke="url(#bronze)" strokeWidth="1.5" />
 
-            {/* === VISOR GOGGLES (Screens for eyes) === */}
-            <rect x="27" y="32" width="20" height="15" rx="5" fill="url(#visorGrad)" stroke="#00F5FF" strokeWidth="1.5" />
-            <rect x="53" y="32" width="20" height="15" rx="5" fill="url(#visorGrad)" stroke="#00F5FF" strokeWidth="1.5" />
+            {/* White face feather patch around beak */}
+            <path d="M 42 38 C 38 45 46 52 50 54 C 54 52 62 45 58 38 C 52 42 48 42 42 38 Z" fill="#E0F7FA" stroke="#2A4B8C" strokeWidth="1" />
 
-            {/* === DIGITAL LED EYES === */}
-            {renderDigitalEye(37, 39.5, "left")}
-            {renderDigitalEye(63, 39.5, "right")}
-
-            {/* === MECHANICAL BEAK === */}
+            {/* === BEAK === */}
             <g>
-                <motion.polygon
-                    points="46,50 54,50 50,56"
-                    fill="#FF8C00"
-                    stroke="#FF8C00"
-                    strokeWidth="1"
-                    filter="url(#orangeGlow)"
-                    animate={expression === 'talking' ? { scaleY: [1, 0.4, 1] } : { scaleY: 1 }}
-                    transition={{ duration: 0.25, repeat: Infinity }}
-                    style={{ transformOrigin: "50px 50px" }}
+                <motion.path
+                    d="M 46 38 C 50 36 50 36 54 38 C 52 45 51 46 50 50 C 49 46 48 45 46 38 Z"
+                    fill="#D4A373" stroke="#5C3317" strokeWidth="1.5" strokeLinejoin="round"
+                    animate={expression === "talking" ? { scaleY: [1, 0.7, 1] } : { scaleY: 1 }}
+                    transition={{ duration: 0.25, repeat: Infinity, ease: "easeInOut" }}
+                    style={{ transformOrigin: "50px 38px" }}
                 />
+                {/* Beak highlight */}
+                <path d="M 48 39 C 50 38 50 38 52 39 C 51 44 50.5 45 50 48 Z" fill="#FAD6A5" opacity="0.8" />
             </g>
 
-            {/* === FEET (Thruster Jets) === */}
+            {/* === HUGE GLOWING EYES === */}
+            {/* Left Eye */}
             <g>
-                <motion.path d="M 36 84 L 42 84 L 39 96 Z" fill="#FF8C00" opacity="0.8" filter="url(#orangeGlow)" animate={{ y: [0, 3, 0], opacity: [0.5, 1, 0.5] }} transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut" }} />
-                <path d="M 34 81 L 44 81 L 41 87 L 37 87 Z" fill="#1A2A54" stroke="#00F5FF" strokeWidth="1.5" strokeLinejoin="round" />
-            </g>
-            <g>
-                <motion.path d="M 58 84 L 64 84 L 61 96 Z" fill="#FF8C00" opacity="0.8" filter="url(#orangeGlow)" animate={{ y: [0, 3, 0], opacity: [0.5, 1, 0.5] }} transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut", delay: 0.15 }} />
-                <path d="M 56 81 L 66 81 L 63 87 L 59 87 Z" fill="#1A2A54" stroke="#00F5FF" strokeWidth="1.5" strokeLinejoin="round" />
+                {/* Bronze Ring Base */}
+                <circle cx="34" cy="30" r="16" fill="url(#bronze)" stroke="#5C3317" strokeWidth="1.5" />
+                {/* Bronze Mechanical Segments */}
+                <path d="M 34 14 L 34 18 M 34 46 L 34 42 M 18 30 L 22 30 M 50 30 L 46 30 M 22 18 L 25 21 M 46 42 L 43 39 M 22 42 L 25 39 M 46 18 L 43 21" stroke="#5C3317" strokeWidth="1.5" strokeLinecap="round" />
+                {/* Inner Base */}
+                <circle cx="34" cy="30" r="12" fill="#0B152A" stroke="#111" strokeWidth="2" />
+                {/* Glowing Iris Base */}
+                <circle cx="34" cy="30" r="11" fill="url(#eyeGlow)" opacity="0.9" filter="url(#softGlow)" />
+                {/* Inner Tech Ring */}
+                <circle cx="34" cy="30" r="8" fill="none" stroke="#FFF" strokeWidth="0.8" opacity="0.5" strokeDasharray="3 2" />
+                {/* Dark Pupil */}
+                <circle cx={34 + (leftEye.pupilX || 0)} cy={leftEye.pupilY} r={leftEye.pupilSize} fill="#0B152A" />
+                {/* Highlights */}
+                <circle cx={32 + (leftEye.pupilX || 0)} cy={leftEye.pupilY - 2} r="2.5" fill="#FFF" opacity="0.95" />
+                {leftEye.sparkle && <circle cx={36 + (leftEye.pupilX || 0)} cy={leftEye.pupilY + 1} r="1" fill="#00E5FF" filter="url(#softGlow)" />}
+                {/* Cyan tech arch */}
+                <path d="M 28 30 A 6 6 0 0 1 40 30" fill="none" stroke="#00E5FF" strokeWidth="1.5" opacity="0.8" filter="url(#softGlow)" />
+
+                {/* Eyelid for expressions */}
+                {leftEye.lidClose > 0 && (
+                    <path d={`M 18 30 C 25 ${30 + leftEye.lidClose * 20} 43 ${30 + leftEye.lidClose * 20} 50 30 A 16 16 0 0 0 18 30 Z`} fill="url(#cyberBlue)" stroke="#5C3317" strokeWidth="1.5" />
+                )}
             </g>
 
-            {/* === DIGITAL THINKING DATA BLOCKS === */}
+            {/* Right Eye */}
+            <g>
+                <circle cx="66" cy="30" r="16" fill="url(#bronze)" stroke="#5C3317" strokeWidth="1.5" />
+                <path d="M 66 14 L 66 18 M 66 46 L 66 42 M 50 30 L 54 30 M 82 30 L 78 30 M 54 18 L 57 21 M 78 42 L 75 39 M 54 42 L 57 39 M 78 18 L 75 21" stroke="#5C3317" strokeWidth="1.5" strokeLinecap="round" />
+                <circle cx="66" cy="30" r="12" fill="#0B152A" stroke="#111" strokeWidth="2" />
+                <circle cx="66" cy="30" r="11" fill="url(#eyeGlow)" opacity="0.9" filter="url(#softGlow)" />
+                <circle cx="66" cy="30" r="8" fill="none" stroke="#FFF" strokeWidth="0.8" opacity="0.5" strokeDasharray="3 2" />
+                <circle cx={66 + (rightEye.pupilX || 0)} cy={rightEye.pupilY} r={rightEye.pupilSize} fill="#0B152A" />
+                <circle cx={64 + (rightEye.pupilX || 0)} cy={rightEye.pupilY - 2} r="2.5" fill="#FFF" opacity="0.95" />
+                {rightEye.sparkle && <circle cx={68 + (rightEye.pupilX || 0)} cy={rightEye.pupilY + 1} r="1" fill="#00E5FF" filter="url(#softGlow)" />}
+                <path d="M 60 30 A 6 6 0 0 1 72 30" fill="none" stroke="#00E5FF" strokeWidth="1.5" opacity="0.8" filter="url(#softGlow)" />
+
+                {/* Eyelid for expressions */}
+                {rightEye.lidClose > 0 && (
+                    <path d={`M 50 30 C 57 ${30 + rightEye.lidClose * 20} 75 ${30 + rightEye.lidClose * 20} 82 30 A 16 16 0 0 0 50 30 Z`} fill="url(#cyberBlue)" stroke="#5C3317" strokeWidth="1.5" />
+                )}
+            </g>
+
+            {/* Thinking bubbles (Adapted for Cyber-Owl) */}
             {expression === "thinking" && (
-                <g fill="#00F5FF" filter="url(#neonGlow)">
-                    <motion.rect x="75" y="24" width="4" height="4" rx="1" animate={{ y: [0, -5, 0], opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.5, repeat: Infinity }} />
-                    <motion.rect x="82" y="15" width="3" height="3" rx="1" animate={{ y: [0, -6, 0], opacity: [0.3, 0.8, 0.3] }} transition={{ duration: 1.8, repeat: Infinity, delay: 0.3 }} />
-                    <motion.rect x="88" y="8" width="2" height="2" rx="0.5" animate={{ y: [0, -4, 0], opacity: [0.2, 0.6, 0.2] }} transition={{ duration: 2, repeat: Infinity, delay: 0.6 }} />
+                <g fill="#00E5FF" filter="url(#softGlow)">
+                    <motion.circle cx="82" cy="22" r="3" animate={{ y: [0, -4, 0], opacity: [0.5, 0.9, 0.5] }} transition={{ duration: 2, repeat: Infinity }} />
+                    <motion.circle cx="88" cy="14" r="2.5" fill="#FAD6A5" animate={{ y: [0, -5, 0], opacity: [0.4, 0.8, 0.4] }} transition={{ duration: 2.5, repeat: Infinity, delay: 0.3 }} />
+                    <motion.circle cx="92" cy="8" r="2" animate={{ y: [0, -3, 0], opacity: [0.3, 0.7, 0.3] }} transition={{ duration: 2, repeat: Infinity, delay: 0.6 }} />
                 </g>
             )}
         </svg>

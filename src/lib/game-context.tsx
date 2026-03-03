@@ -13,6 +13,13 @@ export interface PlanetProgress {
     lastPlayedAt?: string;
 }
 
+export interface ParentControls {
+    dailyPlayLimit: number;      // phút, 0 = không giới hạn
+    breakReminder: boolean;      // nhắc nghỉ ngơi
+    breakInterval: number;       // phút giữa các lần nhắc
+    allowCalmMode: boolean;      // cho phép bé bật Calm Mode
+}
+
 export interface PlayerData {
     name: string;
     mascot: "cat" | "dog" | null;
@@ -38,6 +45,8 @@ export interface PlayerData {
     masteryByTopic: Record<string, number>;       // topic key → mastery % (0–100)
     bloomLevelReached: Record<string, number>;     // topic key → Bloom level (1–6)
     planetsProgress: Record<string, PlanetProgress>;
+    achievements: string[];            // Danh sách achievementId đã đạt
+    parentControls: ParentControls;    // Cài đặt của phụ huynh
 }
 
 interface GameContextType {
@@ -50,6 +59,8 @@ interface GameContextType {
     resetClassAbility: () => void;
     resetGame: () => void;
     setCalmMode: (enabled: boolean) => void;  // Toggle Calm Mode
+    unlockAchievement: (id: string) => void;  // Mở khóa thành tích
+    updateParentControls: (controls: Partial<ParentControls>) => void; // Cập nhật cài đặt phụ huynh
 }
 
 /* ─── Defaults ─── */
@@ -77,6 +88,13 @@ const DEFAULT_PLAYER: PlayerData = {
     calmMode: false,                   // Will be auto-enabled for grade ≤ 2
     masteryByTopic: {},                // Loaded from Supabase mastery table
     bloomLevelReached: {},             // Loaded from Supabase mastery table
+    achievements: [],                  // Danh sách badge thành tích
+    parentControls: {
+        dailyPlayLimit: 0,             // 0 = không giới hạn
+        breakReminder: true,           // mặc định bật nhắc nghỉ
+        breakInterval: 30,             // nhắc mỗi 30 phút
+        allowCalmMode: true,           // cho phép Calm Mode
+    },
     planetsProgress: {
         "ha-long": { completedLevels: 0, totalLevels: 20 },
         "hue": { completedLevels: 0, totalLevels: 25 },
@@ -346,6 +364,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
+    const unlockAchievement = useCallback((id: string) => {
+        setPlayer(prev => {
+            if (prev.achievements.includes(id)) return prev; // Đã có rồi
+            return { ...prev, achievements: [...prev.achievements, id] };
+        });
+    }, []);
+
+    const updateParentControls = useCallback((controls: Partial<ParentControls>) => {
+        setPlayer(prev => ({
+            ...prev,
+            parentControls: { ...prev.parentControls, ...controls },
+        }));
+    }, []);
+
     // Don't render children until hydrated to avoid mismatch
     if (!isHydrated) {
         return null; // Or a loading spinner
@@ -363,6 +395,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
                 resetClassAbility,
                 resetGame,
                 setCalmMode,
+                unlockAchievement,
+                updateParentControls,
             }}
         >
             {children}

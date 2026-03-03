@@ -118,13 +118,11 @@ export default function SurveyPage() {
             };
         }
 
-        // Update GameContext
+        // Update GameContext — chỉ cập nhật estimatedGrade, KHÔNG ghi đè grade người dùng đã khai
         updatePlayer({
-            grade: results.estimatedGrade,
             estimatedGrade: results.estimatedGrade,
             onboardingQuizScore: results.totalCorrect,
             surveyCompleted: true,
-            // We store proficiency-related info too
         });
 
         // Save proficiency data & mark survey completed in DB

@@ -7,6 +7,7 @@ import StarField from "@/components/StarField";
 import GlassCard from "@/components/GlassCard";
 import NeonButton from "@/components/NeonButton";
 import ParentConsentModal from "@/components/ParentConsentModal";
+import LinkCodePopup from "@/components/LinkCodePopup";
 import { useGame } from "@/lib/game-context";
 import { useAuth, saveProfileData, type ProfileFormData } from "@/lib/services/auth-context";
 import { recordParentConsent, logAuditEvent } from "@/lib/analytics/learning-events";
@@ -26,7 +27,7 @@ type Step = (typeof steps)[number];
 export default function ProfilePage() {
     const router = useRouter();
     const { updatePlayer } = useGame();
-    const { playerDbId, profileCompleted, setProfileDone } = useAuth();
+    const { playerDbId, profileCompleted, setProfileDone, linkCode } = useAuth();
 
     const [currentStep, setCurrentStep] = useState<Step>("child");
     const [childName, setChildName] = useState("");
@@ -40,6 +41,8 @@ export default function ProfilePage() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showConsent, setShowConsent] = useState(false);
+    const [showLinkCode, setShowLinkCode] = useState(false);
+    const [savedLinkCode, setSavedLinkCode] = useState<string | null>(null);
 
     // Redirect if already completed
     useEffect(() => {
@@ -118,7 +121,28 @@ export default function ProfilePage() {
                 favoriteSubjects: data.favoriteSubjects
             });
             setProfileDone();
-            router.push("/survey");
+
+            // Get link code and send email to parent
+            const code = linkCode;
+            if (code && data.parentEmail) {
+                setSavedLinkCode(code);
+                // Fire-and-forget email via Edge Function
+                fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-link-code`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+                    },
+                    body: JSON.stringify({
+                        parentEmail: data.parentEmail,
+                        childName: data.childName,
+                        linkCode: code,
+                    }),
+                }).catch((err) => console.error('[profile] send-link-code error:', err));
+                setShowLinkCode(true);
+            } else {
+                router.push("/survey");
+            }
         } catch {
             setError("Đã xảy ra lỗi. Vui lòng thử lại!");
         }
@@ -392,6 +416,19 @@ export default function ProfilePage() {
                     childName={childName || "Tân Binh"}
                     onConsent={handleConsentAndSave}
                     onCancel={() => setShowConsent(false)}
+                />
+            )}
+
+            {/* Link Code Popup */}
+            {showLinkCode && savedLinkCode && (
+                <LinkCodePopup
+                    linkCode={savedLinkCode}
+                    childName={childName || "Tân Binh"}
+                    parentEmail={parentEmail}
+                    onClose={() => {
+                        setShowLinkCode(false);
+                        router.push("/survey");
+                    }}
                 />
             )}
         </div>

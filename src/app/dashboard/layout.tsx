@@ -3,17 +3,32 @@
 import { ReactNode, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useRequireRole } from "@/hooks/useRequireRole";
 
 const navItems = [
     { label: "Tổng quan", icon: "📊", href: "/dashboard" },
-    { label: "Tiến độ", icon: "📈", href: "/dashboard#progress" },
+    { label: "Lịch sử", icon: "📅", href: "/dashboard/history" },
+    { label: "Giới hạn", icon: "⏰", href: "/dashboard/controls" },
+    { label: "Liên kết", icon: "🔗", href: "/dashboard/link" },
     { label: "AI Insights", icon: "🤖", href: "/dashboard#insights" },
-    { label: "Cài đặt", icon: "⚙️", href: "/dashboard#settings" },
+    { label: "Cài đặt", icon: "⚙️", href: "/dashboard/settings" },
 ];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
     const pathname = usePathname();
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const { loading, allowed } = useRequireRole("parent");
+
+    if (loading || !allowed) {
+        return (
+            <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--dash-bg)" }}>
+                <div className="text-center">
+                    <div className="text-4xl animate-pulse mb-3">🌌</div>
+                    <p className="text-gray-500 text-sm">Đang kiểm tra quyền truy cập...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen flex" style={{ background: "var(--dash-bg)", color: "var(--dash-text)" }}>
