@@ -75,9 +75,10 @@ export default function TimeBombGame({
             setBombTime(prev => {
                 const next = Math.round((prev - 0.1) * 10) / 10;
                 if (next <= 0) {
-                    // BOOM! Show explosion overlay, don't navigate yet
+                    // BOOM! Signal controller immediately
                     clearInterval(timerRef.current!);
                     stopBGM();
+                    onGameComplete?.(score, 0); // 0 = lose
                     setGameState("gameOver");
                     return 0;
                 }
@@ -136,6 +137,7 @@ export default function TimeBombGame({
                     if (next <= 0) {
                         setTimeout(() => {
                             stopBGM();
+                            onGameComplete?.(score, 0); // 0 = lose
                             setGameState("gameOver");
                         }, 600);
                         return 0;

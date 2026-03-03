@@ -1,46 +1,48 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Props {
     planetName: string;
     planetEmoji: string;
-    storyText: string;
+    videoSrc?: string;        // e.g. "/videos/planets/hue.mp4"
     onStart: () => void;
 }
 
 const STAR_COUNT = 30;
 
-export default function PlanetStoryIntro({ planetName, planetEmoji, storyText, onStart }: Props) {
-    const [phase, setPhase] = useState<"travel" | "arrive" | "story" | "ready">("travel");
-    const [typedText, setTypedText] = useState("");
+export default function PlanetStoryIntro({ planetName, planetEmoji, videoSrc, onStart }: Props) {
+    const [phase, setPhase] = useState<"travel" | "video" | "ready">("travel");
+    const videoRef = useRef<HTMLVideoElement>(null);
 
-    // Phase progression
+    // Phase: travel → video (or ready if no video)
     useEffect(() => {
-        const t1 = setTimeout(() => setPhase("arrive"), 2000);
-        const t2 = setTimeout(() => setPhase("story"), 3200);
-        return () => { clearTimeout(t1); clearTimeout(t2); };
-    }, []);
-
-    // Typewriter effect for story
-    useEffect(() => {
-        if (phase !== "story") return;
-        let idx = 0;
-        const interval = setInterval(() => {
-            idx++;
-            setTypedText(storyText.slice(0, idx));
-            if (idx >= storyText.length) {
-                clearInterval(interval);
-                setTimeout(() => setPhase("ready"), 400);
+        const t = setTimeout(() => {
+            if (videoSrc) {
+                setPhase("video");
+            } else {
+                setPhase("ready");
             }
-        }, 35);
-        return () => clearInterval(interval);
-    }, [phase, storyText]);
+        }, 2200);
+        return () => clearTimeout(t);
+    }, [videoSrc]);
+
+    // Auto-play video when phase changes
+    useEffect(() => {
+        if (phase === "video" && videoRef.current) {
+            videoRef.current.play().catch(() => { });
+        }
+    }, [phase]);
+
+    // When video ends → ready
+    const handleVideoEnd = () => {
+        setPhase("ready");
+    };
 
     return (
         <div className="absolute inset-0 bg-space-deep overflow-hidden flex items-center justify-center z-40">
-            {/* Stars */}
+            {/* Stars background */}
             <div className="absolute inset-0 pointer-events-none">
                 {Array.from({ length: STAR_COUNT }).map((_, i) => (
                     <motion.div
@@ -62,16 +64,16 @@ export default function PlanetStoryIntro({ planetName, planetEmoji, storyText, o
                 ))}
             </div>
 
-            {/* Nebula glow */}
+            {/* Nebula */}
             <div className="absolute inset-0 pointer-events-none">
                 <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-[80px]" />
                 <div className="absolute bottom-1/4 right-1/4 w-56 h-56 bg-cyan-500/10 rounded-full blur-[80px]" />
             </div>
 
-            <div className="relative z-10 flex flex-col items-center gap-6 max-w-lg px-6">
-                {/* Spaceship → Planet transition */}
+            <div className="relative z-10 flex flex-col items-center gap-5 max-w-lg w-full px-6">
                 <AnimatePresence mode="wait">
-                    {(phase === "travel") && (
+                    {/* Phase 1: Spaceship traveling */}
+                    {phase === "travel" && (
                         <motion.div
                             key="ship"
                             initial={{ x: -150, opacity: 0 }}
@@ -84,12 +86,57 @@ export default function PlanetStoryIntro({ planetName, planetEmoji, storyText, o
                         </motion.div>
                     )}
 
-                    {(phase === "arrive" || phase === "story" || phase === "ready") && (
+                    {/* Phase 2: Video playing */}
+                    {phase === "video" && videoSrc && (
                         <motion.div
-                            key="planet"
-                            initial={{ scale: 0, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            transition={{ type: "spring", duration: 0.8 }}
+                            key="video"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.5 }}
+                            className="w-full"
+                        >
+                            {/* Planet title */}
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="text-center mb-4"
+                            >
+                                <span className="text-4xl mb-1 block">{planetEmoji}</span>
+                                <h1 className="text-xl sm:text-2xl font-bold font-[var(--font-heading)] text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan to-neon-magenta">
+                                    {planetName}
+                                </h1>
+                            </motion.div>
+
+                            {/* Video player */}
+                            <div className="relative rounded-2xl overflow-hidden border border-white/20 shadow-[0_0_30px_rgba(0,245,255,0.15)]">
+                                <video
+                                    ref={videoRef}
+                                    src={videoSrc}
+                                    onEnded={handleVideoEnd}
+                                    playsInline
+                                    muted={false}
+                                    className="w-full rounded-2xl"
+                                    style={{ maxHeight: "300px", objectFit: "cover" }}
+                                />
+                                {/* Skip button on video */}
+                                <button
+                                    onClick={() => setPhase("ready")}
+                                    className="absolute bottom-3 right-3 text-xs text-white/50 hover:text-white/80 transition-colors bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm"
+                                >
+                                    Bỏ qua →
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* Phase 3: Ready to start */}
+                    {phase === "ready" && (
+                        <motion.div
+                            key="ready"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ type: "spring" }}
                             className="text-center"
                         >
                             <motion.div
@@ -99,54 +146,24 @@ export default function PlanetStoryIntro({ planetName, planetEmoji, storyText, o
                             >
                                 {planetEmoji}
                             </motion.div>
-                            <motion.h1
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.3 }}
-                                className="text-2xl sm:text-3xl font-bold font-[var(--font-heading)] text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan to-neon-magenta"
-                            >
+                            <h1 className="text-2xl sm:text-3xl font-bold font-[var(--font-heading)] text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan to-neon-magenta mb-6">
                                 {planetName}
-                            </motion.h1>
+                            </h1>
+                            <motion.button
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ type: "spring", delay: 0.2 }}
+                                onClick={onStart}
+                                className="px-8 py-3.5 rounded-full bg-gradient-to-r from-neon-cyan to-neon-magenta text-white font-bold text-lg tracking-wide hover:scale-105 transition-transform shadow-[0_0_30px_rgba(0,245,255,0.4)]"
+                            >
+                                Bắt đầu khám phá! 🌟
+                            </motion.button>
                         </motion.div>
                     )}
                 </AnimatePresence>
 
-                {/* Story from Owl Commander */}
-                {(phase === "story" || phase === "ready") && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="glass-card !rounded-2xl !p-5 border border-neon-gold/20 w-full"
-                    >
-                        <div className="flex items-start gap-3">
-                            <span className="text-3xl shrink-0 mt-1">🦉</span>
-                            <div>
-                                <p className="text-xs text-neon-gold font-bold mb-1.5">Chỉ huy Cú Mèo</p>
-                                <p className="text-white/80 text-sm leading-relaxed min-h-[3em]">
-                                    &ldquo;{typedText}
-                                    {phase === "story" && <span className="animate-pulse text-neon-cyan">|</span>}
-                                    &rdquo;
-                                </p>
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-
-                {/* Start button */}
-                {phase === "ready" && (
-                    <motion.button
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", delay: 0.2 }}
-                        onClick={onStart}
-                        className="px-8 py-3.5 rounded-full bg-gradient-to-r from-neon-cyan to-neon-magenta text-white font-bold text-lg tracking-wide hover:scale-105 transition-transform shadow-[0_0_30px_rgba(0,245,255,0.4)]"
-                    >
-                        Bắt đầu khám phá! 🌟
-                    </motion.button>
-                )}
-
-                {/* Skip button (always visible) */}
-                {phase !== "ready" && (
+                {/* Skip during travel */}
+                {phase === "travel" && (
                     <motion.button
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}

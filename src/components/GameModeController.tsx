@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import SpaceShooterGame from "./SpaceShooterGame";
 import StarHunterGame from "./StarHunterGame";
 import MeteorShowerGame from "./MeteorShowerGame";
@@ -36,15 +36,16 @@ function getModeForLevel(levelNum: number): GameMode {
     return MODE_ORDER[(levelNum - 1) % MODE_ORDER.length];
 }
 
-/* ─── Story intros per planet ─── */
-const PLANET_STORIES: Record<string, string> = {
-    "Cố đô Huế": "Kinh thành Huế đang bị Băng đảng Lười Biếng phá hủy các văn bản cổ! Hãy dùng sức mạnh ngôn ngữ để khôi phục chúng! Mỗi màn sẽ là một thử thách mới, từ dễ đến khó!",
-    "Vịnh Hạ Long": "Vịnh Hạ Long bị phong ấn bởi ma thuật tối! Chúng ta phải vượt qua nhiều thử thách để phá phong ấn từng lớp một!",
-    "Làng Gióng": "Lò rèn của Thánh Gióng cần năng lượng! Mỗi màn chơi sẽ rèn luyện cho bạn một sức mạnh mới!",
-    "Phong Nha": "Hang động Phong Nha ẩn chứa bí mật khoa học! Càng đi sâu, thử thách càng lớn!",
-    "Phố cổ Hội An": "Đèn lồng Hội An đang tắt dần! Thắp sáng từng đèn bằng tri thức qua mỗi màn chơi!",
-    "Ruộng bậc thang Sa Pa": "Ruộng bậc thang bị mã hóa! Giải mã từng tầng bằng Toán học!",
-    "Thủ đô Hà Nội": "Thăng Long đang bị xóa trí nhớ! Hãy viết lại lịch sử qua từng sứ mệnh!",
+/* ─── Video intros per planet ─── */
+/* Place your video clips in /public/videos/planets/{key}.mp4 */
+const PLANET_VIDEOS: Record<string, string> = {
+    "Cố đô Huế": "/videos/planets/hue.mp4",
+    "Vịnh Hạ Long": "/videos/planets/halong.mp4",
+    "Làng Gióng": "/videos/planets/giong.mp4",
+    "Phong Nha": "/videos/planets/phongnha.mp4",
+    "Phố cổ Hội An": "/videos/planets/hoian.mp4",
+    "Ruộng bậc thang Sa Pa": "/videos/planets/sapa.mp4",
+    "Thủ đô Hà Nội": "/videos/planets/hanoi.mp4",
 };
 
 export default function GameModeController({
@@ -59,16 +60,24 @@ export default function GameModeController({
     completedLevels = 0,
     isFirstVisit = false,
 }: GameModeControllerProps) {
-    // Start with planet intro if first visit, otherwise go to level intro
     const [state, setState] = useState<ControllerState>(
         isFirstVisit ? "planetIntro" : "levelIntro"
     );
-    // Start from the level AFTER the ones already completed (0-indexed)
-    const [currentLevelIdx, setCurrentLevelIdx] = useState(
-        Math.min(completedLevels, levels.length - 1)
-    );
+    const startIdx = Math.min(completedLevels, Math.max(0, levels.length - 1));
+    const [currentLevelIdx, setCurrentLevelIdx] = useState(startIdx);
     const [totalScore, setTotalScore] = useState(0);
     const [lastLevelScore, setLastLevelScore] = useState(0);
+    // Key to force-remount game components
+    const [gameKey, setGameKey] = useState(0);
+    // Track if we already handled this game's completion (prevent double-fire)
+    const handledRef = useRef(false);
+
+    // Reset handled flag when entering playing state
+    useEffect(() => {
+        if (state === "playing") {
+            handledRef.current = false;
+        }
+    }, [state, gameKey]);
 
     if (levels.length === 0) return null;
 
@@ -76,64 +85,73 @@ export default function GameModeController({
     const activeMode = getModeForLevel(currentLevel?.level ?? 1);
     const totalLevels = levels.length;
 
-    // Handle game completion for a single level
-    const handleLevelComplete = useCallback((score: number, _levelsInGame: number) => {
+    // Handle game completion — called by each game component
+    const handleLevelComplete = (score: number, levelsInGame: number) => {
+        // Prevent double-fire (some games call onGameComplete multiple times)
+        if (handledRef.current) return;
+        handledRef.current = true;
+
         setLastLevelScore(score);
         setTotalScore(prev => prev + score);
 
-        // If score > 0, they completed the level (win)
-        if (score > 0) {
-            // Report progress to parent
+        // levelsInGame > 0 AND score > 0 = win, otherwise lose
+        const isWin = levelsInGame > 0 && score > 0;
+
+        if (isWin) {
             onGameComplete(score, currentLevelIdx + 1);
             setState("levelWin");
         } else {
             setState("levelLose");
         }
-    }, [currentLevelIdx, onGameComplete]);
+    };
 
-    // Go to next level
-    const handleContinue = useCallback(() => {
+    // Continue to next level or retry
+    const handleContinue = () => {
         if (state === "levelWin") {
             const nextIdx = currentLevelIdx + 1;
             if (nextIdx >= totalLevels) {
-                // All levels done! Exit to portal
                 onExit();
                 return;
             }
             setCurrentLevelIdx(nextIdx);
+            setGameKey(k => k + 1); // Force remount
             setState("levelIntro");
         } else if (state === "levelLose") {
-            // Retry same level
+            setGameKey(k => k + 1); // Force remount for retry
             setState("levelIntro");
         }
-    }, [state, currentLevelIdx, totalLevels, onExit]);
+    };
 
-    // Get next game mode label for transition preview
+    const handleExitToPortal = () => {
+        onGameComplete(totalScore, currentLevelIdx + (state === "levelWin" ? 1 : 0));
+        onExit();
+    };
+
+    // Get next game mode
     const getNextGameMode = (): string | undefined => {
         const nextIdx = currentLevelIdx + 1;
         if (nextIdx >= totalLevels) return undefined;
-        const nextLevel = levels[nextIdx];
-        return getModeForLevel(nextLevel?.level ?? 1);
+        return getModeForLevel(levels[nextIdx]?.level ?? 1);
     };
 
-    /* ─── RENDER based on state ─── */
+    /* ─── RENDER ─── */
 
-    // Planet story intro (first visit only)
+    // Planet intro
     if (state === "planetIntro") {
-        const story = PLANET_STORIES[planetName] || "Hành tinh này cần sự giúp đỡ của bạn! Hãy vượt qua các thử thách!";
+        const videoSrc = PLANET_VIDEOS[planetName];
         return (
             <div className="w-full max-w-5xl mx-auto relative min-h-[500px] rounded-2xl overflow-hidden border border-white/10 bg-space-deep">
                 <PlanetStoryIntro
                     planetName={planetName}
                     planetEmoji={planetEmoji}
-                    storyText={story}
+                    videoSrc={videoSrc}
                     onStart={() => setState("levelIntro")}
                 />
             </div>
         );
     }
 
-    // Level intro (before each level)
+    // Level intro
     if (state === "levelIntro" && currentLevel) {
         return (
             <div className="w-full max-w-5xl mx-auto relative min-h-[500px] rounded-2xl overflow-hidden border border-white/10 bg-space-deep flex items-center justify-center">
@@ -141,7 +159,7 @@ export default function GameModeController({
                     planetName={planetName}
                     planetEmoji={planetEmoji}
                     levelTitle={currentLevel.title}
-                    levelNumber={currentLevel.level}
+                    levelNumber={currentLevelIdx + 1}
                     subject={currentLevel.subject}
                     playerClass={playerClass}
                     gameMode={activeMode}
@@ -151,8 +169,8 @@ export default function GameModeController({
         );
     }
 
-    // Level complete / fail transition
-    if ((state === "levelWin" || state === "levelLose") && currentLevel) {
+    // Transition screens
+    if ((state === "levelWin" || state === "levelLose")) {
         return (
             <div className="w-full max-w-5xl mx-auto relative min-h-[500px] rounded-2xl overflow-hidden border border-white/10 bg-space-deep flex items-center justify-center">
                 <LevelTransition
@@ -164,19 +182,28 @@ export default function GameModeController({
                     planetEmoji={planetEmoji}
                     planetName={planetName}
                     onContinue={handleContinue}
-                    onExit={() => { onGameComplete(totalScore, currentLevelIdx + 1); onExit(); }}
+                    onExit={handleExitToPortal}
                 />
             </div>
         );
     }
 
-    // Playing — render the game for CURRENT level only
+    // Playing — render game for current level only
     if (state === "playing" && currentLevel) {
-        const singleLevelArr = [currentLevel]; // Pass only 1 level to game
+        const singleLevel = [currentLevel];
+
+        // When game calls onExit (e.g. from "Thoát" button), treat as lose
+        const handleGameExit = () => {
+            if (!handledRef.current) {
+                handledRef.current = true;
+                setState("levelLose");
+            }
+        };
 
         const commonProps = {
-            levels: singleLevelArr,
-            onExit: () => setState("levelLose"), // exiting mid-game = lose
+            key: gameKey, // Force remount on level change
+            levels: singleLevel,
+            onExit: handleGameExit,
             playerClass,
             onGameComplete: handleLevelComplete,
             onAnswered,
@@ -187,7 +214,7 @@ export default function GameModeController({
             case "shooter":
                 return <SpaceShooterGame {...commonProps} />;
             case "star-hunter":
-                return <StarHunterGame levels={singleLevelArr} onExit={() => setState("levelLose")} playerClass={playerClass} onGameComplete={handleLevelComplete} calmMode={calmMode} />;
+                return <StarHunterGame key={gameKey} levels={singleLevel} onExit={handleGameExit} playerClass={playerClass} onGameComplete={handleLevelComplete} calmMode={calmMode} />;
             case "meteor":
                 return <MeteorShowerGame {...commonProps} />;
             case "rush":
