@@ -11,7 +11,7 @@ interface LevelIntroProps {
     subject: string;
     onStart: () => void;
     playerClass?: "warrior" | "wizard" | "hunter" | null;
-    gameMode?: "shooter" | "star-hunter" | "math-forge" | "meteor" | "rush";
+    gameMode?: "shooter" | "star-hunter" | "math-forge" | "meteor" | "rush" | "word-craft" | "timebomb" | "galaxy-sort" | "cosmo-bridge";
 }
 
 const classMessages = {
@@ -26,6 +26,10 @@ const MODE_INTRO = {
     "math-forge": { icon: "⚒️", label: "Lò Rèn Vũ Trụ" },
     "meteor": { icon: "☄️", label: "Mưa Thiên Thạch" },
     "rush": { icon: "⚡", label: "Đố Nhanh Vũ Trụ" },
+    "word-craft": { icon: "✍️", label: "Xưởng Chữ Vũ Trụ" },
+    "timebomb": { icon: "💣", label: "Bom Hẹn Giờ" },
+    "galaxy-sort": { icon: "🔬", label: "Phân Loại Thiên Hà" },
+    "cosmo-bridge": { icon: "🌉", label: "Cầu Nối Tri Thức" },
 };
 
 const storyIntros: Record<string, string> = {
@@ -35,6 +39,7 @@ const storyIntros: Record<string, string> = {
     "Phong Nha": "Hang động Phong Nha ẩn chứa bí mật khoa học! Khám phá sâu hơn bằng kiến thức của bạn!",
     "Phố cổ Hội An": "Đèn lồng Hội An đang tắt dần! Thắp sáng chúng bằng nghệ thuật và ngôn ngữ!",
     "Ruộng bậc thang Sa Pa": "Ruộng bậc thang bị mã hóa! Giải mã bằng Toán học để cứu mùa vụ!",
+    "Thủ đô Hà Nội": "Thăng Long nghìn năm đang bị xóa trí nhớ! Hãy viết lại lịch sử và địa lý bằng chính ngòi bút của bạn!",
 };
 
 export default function LevelIntro({

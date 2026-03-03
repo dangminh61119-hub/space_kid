@@ -50,7 +50,7 @@ export interface DBQuestion {
     subject: string;
     grade: number;
     difficulty: "easy" | "medium" | "hard";
-    type: "word" | "math";
+    type: "word" | "math" | "open-ended";
     // SpaceShooter
     question_text: string | null;
     correct_word: string | null;
@@ -59,6 +59,8 @@ export interface DBQuestion {
     equation: string | null;
     answer: number | null;
     options: number[] | null;
+    // WordCraft (open-ended)
+    accept_answers: string[] | null;
     // Analytics
     times_shown: number;
     times_wrong: number;

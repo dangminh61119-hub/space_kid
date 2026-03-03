@@ -38,6 +38,11 @@ const GAME_HOW_TO_PLAY: Record<string, { icon: string; label: string; howTo: str
         label: "Đa Chế Độ Tăng Dần",
         howTo: "Xoay vòng giữa Bắn Từ Không Gian và Săn Sao xuyên suốt các màn chơi!",
     },
+    wordcraft: {
+        icon: "✍️",
+        label: "Xưởng Chữ Vũ Trụ",
+        howTo: "Đọc câu hỏi và gõ câu trả lời – rèn tư duy sáng tạo!",
+    },
 };
 
 /* ─── Route helper: planet.gameType → play URL ─── */
@@ -45,6 +50,7 @@ function playUrl(planet: Planet): string {
     switch (planet.gameType) {
         case "math": return `/portal/play/math?planet=${planet.id}`;
         case "star-hunter": return `/portal/play/star?planet=${planet.id}`;
+        case "wordcraft": return `/portal/play/craft?planet=${planet.id}`;
         default: return `/portal/play?planet=${planet.id}`;     // shooter
     }
 }

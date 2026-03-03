@@ -57,12 +57,30 @@ export interface MathQuestion {
     options: number[];
 }
 
+export interface CraftLevel {
+    id?: string;
+    level: number;
+    planet: string;
+    subject: string;
+    title: string;
+    timePerQuestion: number;
+    questions: CraftQuestion[];
+}
+
+export interface CraftQuestion {
+    id?: string;
+    questionText: string;
+    correctWord: string;
+    acceptAnswers: string[];
+    bloomLevel?: number;
+}
+
 export interface Planet {
     id: string;
     name: string;
     emoji: string;
     subjects: string[];
-    gameType: "shooter" | "math" | "star-hunter";
+    gameType: "shooter" | "math" | "star-hunter" | "wordcraft";
     color1: string;
     color2: string;
     ringColor: string;
@@ -293,6 +311,77 @@ export async function getMathLevels(
     }
 
     if (levels.length === 0) return getMockMathLevels(planetId);
+    return levels;
+}
+
+/* ─── WordCraft levels (open-ended) ─────────────────── */
+
+export async function getCraftLevels(
+    planetId: string,
+    grade: number = 3,
+    masteryByTopic: Record<string, number> = {}
+): Promise<CraftLevel[]> {
+    if (isMockMode || !supabase) {
+        return [];
+    }
+
+    const allowedDifficulties = difficultyForGrade(grade);
+
+    const { data: levelsData, error: levelsError } = await supabase
+        .from("levels")
+        .select("*")
+        .eq("planet_id", planetId)
+        .lte("grade_min", grade + 1)
+        .gte("grade_max", grade - 1)
+        .order("order_index");
+
+    if (levelsError || !levelsData || levelsData.length === 0) {
+        console.error("[db] getCraftLevels error:", levelsError);
+        return [];
+    }
+
+    const levels: CraftLevel[] = [];
+
+    for (const level of levelsData as DBLevel[]) {
+        const topicKey = `${planetId}:${level.subject}`;
+        const mastery = masteryByTopic[topicKey] ?? 50;
+        const [bloomMin, bloomMax] = bloomRangeForMastery(mastery);
+
+        const { data: questionsData, error: questionsError } = await supabase
+            .from("questions")
+            .select("*")
+            .eq("level_id", level.id)
+            .eq("type", "open-ended")
+            .eq("reviewed_by_teacher", true)
+            .in("difficulty", allowedDifficulties)
+            .gte("bloom_level", bloomMin)
+            .lte("bloom_level", bloomMax)
+            .order("difficulty_score")
+            .order("order_index");
+
+        if (questionsError || !questionsData) continue;
+
+        const questions: CraftQuestion[] = (questionsData as DBQuestion[]).map((q) => ({
+            id: q.id,
+            questionText: q.question_text ?? "",
+            correctWord: q.correct_word ?? "",
+            acceptAnswers: q.accept_answers ?? [],
+            bloomLevel: q.bloom_level,
+        }));
+
+        if (questions.length === 0) continue;
+
+        levels.push({
+            id: level.id,
+            level: level.level_number,
+            planet: "",
+            subject: level.subject,
+            title: level.title,
+            timePerQuestion: level.time_per_q ?? 30,
+            questions,
+        });
+    }
+
     return levels;
 }
 

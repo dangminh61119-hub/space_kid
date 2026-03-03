@@ -5,10 +5,13 @@ import SpaceShooterGame from "./SpaceShooterGame";
 import StarHunterGame from "./StarHunterGame";
 import MeteorShowerGame from "./MeteorShowerGame";
 import WordRushGame from "./WordRushGame";
+import TimeBombGame from "./TimeBombGame";
+import GalaxySortGame from "./GalaxySortGame";
+import CosmoBridgeGame from "./CosmoBridgeGame";
 import LevelIntro from "./LevelIntro";
 import type { GameLevel } from "@/lib/services/db";
 
-type GameMode = "shooter" | "star-hunter" | "meteor" | "rush";
+type GameMode = "shooter" | "star-hunter" | "meteor" | "rush" | "timebomb" | "galaxy-sort" | "cosmo-bridge";
 
 interface GameModeControllerProps {
     levels: GameLevel[];
@@ -21,11 +24,10 @@ interface GameModeControllerProps {
     planetEmoji: string;
 }
 
-/* ─── Mode rotation: 4 modes cycling with increasing excitement ─── */
-const MODE_ORDER: GameMode[] = ["shooter", "star-hunter", "meteor", "rush"];
+/* ─── Mode rotation: 7 modes cycling with variety ─── */
+const MODE_ORDER: GameMode[] = ["shooter", "star-hunter", "timebomb", "meteor", "cosmo-bridge", "rush", "galaxy-sort"];
 
 function getModeForLevel(levelNum: number): GameMode {
-    // 1-indexed level → 0-indexed into MODE_ORDER
     return MODE_ORDER[(levelNum - 1) % MODE_ORDER.length];
 }
 
@@ -81,7 +83,15 @@ export default function GameModeController({
             return <MeteorShowerGame {...commonProps} />;
         case "rush":
             return <WordRushGame {...commonProps} />;
+        case "timebomb":
+            return <TimeBombGame {...commonProps} />;
+        case "galaxy-sort":
+            return <GalaxySortGame {...commonProps} />;
+        case "cosmo-bridge":
+            return <CosmoBridgeGame {...commonProps} />;
         default:
             return <SpaceShooterGame {...commonProps} />;
     }
 }
+
+

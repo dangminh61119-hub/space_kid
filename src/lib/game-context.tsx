@@ -201,16 +201,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
                                 const actualXP = typeof remotePlayer.xp === 'number' ? remotePlayer.xp : prev.xp;
                                 const { level, xpToNext } = calculateLevel(actualXP);
 
+                                // DB is source of truth — override localStorage for key fields
                                 Object.assign(updated, {
                                     xp: actualXP,
                                     level,
                                     xpToNext,
-                                    // only override if remote has data
-                                    ...(remotePlayer.name ? { name: remotePlayer.name } : {}),
-                                    ...(remotePlayer.grade ? { grade: remotePlayer.grade } : {}),
+                                    name: remotePlayer.name || prev.name,
+                                    grade: remotePlayer.grade || prev.grade,
                                     ...(remotePlayer.mascot ? { mascot: remotePlayer.mascot } : {}),
                                     ...(remotePlayer.player_class ? { playerClass: remotePlayer.player_class } : {}),
                                     ...(remotePlayer.streak !== undefined ? { streak: remotePlayer.streak } : {}),
+                                    onboardingComplete: remotePlayer.onboarding_complete ?? prev.onboardingComplete,
+                                    onboardingQuizScore: remotePlayer.onboarding_quiz_score ?? prev.onboardingQuizScore,
                                 });
                             }
 
@@ -279,6 +281,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
             if ('streak' in updates) dbUpdates.streak = updates.streak;
             if ('mascot' in updates) dbUpdates.mascot = updates.mascot;
             if ('playerClass' in updates) dbUpdates.player_class = updates.playerClass;
+            if ('name' in updates) dbUpdates.name = updates.name;
+            if ('grade' in updates) dbUpdates.grade = updates.grade;
+            if ('onboardingComplete' in updates) dbUpdates.onboarding_complete = updates.onboardingComplete;
+            if ('onboardingQuizScore' in updates) dbUpdates.onboarding_quiz_score = updates.onboardingQuizScore;
 
             if (Object.keys(dbUpdates).length > 0) {
                 supabase.from("players").update(dbUpdates).eq("id", playerDbId).then(({ error }) => {
