@@ -54,13 +54,26 @@ function QuestionsContent() {
     const [showCreate, setShowCreate] = useState(false);
     const [showImport, setShowImport] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [reviewingId, setReviewingId] = useState<string | null>(null);
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+    const [activeTab, setActiveTab] = useState<"all" | "pending" | "approved" | "draft">("all");
 
     // Filters
+    const initialStatus = searchParams.get("status") || "";
     const [filterPlanet, setFilterPlanet] = useState(searchParams.get("planet") || "");
     const [filterGrade, setFilterGrade] = useState(searchParams.get("grade") || "");
-    const [filterStatus, setFilterStatus] = useState(searchParams.get("status") || "");
+    const [filterStatus, setFilterStatus] = useState(initialStatus);
     const [filterType, setFilterType] = useState(searchParams.get("type") || "");
+
+    // Derive initial tab from URL params
+    useEffect(() => {
+        if (initialStatus === "draft" || initialStatus === "review") setActiveTab("pending");
+        else if (initialStatus === "approved") setActiveTab("approved");
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Count pending questions
+    const pendingCount = questions.filter(q => q.status === "draft" || q.status === "review").length;
 
     const authHeaders = useCallback(() => ({
         Authorization: `Bearer ${session?.access_token}`,
@@ -95,6 +108,58 @@ function QuestionsContent() {
     function showMessage(type: "success" | "error", text: string) {
         setMessage({ type, text });
         setTimeout(() => setMessage(null), 4000);
+    }
+
+    // ─── Tab switching ───
+    function handleTabChange(tab: "all" | "pending" | "approved" | "draft") {
+        setActiveTab(tab);
+        if (tab === "all") setFilterStatus("");
+        else if (tab === "pending") setFilterStatus("draft"); // will also show review in filter
+        else if (tab === "approved") setFilterStatus("approved");
+        else if (tab === "draft") setFilterStatus("draft");
+    }
+
+    // ─── Single question approve/reject ───
+    async function handleSingleApprove(id: string) {
+        const res = await fetch("/api/admin/questions/approve", {
+            method: "POST",
+            headers: authHeaders(),
+            body: JSON.stringify({ ids: [id], action: "approve" }),
+        });
+        const json = await res.json();
+        if (res.ok) {
+            showMessage("success", `✅ ${json.message}`);
+            fetchQuestions(pagination.page);
+        } else {
+            showMessage("error", json.error);
+        }
+    }
+
+    async function handleSingleReject(id: string) {
+        const res = await fetch("/api/admin/questions/approve", {
+            method: "POST",
+            headers: authHeaders(),
+            body: JSON.stringify({ ids: [id], action: "reject" }),
+        });
+        const json = await res.json();
+        if (res.ok) {
+            showMessage("success", `↩️ ${json.message}`);
+            fetchQuestions(pagination.page);
+        } else {
+            showMessage("error", json.error);
+        }
+    }
+
+    // Navigate to next pending question in review panel
+    function goToNextPending() {
+        const pendingQuestions = questions.filter(q => q.status === "draft" || q.status === "review");
+        const currentIdx = pendingQuestions.findIndex(q => q.id === reviewingId);
+        if (currentIdx < pendingQuestions.length - 1) {
+            setReviewingId(pendingQuestions[currentIdx + 1].id);
+        } else {
+            setReviewingId(null);
+            showMessage("success", "🎉 Đã duyệt hết câu hỏi trên trang này!");
+        }
     }
 
     // ─── Bulk Actions ───
@@ -194,6 +259,32 @@ function QuestionsContent() {
                 </div>
             )}
 
+            {/* Quick filter tabs */}
+            <div className="flex gap-1 bg-gray-900/50 p-1 rounded-xl border border-gray-800">
+                {[
+                    { key: "all" as const, label: "Tất cả", icon: "📋" },
+                    { key: "pending" as const, label: "Chờ duyệt", icon: "⏳", badge: pendingCount },
+                    { key: "approved" as const, label: "Đã duyệt", icon: "✅" },
+                    { key: "draft" as const, label: "Draft", icon: "📝" },
+                ].map(tab => (
+                    <button
+                        key={tab.key}
+                        onClick={() => handleTabChange(tab.key)}
+                        className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.key
+                            ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                            : "text-gray-400 hover:text-white hover:bg-gray-800"
+                            }`}
+                    >
+                        <span>{tab.icon}</span>
+                        <span>{tab.label}</span>
+                        {tab.badge !== undefined && tab.badge > 0 && (
+                            <span className={`ml-1 px-1.5 py-0.5 rounded-full text-xs font-bold ${activeTab === tab.key ? "bg-white/20 text-white" : "bg-orange-500/20 text-orange-400"
+                                }`}>{tab.badge}</span>
+                        )}
+                    </button>
+                ))}
+            </div>
+
             {/* Filters */}
             <div className="flex flex-wrap gap-3 bg-gray-900 p-3 rounded-lg border border-gray-800">
                 <select value={filterPlanet} onChange={e => setFilterPlanet(e.target.value)} className="bg-gray-800 text-white text-sm rounded-lg px-3 py-1.5 border border-gray-700">
@@ -204,7 +295,7 @@ function QuestionsContent() {
                     <option value="">Tất cả lớp</option>
                     {[1, 2, 3, 4, 5].map(g => <option key={g} value={g}>Lớp {g}</option>)}
                 </select>
-                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="bg-gray-800 text-white text-sm rounded-lg px-3 py-1.5 border border-gray-700">
+                <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setActiveTab("all"); }} className="bg-gray-800 text-white text-sm rounded-lg px-3 py-1.5 border border-gray-700">
                     <option value="">Tất cả status</option>
                     <option value="draft">Draft</option>
                     <option value="review">Review</option>
@@ -252,10 +343,10 @@ function QuestionsContent() {
                         ) : questions.length === 0 ? (
                             <tr><td colSpan={9} className="p-8 text-center text-gray-500">Không có câu hỏi nào</td></tr>
                         ) : questions.map(q => (
-                            <tr key={q.id} className={`hover:bg-gray-900/50 ${selected.has(q.id) ? "bg-blue-950/30" : ""}`}>
+                            <tr key={q.id} className={`hover:bg-gray-900/50 transition-colors ${selected.has(q.id) ? "bg-blue-950/30" : ""} ${reviewingId === q.id ? "bg-cyan-950/20 ring-1 ring-cyan-800" : ""}`}>
                                 <td className="p-3"><input type="checkbox" checked={selected.has(q.id)} onChange={() => toggleSelect(q.id)} /></td>
-                                <td className="p-3 max-w-xs">
-                                    <div className="truncate text-white">{q.question_text || q.equation || "—"}</div>
+                                <td className="p-3 max-w-xs cursor-pointer group" onClick={() => setReviewingId(q.id)}>
+                                    <div className="truncate text-white group-hover:text-cyan-300 transition-colors">{q.question_text || q.equation || "—"}</div>
                                     <div className="text-xs text-gray-500 mt-0.5">
                                         {q.type === "word" ? `✓ ${q.correct_word}` : q.type === "math" ? `= ${q.answer}` : `✓ ${q.correct_word}`}
                                     </div>
@@ -278,8 +369,16 @@ function QuestionsContent() {
                                         {q.status}
                                     </span>
                                 </td>
-                                <td className="p-3 text-center">
-                                    <button onClick={() => setEditingId(q.id)} className="text-blue-400 hover:text-blue-300 text-xs mr-2">✏️</button>
+                                <td className="p-3 text-center whitespace-nowrap">
+                                    {/* Inline approve/reject */}
+                                    {q.status !== "approved" && (
+                                        <button onClick={() => handleSingleApprove(q.id)} title="Duyệt" className="text-green-400 hover:text-green-300 text-xs mr-1.5 hover:scale-110 transition-transform">✅</button>
+                                    )}
+                                    {q.status === "approved" && (
+                                        <button onClick={() => handleSingleReject(q.id)} title="Reject" className="text-yellow-400 hover:text-yellow-300 text-xs mr-1.5 hover:scale-110 transition-transform">↩️</button>
+                                    )}
+                                    <button onClick={() => setReviewingId(q.id)} title="Xem chi tiết" className="text-cyan-400 hover:text-cyan-300 text-xs mr-1.5">👁️</button>
+                                    <button onClick={() => setEditingId(q.id)} title="Chỉnh sửa" className="text-blue-400 hover:text-blue-300 text-xs mr-1.5">✏️</button>
                                     <button onClick={async () => {
                                         if (!confirm("Xóa câu hỏi này?")) return;
                                         await fetch("/api/admin/questions", {
@@ -288,7 +387,7 @@ function QuestionsContent() {
                                             body: JSON.stringify({ id: q.id }),
                                         });
                                         fetchQuestions(pagination.page);
-                                    }} className="text-red-400 hover:text-red-300 text-xs">🗑️</button>
+                                    }} title="Xóa" className="text-red-400 hover:text-red-300 text-xs">🗑️</button>
                                 </td>
                             </tr>
                         ))}
@@ -334,6 +433,19 @@ function QuestionsContent() {
                     authHeaders={authHeaders()}
                     onClose={() => setEditingId(null)}
                     onSuccess={() => { setEditingId(null); fetchQuestions(pagination.page); showMessage("success", "Đã cập nhật"); }}
+                />
+            )}
+
+            {/* Review Panel */}
+            {reviewingId && (
+                <ReviewPanel
+                    question={questions.find(q => q.id === reviewingId)!}
+                    onClose={() => setReviewingId(null)}
+                    onApprove={async () => { await handleSingleApprove(reviewingId); goToNextPending(); }}
+                    onReject={async () => { await handleSingleReject(reviewingId); goToNextPending(); }}
+                    onNext={goToNextPending}
+                    onEdit={() => { setEditingId(reviewingId); setReviewingId(null); }}
+                    hasPendingNext={questions.filter(q => (q.status === "draft" || q.status === "review") && q.id !== reviewingId).length > 0}
                 />
             )}
         </div>
@@ -753,6 +865,223 @@ function ImportModal({ authHeaders, onClose, onSuccess }: {
                     </div>
                 </div>
             </div>
+        </div>
+    );
+}
+
+// ─── Review Panel ────────────────────────
+function ReviewPanel({ question, onClose, onApprove, onReject, onNext, onEdit, hasPendingNext }: {
+    question: Question;
+    onClose: () => void;
+    onApprove: () => void;
+    onReject: () => void;
+    onNext: () => void;
+    onEdit: () => void;
+    hasPendingNext: boolean;
+}) {
+    const [acting, setActing] = useState(false);
+
+    const planetName = PLANET_OPTIONS.find(p => p.id === question.planet_id)?.name || question.planet_id;
+    const bloomLabels: Record<number, string> = {
+        1: "Remember", 2: "Understand", 3: "Apply", 4: "Analyze", 5: "Higher-order", 6: "Create",
+    };
+
+    async function handleAction(action: () => void) {
+        setActing(true);
+        await action();
+        setActing(false);
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+
+            {/* Panel */}
+            <div
+                className="relative w-full max-w-lg bg-gray-950 border-l border-gray-800 shadow-2xl overflow-y-auto animate-in slide-in-from-right"
+                onClick={e => e.stopPropagation()}
+                style={{ animation: "slideInRight 0.2s ease-out" }}
+            >
+                {/* Header */}
+                <div className="sticky top-0 bg-gray-950/95 backdrop-blur-sm border-b border-gray-800 p-4 flex items-center justify-between z-10">
+                    <div className="flex items-center gap-2">
+                        <span className="text-lg">🔍</span>
+                        <h3 className="font-bold text-white">Xem trước câu hỏi</h3>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${question.status === "approved" ? "bg-green-900 text-green-300" :
+                                question.status === "review" ? "bg-blue-900 text-blue-300" :
+                                    "bg-gray-700 text-gray-300"
+                            }`}>
+                            {question.status}
+                        </span>
+                        <button onClick={onClose} className="text-gray-400 hover:text-white p-1">✕</button>
+                    </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-5 space-y-5">
+                    {/* Question text */}
+                    <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
+                        <div className="text-xs text-gray-500 uppercase tracking-wider mb-2">Câu hỏi</div>
+                        <div className="text-white text-base leading-relaxed">
+                            {question.question_text || question.equation || "—"}
+                        </div>
+                    </div>
+
+                    {/* Answers */}
+                    <div className="space-y-2">
+                        <div className="text-xs text-gray-500 uppercase tracking-wider">Đáp án</div>
+
+                        {/* Correct answer */}
+                        {question.type === "math" ? (
+                            <div className="flex items-center gap-2 bg-green-950/40 border border-green-800/50 rounded-lg p-3">
+                                <span className="text-green-400 text-lg">✓</span>
+                                <span className="text-green-300 font-medium">{question.answer}</span>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 bg-green-950/40 border border-green-800/50 rounded-lg p-3">
+                                <span className="text-green-400 text-lg">✓</span>
+                                <span className="text-green-300 font-medium">{question.correct_word || "—"}</span>
+                            </div>
+                        )}
+
+                        {/* Wrong answers */}
+                        {question.type === "word" && question.wrong_words && question.wrong_words.length > 0 && (
+                            <div className="space-y-1">
+                                {question.wrong_words.map((w, i) => (
+                                    <div key={i} className="flex items-center gap-2 bg-red-950/30 border border-red-900/30 rounded-lg p-2.5">
+                                        <span className="text-red-400 text-sm">✗</span>
+                                        <span className="text-red-300 text-sm">{w}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Math options */}
+                        {question.type === "math" && question.options && question.options.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-1">
+                                {question.options.map((opt, i) => (
+                                    <span key={i} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${opt === question.answer
+                                            ? "bg-green-900/50 text-green-300 border border-green-700"
+                                            : "bg-gray-800 text-gray-300 border border-gray-700"
+                                        }`}>{opt}</span>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Open-ended accepted answers */}
+                        {question.type === "open-ended" && question.accept_answers && question.accept_answers.length > 0 && (
+                            <div className="space-y-1 mt-1">
+                                <div className="text-xs text-gray-500">Đáp án chấp nhận:</div>
+                                {question.accept_answers.map((a, i) => (
+                                    <div key={i} className="flex items-center gap-2 bg-blue-950/30 border border-blue-900/30 rounded-lg p-2.5">
+                                        <span className="text-blue-400 text-sm">≈</span>
+                                        <span className="text-blue-300 text-sm">{a}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Metadata tags */}
+                    <div className="space-y-3">
+                        <div className="text-xs text-gray-500 uppercase tracking-wider">Thông tin</div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="bg-gray-900 rounded-lg p-3 border border-gray-800">
+                                <div className="text-xs text-gray-500">Hành tinh</div>
+                                <div className="text-white font-medium text-sm mt-0.5">{planetName}</div>
+                            </div>
+                            <div className="bg-gray-900 rounded-lg p-3 border border-gray-800">
+                                <div className="text-xs text-gray-500">Lớp</div>
+                                <div className="text-white font-medium text-sm mt-0.5">Lớp {question.grade}</div>
+                            </div>
+                            <div className="bg-gray-900 rounded-lg p-3 border border-gray-800">
+                                <div className="text-xs text-gray-500">Bloom Level</div>
+                                <div className="text-white font-medium text-sm mt-0.5">L{question.bloom_level} — {bloomLabels[question.bloom_level] || "?"}</div>
+                            </div>
+                            <div className="bg-gray-900 rounded-lg p-3 border border-gray-800">
+                                <div className="text-xs text-gray-500">Độ khó</div>
+                                <div className="text-white font-medium text-sm mt-0.5 flex items-center gap-1.5">
+                                    <span className={`w-2 h-2 rounded-full ${question.difficulty === "easy" ? "bg-green-400" :
+                                            question.difficulty === "medium" ? "bg-yellow-400" : "bg-red-400"
+                                        }`} />
+                                    {question.difficulty} ({question.difficulty_score})
+                                </div>
+                            </div>
+                            <div className="bg-gray-900 rounded-lg p-3 border border-gray-800">
+                                <div className="text-xs text-gray-500">Loại</div>
+                                <div className="text-white font-medium text-sm mt-0.5">{question.type}</div>
+                            </div>
+                            <div className="bg-gray-900 rounded-lg p-3 border border-gray-800">
+                                <div className="text-xs text-gray-500">Môn học</div>
+                                <div className="text-white font-medium text-sm mt-0.5">{question.subject}</div>
+                            </div>
+                        </div>
+                        {question.curriculum_ref && (
+                            <div className="bg-gray-900 rounded-lg p-3 border border-gray-800">
+                                <div className="text-xs text-gray-500">Curriculum Ref</div>
+                                <div className="text-white font-medium text-sm mt-0.5 font-mono">{question.curriculum_ref}</div>
+                            </div>
+                        )}
+                        <div className="text-xs text-gray-600">
+                            ID: {question.id} · Tạo: {new Date(question.created_at).toLocaleDateString("vi-VN")}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Action buttons — sticky footer */}
+                <div className="sticky bottom-0 bg-gray-950/95 backdrop-blur-sm border-t border-gray-800 p-4 space-y-2">
+                    {question.status !== "approved" ? (
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => handleAction(onApprove)}
+                                disabled={acting}
+                                className="flex-1 py-2.5 bg-green-600 hover:bg-green-500 rounded-lg text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                ✅ Duyệt
+                            </button>
+                            <button
+                                onClick={() => handleAction(onReject)}
+                                disabled={acting}
+                                className="px-4 py-2.5 bg-yellow-600 hover:bg-yellow-500 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                            >
+                                ↩️ Reject
+                            </button>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => handleAction(onReject)}
+                            disabled={acting}
+                            className="w-full py-2.5 bg-yellow-600 hover:bg-yellow-500 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                        >
+                            ↩️ Trả về Draft
+                        </button>
+                    )}
+                    <div className="flex gap-2">
+                        {hasPendingNext && (
+                            <button onClick={onNext} className="flex-1 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm text-gray-300 transition-colors">
+                                Câu tiếp →
+                            </button>
+                        )}
+                        <button onClick={onEdit} className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm text-blue-400 transition-colors">
+                            ✏️ Sửa
+                        </button>
+                        <button onClick={onClose} className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm text-gray-400 transition-colors">
+                            Đóng
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Slide-in animation */}
+            <style jsx>{`
+                @keyframes slideInRight {
+                    from { transform: translateX(100%); opacity: 0.5; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+            `}</style>
         </div>
     );
 }
