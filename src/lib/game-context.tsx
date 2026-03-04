@@ -42,6 +42,10 @@ export interface PlayerData {
     parentPhone?: string;
     favoriteSubjects?: string[];
     calmMode: boolean;                 // Giảm kích thích giác quan cho trẻ nhạy cảm
+    crystals: number;                  // 💎 Pha lê Vũ trụ — currency cho Triệu hồi
+    totalCrystalsEarned: number;       // Tổng pha lê đã kiếm (lifetime)
+    evolveStage: 1 | 2 | 3 | 4 | 5;  // 🐣 Stage tiến hóa Cú Mèo
+    accessories: string[];             // 🎨 Phụ kiện đã unlock
     masteryByTopic: Record<string, number>;       // topic key → mastery % (0–100)
     bloomLevelReached: Record<string, number>;     // topic key → Bloom level (1–6)
     planetsProgress: Record<string, PlanetProgress>;
@@ -53,6 +57,8 @@ interface GameContextType {
     player: PlayerData;
     updatePlayer: (updates: Partial<PlayerData>) => void;
     addXP: (amount: number) => void;
+    addCrystals: (amount: number, reason?: string) => void;  // 💎 Cộng pha lê
+    spendCrystals: (amount: number) => boolean;              // 💎 Tiêu pha lê (false nếu không đủ)
     updatePlanetProgress: (planetId: string, completedLevels: number, totalLevels: number) => void;
     useClassAbility: () => boolean;
     classAbilityAvailable: boolean;
@@ -86,6 +92,10 @@ const DEFAULT_PLAYER: PlayerData = {
     parentPhone: "",
     favoriteSubjects: [],
     calmMode: false,                   // Will be auto-enabled for grade ≤ 2
+    crystals: 3,                       // 💎 Starter crystals
+    totalCrystalsEarned: 3,            // Lifetime total
+    evolveStage: 1,                    // 🐣 Baby Cú Mèo
+    accessories: [],                   // Unlocked accessories
     masteryByTopic: {},                // Loaded from Supabase mastery table
     bloomLevelReached: {},             // Loaded from Supabase mastery table
     achievements: [],                  // Danh sách badge thành tích
@@ -119,6 +129,16 @@ function calculateLevel(xp: number): { level: number; xpToNext: number } {
     const level = Math.floor(xp / XP_PER_LEVEL) + 1;
     const xpToNext = level * XP_PER_LEVEL;
     return { level, xpToNext };
+}
+
+/* ─── Helper: Calculate evolve stage from player stats ─── */
+function calculateEvolveStage(xp: number, planetsProgress: Record<string, PlanetProgress>, onboardingComplete: boolean): 1 | 2 | 3 | 4 | 5 {
+    const planetsCompleted = Object.values(planetsProgress).filter(p => p.completedLevels >= p.totalLevels).length;
+    if (xp >= 2000 && planetsCompleted >= 6) return 5;  // 👑 Huyền thoại
+    if (xp >= 500 && planetsCompleted >= 3) return 4;   // ⚔️ Chiến binh
+    if (xp >= 100) return 3;                             // 🦉 Học viên
+    if (onboardingComplete) return 2;                     // 🐣 Nhỏ
+    return 1;                                             // 🥚 Baby
 }
 
 /* ─── Provider ─── */
@@ -306,9 +326,31 @@ export function GameProvider({ children }: { children: ReactNode }) {
                 });
             }
 
-            return { ...prev, xp: newXp, level, xpToNext };
+            // Auto-update evolve stage
+            const evolveStage = calculateEvolveStage(newXp, prev.planetsProgress, prev.onboardingComplete);
+
+            return { ...prev, xp: newXp, level, xpToNext, evolveStage };
         });
     }, [playerDbId]);
+
+    /* ─── 💎 Crystal Economy ─── */
+    const addCrystals = useCallback((amount: number, _reason?: string) => {
+        setPlayer(prev => ({
+            ...prev,
+            crystals: prev.crystals + amount,
+            totalCrystalsEarned: prev.totalCrystalsEarned + amount,
+        }));
+    }, []);
+
+    const spendCrystals = useCallback((amount: number): boolean => {
+        let success = false;
+        setPlayer(prev => {
+            if (prev.crystals < amount) return prev;
+            success = true;
+            return { ...prev, crystals: prev.crystals - amount };
+        });
+        return success;
+    }, []);
 
     const updatePlanetProgress = useCallback((planetId: string, completedLevels: number, totalLevels: number) => {
         setPlayer(prev => {
@@ -395,6 +437,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
                 player,
                 updatePlayer,
                 addXP,
+                addCrystals,
+                spendCrystals,
                 updatePlanetProgress,
                 useClassAbility,
                 classAbilityAvailable,

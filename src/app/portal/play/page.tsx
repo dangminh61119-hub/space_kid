@@ -101,6 +101,7 @@ function PlayContent() {
                     onAnswered={handleAnswered}
                     planetName={planetInfo.name}
                     planetEmoji={planetInfo.emoji}
+                    planetId={planetId}
                     completedLevels={player.planetsProgress[planetId]?.completedLevels ?? 0}
                     isFirstVisit={(player.planetsProgress[planetId]?.completedLevels ?? 0) === 0}
                 />

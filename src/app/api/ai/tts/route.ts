@@ -11,6 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth, unauthorizedResponse, checkRateLimit, rateLimitResponse } from "@/lib/services/api-auth";
 
 /* ─── Chirp3-HD voice maps (tất cả tiers) ─── */
 const VOICES: Record<string, Record<string, string>> = {
@@ -39,6 +40,13 @@ const LANGUAGE_CODES: Record<string, string> = {
 /* ─── Handler ─── */
 export async function POST(request: NextRequest) {
     try {
+        // Auth check
+        const auth = await requireAuth(request);
+        if (!auth.authenticated) return unauthorizedResponse(auth.error);
+
+        // Rate limit: 40 TTS requests per minute per user
+        if (!checkRateLimit(auth.userId!, 40, 60_000)) return rateLimitResponse();
+
         const body = await request.json();
         const { text, lang = "vi", tier = "neural", voice } = body as {
             text: string;
@@ -71,10 +79,13 @@ export async function POST(request: NextRequest) {
             },
         };
 
-        const ttsUrl = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`;
+        const ttsUrl = `https://texttospeech.googleapis.com/v1/text:synthesize`;
         const ttsRes = await fetch(ttsUrl, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                "x-goog-api-key": apiKey,
+            },
             body: JSON.stringify(ttsPayload),
         });
 

@@ -12,10 +12,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SYSTEM_PROMPT, getFallbackResponse } from "@/lib/ai/prompts";
 import { isResponseSafe, buildUserMessage } from "@/lib/ai/guardrails";
+import { requireAuth, unauthorizedResponse, checkRateLimit, rateLimitResponse } from "@/lib/services/api-auth";
 
 /* ─── API Route Handler ─── */
 export async function POST(request: NextRequest) {
     try {
+        // Auth check
+        const auth = await requireAuth(request);
+        if (!auth.authenticated) return unauthorizedResponse(auth.error);
+
+        // Rate limit: 20 AI requests per minute per user
+        if (!checkRateLimit(auth.userId!, 20, 60_000)) return rateLimitResponse();
+
         const body = await request.json();
         const { context, questionText, playerAnswer, correctAnswer, subject, bloomLevel } = body;
 

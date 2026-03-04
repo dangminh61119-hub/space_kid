@@ -8,6 +8,7 @@ import WordRushGame from "./WordRushGame";
 import TimeBombGame from "./TimeBombGame";
 import GalaxySortGame from "./GalaxySortGame";
 import CosmoBridgeGame from "./CosmoBridgeGame";
+import SummonOverlay from "./SummonOverlay";
 import LevelIntro from "./LevelIntro";
 import PlanetStoryIntro from "./PlanetStoryIntro";
 import LevelTransition from "./LevelTransition";
@@ -25,6 +26,7 @@ interface GameModeControllerProps {
     calmMode?: boolean;
     planetName: string;
     planetEmoji: string;
+    planetId?: string;
     completedLevels?: number;
     isFirstVisit?: boolean;
 }
@@ -47,9 +49,11 @@ export default function GameModeController({
     calmMode,
     planetName,
     planetEmoji,
+    planetId,
     completedLevels = 0,
     isFirstVisit = false,
 }: GameModeControllerProps) {
+    const [gamePaused, setGamePaused] = useState(false);
     // Always show planet intro if there's a video for this planet
     const hasVideo = !!PLANET_VIDEOS[planetName];
     const [state, setState] = useState<ControllerState>(
@@ -202,24 +206,51 @@ export default function GameModeController({
             calmMode,
         };
 
+        // Determine bloom level for summon eligibility
+        // Higher levels = harder questions = higher Bloom (proxy: level ≥ 3 ≈ Bloom 3+)
+        const currentBloom = Math.min(5, Math.ceil(currentLevel.level / 2));
+        const currentQ = currentLevel.questions?.[0]?.question ?? "";
+
+        let gameComponent;
         switch (activeMode) {
             case "shooter":
-                return <SpaceShooterGame {...commonProps} />;
+                gameComponent = <SpaceShooterGame {...commonProps} />;
+                break;
             case "star-hunter":
-                return <StarHunterGame key={gameKey} levels={singleLevel} onExit={handleGameExit} playerClass={playerClass} onGameComplete={handleLevelComplete} calmMode={calmMode} />;
+                gameComponent = <StarHunterGame key={gameKey} levels={singleLevel} onExit={handleGameExit} playerClass={playerClass} onGameComplete={handleLevelComplete} calmMode={calmMode} />;
+                break;
             case "meteor":
-                return <MeteorShowerGame {...commonProps} />;
+                gameComponent = <MeteorShowerGame {...commonProps} />;
+                break;
             case "rush":
-                return <WordRushGame {...commonProps} />;
+                gameComponent = <WordRushGame {...commonProps} />;
+                break;
             case "timebomb":
-                return <TimeBombGame {...commonProps} />;
+                gameComponent = <TimeBombGame {...commonProps} />;
+                break;
             case "galaxy-sort":
-                return <GalaxySortGame {...commonProps} />;
+                gameComponent = <GalaxySortGame {...commonProps} />;
+                break;
             case "cosmo-bridge":
-                return <CosmoBridgeGame {...commonProps} />;
+                gameComponent = <CosmoBridgeGame {...commonProps} />;
+                break;
             default:
-                return <SpaceShooterGame {...commonProps} />;
+                gameComponent = <SpaceShooterGame {...commonProps} />;
         }
+
+        // Wrap with SummonOverlay for 🔮 help system
+        return (
+            <SummonOverlay
+                planetId={planetId || "hue"}
+                bloomLevel={currentBloom}
+                currentQuestion={currentQ}
+                currentSubject={currentLevel.subject}
+                onPause={() => setGamePaused(true)}
+                onResume={() => setGamePaused(false)}
+            >
+                {gameComponent}
+            </SummonOverlay>
+        );
     }
 
     return null;

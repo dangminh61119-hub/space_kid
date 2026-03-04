@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CHAT_SYSTEM_PROMPT_GUEST, CHAT_SYSTEM_PROMPT_MEMBER } from "@/lib/ai/prompts";
 import { isResponseSafe } from "@/lib/ai/guardrails";
+import { requireAuth, unauthorizedResponse, checkRateLimit, rateLimitResponse } from "@/lib/services/api-auth";
 
 interface ChatMessage {
     role: "user" | "assistant";
@@ -25,6 +26,13 @@ interface PlayerContext {
 
 export async function POST(request: NextRequest) {
     try {
+        // Auth check
+        const auth = await requireAuth(request);
+        if (!auth.authenticated) return unauthorizedResponse(auth.error);
+
+        // Rate limit: 30 chat requests per minute per user
+        if (!checkRateLimit(auth.userId!, 30, 60_000)) return rateLimitResponse();
+
         const body = await request.json();
         const {
             message,

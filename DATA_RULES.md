@@ -131,6 +131,12 @@ Mỗi câu hỏi phải có **1 skill chính** — dùng cho AI cá nhân hoá.
 | `correct_word` | ≤ 20 ký tự |
 | `wrong_words` | ≥ 3, cùng chủ đề, ≤ 20 ký tự, có tính gây nhiễu |
 
+**Yêu cầu chất lượng `wrong_words`:**
+- Cùng **từ loại** với đáp án đúng (danh từ vs danh từ, động từ vs động từ)
+- **Độ dài xấp xỉ** với đáp án đúng (tránh 1 từ ngắn + 3 từ dài)
+- Ưu tiên **lỗi phổ biến thực tế** của học sinh (đặc biệt môn Tiếng Việt, Tiếng Anh)
+- Không được lặp, không chứa đáp án đúng
+
 ### `math` — Math Forge
 
 | Trường | Quy tắc |
@@ -150,6 +156,11 @@ Mỗi câu hỏi phải có **1 skill chính** — dùng cho AI cá nhân hoá.
 | `required_keywords` | Từ khoá bắt buộc (nếu `grading_mode = keywords`) |
 
 Bloom tối đa cho `open-ended`: **5**
+
+**Xử lý tiếng Việt:** Hệ thống sẽ normalize input trước khi so sánh:
+- Lowercase: "Sông Hồng" → "sông hồng"
+- Bỏ khoảng trắng thừa: "  sông  hồng  " → "sông hồng"
+- `accept_answers` nên bao gồm các biến thể phổ biến (có/không dấu, viết hoa/thường)
 
 ---
 
@@ -223,7 +234,9 @@ Dựa trên mastery system thực tế:
 | 8–12 | ✅ Tốt |
 | 12–20 | 🌟 Lý tưởng |
 
-**Tổng: 32 levels × 10 câu = 320 câu tối thiểu**
+**Tổng launch: 33 levels × 10 câu = 330 câu tối thiểu**
+
+**Mục tiêu production: 500–800 câu** (mỗi level cần 20–30 câu trong pool để hệ thống random, tránh lặp lại khi trẻ chơi nhiều lần)
 
 ---
 

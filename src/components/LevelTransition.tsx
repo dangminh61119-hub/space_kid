@@ -1,6 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useMemo } from "react";
+import { getWinMessage, getLoseMessage } from "@/lib/ai/emotion-templates";
 
 interface Props {
     type: "win" | "lose";
@@ -32,6 +34,12 @@ export default function LevelTransition({
     const isWin = type === "win";
     const nextMode = nextGameMode ? MODE_LABELS[nextGameMode] : null;
     const progressPercent = Math.min(100, (levelCompleted / totalLevels) * 100);
+
+    // 🎭 Dynamic Cú Mèo message (emotion-aware)
+    const owlMessage = useMemo(() => {
+        if (isWin) return getWinMessage(0);
+        return getLoseMessage(0);
+    }, [isWin]);
 
     return (
         <div className="absolute inset-0 bg-space-deep/98 flex items-center justify-center z-30 overflow-hidden">
@@ -121,12 +129,7 @@ export default function LevelTransition({
                 >
                     <span className="text-xl">🦉</span>
                     <span className="text-white/60 italic">
-                        {isWin
-                            ? levelCompleted >= totalLevels
-                                ? "Hành tinh đã được giải phóng! Tuyệt vời!"
-                                : "Giỏi lắm! Tiếp tục chinh phục nào!"
-                            : "Đừng bỏ cuộc! Thử lại lần nữa nhé!"
-                        }
+                        {owlMessage}
                     </span>
                 </motion.div>
 

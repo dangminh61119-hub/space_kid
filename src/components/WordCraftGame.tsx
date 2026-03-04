@@ -346,9 +346,9 @@ export default function WordCraftGame({
                                 {question.questionText}
                             </p>
                             {/* Bloom badge */}
-                            {question.bloomLevel && question.bloomLevel >= 5 && (
+                            {question.bloomLevel && question.bloomLevel >= 4 && (
                                 <span className="inline-block mt-3 text-xs px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                                    {question.bloomLevel === 5 ? "⚡ Đánh giá" : "🌟 Sáng tạo"}
+                                    {question.bloomLevel === 5 ? "⚡ Tư duy bậc cao" : "🔍 Phân tích"}
                                 </span>
                             )}
                         </div>
