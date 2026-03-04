@@ -169,7 +169,9 @@ interface PlayerData {
 
 ## 4. Curriculum Mapping
 
-### 4.1 Bloom Taxonomy Levels (dùng trong toàn hệ thống)
+### 4.1 Bloom Taxonomy Levels (5 mức — v3)
+
+⛔ **Bloom 6 (Create) đã loại bỏ** — không phù hợp quiz tiểu học.
 
 | Level | Tên | Ký hiệu | Ví dụ câu hỏi |
 |---|---|---|---|
@@ -177,25 +179,24 @@ interface PlayerData {
 | 2 | Understand | `bloom:understand` | "Tại sao Hạ Long là di sản thế giới?" |
 | 3 | Apply | `bloom:apply` | "Tính chu vi vịnh nếu biết chiều dài/rộng" |
 | 4 | Analyze | `bloom:analyze` | "So sánh Hạ Long và Phong Nha" |
-| 5 | Evaluate | `bloom:evaluate` | "Nên bảo tồn hay phát triển du lịch?" |
-| 6 | Create | `bloom:create` | "Thiết kế poster giới thiệu di sản" |
+| 5 | Higher-order | `bloom:higher` | "Giải pháp nào phù hợp nhất để bảo tồn?" |
 
-### 4.2 Planet–Curriculum Mapping (đã cập nhật grade_range)
+### 4.2 Planet–Curriculum Mapping (đồng bộ DB thực tế)
 
-| ID        | Hành tinh            | Môn                  | Bloom Focus | Play Route      | Levels | grade_range |
-|-----------|----------------------|----------------------|-------------|-----------------|--------|-------------|
-| ha-long   | Vịnh Hạ Long 🏝️     | Tiếng Anh, Địa lý    | L1–L3       | play (multi)    | 20     | 1–3         |
-| hue       | Cố đô Huế 🏯         | Lịch sử, Tiếng Việt  | L1–L4       | play (multi)    | 25     | 2–4         |
-| giong     | Làng Gióng ⚔️        | Toán, Tin học        | L2–L4       | play/math       | 20     | 3–5         |
-| phong-nha | Phong Nha 🦇         | Khoa học, Địa lý     | L1–L3       | play (multi)    | 18     | 1–3         |
-| hoi-an    | Phố cổ Hội An 🏮     | Mỹ thuật, Tiếng Anh  | L1–L2       | play (multi)    | 15     | 1–2         |
-| sapa      | Sa Pa 🌾             | Toán, Khoa học       | L2–L4       | play/math       | 22     | 3–5         |
-| hanoi     | Hà Nội 🌆            | Lịch sử, Địa lý     | L2–L4       | play/star+craft | 20     | 2–4         |
-| mekong    | Đồng bằng Mê Kông 🌊 | Khoa học, Địa lý     | L1–L3       | play/star       | 18     | 1–3         |
+| ID        | Hành tinh            | Môn                  | Play Route      | Levels | grade_range |
+|-----------|----------------------|----------------------|-----------------|--------|-------------|
+| ha-long   | Vịnh Hạ Long 🏝️     | Tiếng Anh, Địa lý    | play (shooter)  | 5      | 1–5         |
+| hue       | Cố đô Huế 🏯         | Tiếng Việt, Lịch sử  | play/star       | 5      | 2–5         |
+| giong     | Làng Gióng ⚔️        | Toán                 | play (shooter)  | 5      | 1–5         |
+| phong-nha | Phong Nha 🦇         | Khoa học, Địa lý     | play/star       | 3      | 2–5         |
+| hoi-an    | Phố cổ Hội An 🏮     | Tiếng Anh, Mỹ thuật  | play (shooter)  | 3      | 1–5         |
+| sapa      | Sa Pa 🌾             | Toán, Khoa học       | play/math       | 4      | 2–5         |
+| hanoi     | Hà Nội 🌆            | Địa lý, Lịch sử     | play/star+craft | 5      | 2–5         |
+| mekong    | Đồng bằng Mê Kông 🌊 | Địa lý, Khoa học     | play/star       | 3      | 2–5         |
 
-**grade_range**: Dùng để lọc hành tinh phù hợp với lớp của trẻ (trẻ lớp 1–2 không vào được hành tinh Sa Pa vì quá khó).
+**grade_range**: Lớp thấp nhất–cao nhất mà hành tinh phục vụ (dựa trên grade_min/grade_max thực tế trong DB).
 
-**Play Route "multi"**: Dùng `GameModeController` → 7 game mode luân phiên theo level.
+**Play Route**: Xác định game mode chính cho hành tinh.
 
 ### 4.3 Question Selection & Adaptive Difficulty
 

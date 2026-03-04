@@ -2,24 +2,11 @@
  * db.ts – CosmoMosaic Data Access Layer
  *
  * All game data reads go through this file.
- * When NEXT_PUBLIC_SUPABASE_URL is set → reads from Supabase.
- * When not set (isMockMode) → falls back to mock-data.ts.
- *
- * This ensures the app always works, even without a DB connection.
+ * Requires NEXT_PUBLIC_SUPABASE_URL to be set.
+ * Returns empty arrays when DB has no approved questions.
  */
 
 import { supabase, isMockMode, type DBLevel, type DBQuestion, type DBPlanet, type DBMastery } from "./supabase";
-import {
-    mockPlanets,
-    mockGameLevels,
-    mockMathLevels,
-    mockHaLongLevels,
-    mockPhongNhaLevels,
-    mockHoiAnLevels,
-    mockSapaLevels,
-    mockHanoiLevels,
-    mockMekongLevels,
-} from "../data/mock-data";
 
 /* ─── Shared Types (used by game components) ─── */
 
@@ -116,19 +103,8 @@ function bloomRangeForMastery(mastery: number): [number, number] {
 
 export async function getPlanetList(): Promise<Planet[]> {
     if (isMockMode || !supabase) {
-        return mockPlanets.map((p) => ({
-            id: p.id,
-            name: p.name,
-            emoji: p.emoji,
-            subjects: p.subjects,
-            gameType: (["giong", "sapa"].includes(p.id) ? "math" : ["hanoi", "mekong"].includes(p.id) ? "star-hunter" : "shooter") as "shooter" | "math" | "star-hunter",
-            color1: p.color1,
-            color2: p.color2,
-            ringColor: p.ringColor,
-            description: p.description,
-            totalLevels: p.totalLevels,
-            gradeRange: p.gradeRange ?? [1, 5] as [number, number],
-        }));
+        console.error("[db] getPlanetList: mock mode or no supabase");
+        return [];
     }
 
     const { data, error } = await supabase
@@ -137,20 +113,8 @@ export async function getPlanetList(): Promise<Planet[]> {
         .order("order_index");
 
     if (error || !data) {
-        console.error("[db] getPlanetList error, falling back to mock:", error);
-        return mockPlanets.map((p) => ({
-            id: p.id,
-            name: p.name,
-            emoji: p.emoji,
-            subjects: p.subjects,
-            gameType: (["giong", "sapa"].includes(p.id) ? "math" : ["hanoi", "mekong"].includes(p.id) ? "star-hunter" : "shooter") as "shooter" | "math" | "star-hunter",
-            color1: p.color1,
-            color2: p.color2,
-            ringColor: p.ringColor,
-            description: p.description,
-            totalLevels: p.totalLevels,
-            gradeRange: p.gradeRange ?? [1, 5] as [number, number],
-        }));
+        console.error("[db] getPlanetList error:", error);
+        return [];
     }
 
     return (data as DBPlanet[]).map((p) => ({
@@ -390,50 +354,6 @@ export async function getCraftLevels(
     return levels;
 }
 
-/* ─── Mock fallbacks ───────────────────────────────────── */
-
-const MOCK_SHOOTER_MAP: Record<string, GameLevel[]> = {
-    "hue": mockGameLevels.filter((l) => l.planet === "Cố đô Huế"),
-    "ha-long": mockHaLongLevels,
-    "phong-nha": mockPhongNhaLevels,
-    "hoi-an": mockHoiAnLevels,
-};
-
-const MOCK_MATH_MAP: Record<string, MathLevel[]> = {
-    "giong": mockMathLevels,
-    "sapa": mockSapaLevels,
-};
-
-const MOCK_STAR_MAP: Record<string, GameLevel[]> = {
-    "hanoi": mockHanoiLevels as GameLevel[],
-    "mekong": mockMekongLevels as GameLevel[],
-};
-
-function getMockShooterLevels(planetId: string): GameLevel[] {
-    const levels = MOCK_SHOOTER_MAP[planetId] ?? mockGameLevels;
-    // Normalize to GameLevel shape
-    return levels.map((l) => ({
-        ...l,
-        questions: l.questions.map((q) => ({
-            question: q.question,
-            correctWord: q.correctWord,
-            wrongWords: q.wrongWords,
-        })),
-    }));
-}
-
-function getMockMathLevels(planetId: string): MathLevel[] {
-    const levels = MOCK_MATH_MAP[planetId] ?? mockMathLevels;
-    return levels.map((l) => ({
-        ...l,
-        questions: l.questions.map((q) => ({
-            equation: q.equation,
-            answer: q.answer,
-            options: q.options,
-        })),
-    }));
-}
-
 /* ─── Star Hunter levels (same word query as shooter) ─── */
 
 export async function getStarHunterLevels(
@@ -444,7 +364,6 @@ export async function getStarHunterLevels(
         console.error("[db] getStarLevels: mock mode or no supabase");
         return [];
     }
-    // Star Hunter uses the same 'word' question type as SpaceShooter
     const allowedDifficulties = difficultyForGrade(grade);
     const { data: levelsData, error: levelsError } = await supabase
         .from("levels")
@@ -466,6 +385,8 @@ export async function getStarHunterLevels(
             .select("*")
             .eq("level_id", level.id)
             .eq("type", "word")
+            .eq("reviewed_by_teacher", true)
+            .eq("status", "approved")
             .in("difficulty", allowedDifficulties)
             .order("order_index");
 
@@ -481,18 +402,6 @@ export async function getStarHunterLevels(
     }
     if (levels.length === 0) return [];
     return levels;
-}
-
-function getMockStarLevels(planetId: string): GameLevel[] {
-    const levels = MOCK_STAR_MAP[planetId] ?? mockHanoiLevels;
-    return levels.map((l) => ({
-        ...l,
-        questions: l.questions.map((q) => ({
-            question: q.question,
-            correctWord: q.correctWord,
-            wrongWords: q.wrongWords,
-        })),
-    }));
 }
 
 /* ─── Analytics helpers (fire-and-forget) ─────────────── */

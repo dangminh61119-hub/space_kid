@@ -153,8 +153,9 @@ export interface DBMastery {
     planet_id: string;
     subject: string;
     mastery_score: number;    // 0–100
-    bloom_reached: number;    // 1–6
+    bloom_reached: number;    // 1–5
     correct_count: number;
     total_attempts: number;
+    grade: number;            // 1–5
     updated_at: string;
 }
