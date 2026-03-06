@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Maximize, Minimize } from "lucide-react";
 import type { GameLevel } from "@/lib/services/db";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { useGame } from "@/lib/game-context";
+import MascotAbilityButton from "@/components/MascotAbilityButton";
 
 /* ─── Types ─── */
 interface SortItem {
@@ -24,13 +26,13 @@ interface Props {
     onExit?: () => void;
     playerClass?: "warrior" | "wizard" | "hunter" | null;
     onGameComplete?: (finalScore: number, levelsCompleted: number) => void;
-    onAnswered?: (isCorrect: boolean, subject: string, bloomLevel: number) => void;
+    onAnswered?: (questionId: string, isCorrect: boolean, subject: string, bloomLevel: number) => void;
     calmMode?: boolean;
 }
 
 /* ─── Constants ─── */
 const MAX_HP = 3;
-const BASE_XP = 50;
+const BASE_COSMO = 50;
 const BONUS_PERFECT = 200;
 
 /* ─── Generate sort rounds from word questions ─── */
@@ -137,6 +139,7 @@ export default function GalaxySortGame({
     levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false,
 }: Props) {
     const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
+    const { player, useAbilityCharge, addAbilityCharges } = useGame();
     const [gameState, setGameState] = useState<"ready" | "playing" | "roundComplete" | "gameOver" | "win">("ready");
     const [rounds, setRounds] = useState<SortRound[]>([]);
     const [roundIdx, setRoundIdx] = useState(0);
@@ -201,29 +204,45 @@ export default function GalaxySortGame({
         if (isCorrect) {
             playCorrect();
             setComboCount(c => c + 1);
+            if (comboCount + 1 === 3) addAbilityCharges(1); // Combo reward
             const combo = Math.min(comboCount, 5);
-            setScore(s => s + BASE_XP + combo * 10);
+            setScore(s => s + BASE_COSMO + combo * 10);
             setSortedItems(prev => ({ ...prev, [item.id]: category }));
             setFeedback(prev => ({ ...prev, [item.id]: "correct" }));
             setUnsortedItems(prev => prev.filter(i => i.id !== item.id));
-            onAnswered?.(true, levels[0]?.subject ?? "", 4);
+            onAnswered?.("", true, levels[0]?.subject ?? "", 4);
         } else {
             playWrong();
             setComboCount(0);
             setFeedback(prev => ({ ...prev, [item.id]: "wrong" }));
-            onAnswered?.(false, levels[0]?.subject ?? "", 4);
+            onAnswered?.("", false, levels[0]?.subject ?? "", 4);
 
             if (playerClass === "warrior" && !shieldUsed) {
-                setShieldUsed(true);
-                setAbilityNotice("🛡️ Lá chắn bảo vệ HP!");
-                setTimeout(() => setAbilityNotice(null), 1500);
-            } else {
+                const charged = useAbilityCharge();
+                if (charged) {
+                    setShieldUsed(true);
+                    setAbilityNotice("🛡️ Lá chắn bảo vệ HP!");
+                    setTimeout(() => setAbilityNotice(null), 1500);
+                } else {
+                    setHp(prev => {
+                        const n = prev - 1;
+                        if (n <= 0) {
+                            setTimeout(() => {
+                                stopBGM();
+                                onGameComplete?.(score, 0);
+                                setGameState("gameOver");
+                            }, 500);
+                        }
+                        return n;
+                    });
+                }
+            } else if (playerClass !== "warrior") {
                 setHp(prev => {
                     const n = prev - 1;
                     if (n <= 0) {
                         setTimeout(() => {
                             stopBGM();
-                            onGameComplete?.(score, roundIdx);
+                            onGameComplete?.(score, 0); // 0 = lose
                             setGameState("gameOver");
                         }, 500);
                     }
@@ -247,12 +266,13 @@ export default function GalaxySortGame({
     /* ─── Hunter ability: auto-sort one item ─── */
     const handleAutoSort = () => {
         if (playerClass !== "hunter" || autoSorted || unsortedItems.length === 0) return;
+        if (!useAbilityCharge()) return; // No charges
         const item = unsortedItems[0];
         setAutoSorted(true);
         setSortedItems(prev => ({ ...prev, [item.id]: item.category }));
         setFeedback(prev => ({ ...prev, [item.id]: "correct" }));
         setUnsortedItems(prev => prev.filter(i => i.id !== item.id));
-        setScore(s => s + BASE_XP);
+        setScore(s => s + BASE_COSMO);
         setAbilityNotice("🎯 Tự phân loại 1 item!");
         setTimeout(() => setAbilityNotice(null), 1500);
     };
@@ -309,7 +329,7 @@ export default function GalaxySortGame({
                             ❤️
                         </span>
                     ))}
-                    {playerClass === "warrior" && !shieldUsed && (
+                    {playerClass === "warrior" && !shieldUsed && player.abilityCharges > 0 && (
                         <span className="text-xl ml-1 animate-pulse">🛡️</span>
                     )}
                 </div>
@@ -331,7 +351,7 @@ export default function GalaxySortGame({
                         </motion.span>
                     )}
                     <span className="text-neon-cyan font-bold text-lg">{score}</span>
-                    <span className="text-white/40 text-xs">XP</span>
+                    <span className="text-white/40 text-xs">✦</span>
                     <button onClick={toggleFullscreen}
                         className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 transition-colors">
                         {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
@@ -397,12 +417,17 @@ export default function GalaxySortGame({
                             )}
                         </div>
 
-                        {/* Hunter ability button */}
-                        {playerClass === "hunter" && !autoSorted && unsortedItems.length > 0 && (
-                            <button onClick={handleAutoSort}
-                                className="px-3 py-1.5 rounded-full border border-neon-gold/30 text-neon-gold text-xs font-bold hover:bg-neon-gold/10 transition-colors">
-                                🎯 Tự phân loại 1 từ
-                            </button>
+                        {/* Hunter ability button — Mascot */}
+                        {playerClass === "hunter" && !autoSorted && unsortedItems.length > 0 && player.abilityCharges > 0 && (
+                            <MascotAbilityButton
+                                onClick={handleAutoSort}
+                                disabled={autoSorted}
+                                charges={player.abilityCharges}
+                                label="Tự phân loại"
+                                description="Phân loại 1 từ"
+                                position="inline"
+                                size="sm"
+                            />
                         )}
 
                         {/* Selection hint */}
@@ -461,15 +486,15 @@ export default function GalaxySortGame({
                             </h2>
                             <p className="text-white/60 text-sm text-center max-w-md px-4">
                                 Chạm vào từ, rồi chạm vào nhóm đúng để phân loại!<br />
-                                Phân loại nhanh & đúng = <span className="text-neon-gold font-bold">bonus XP!</span>
+                                Phân loại nhanh & đúng = <span className="text-neon-gold font-bold">bonus ✦!</span>
                             </p>
                             {playerClass && (
                                 <div className="glass-card !p-3 !rounded-xl text-center border border-neon-gold/20">
                                     <p className="text-xs text-white/50 mb-1">Khả năng đặc biệt</p>
                                     <p className="text-sm font-bold text-neon-gold">
-                                        {playerClass === "warrior" && "🛡️ Miễn 1 lần phân loại sai"}
+                                        {playerClass === "warrior" && `🛡️ Miễn 1 lần sai (⚡${player.abilityCharges})`}
                                         {playerClass === "wizard" && "⏳ Conveyor chạy chậm hơn"}
-                                        {playerClass === "hunter" && "🎯 Tự phân loại 1 từ"}
+                                        {playerClass === "hunter" && `🎯 Tự phân loại 1 từ (⚡${player.abilityCharges})`}
                                     </p>
                                 </div>
                             )}
@@ -485,7 +510,7 @@ export default function GalaxySortGame({
                             className="absolute inset-0 bg-space-deep/95 flex flex-col items-center justify-center gap-5 z-20">
                             <div className="text-5xl">🎉</div>
                             <h2 className="text-xl font-bold neon-text">Vòng {roundIdx + 1} hoàn thành!</h2>
-                            <p className="text-neon-gold font-bold">{score} XP</p>
+                            <p className="text-neon-gold font-bold">{score} ✦</p>
                             <button onClick={() => startRound(roundIdx + 1)}
                                 className="px-8 py-3 rounded-full bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-bold hover:scale-105 transition-transform">
                                 Vòng tiếp theo →
@@ -498,7 +523,7 @@ export default function GalaxySortGame({
                             className="absolute inset-0 bg-space-deep/95 flex flex-col items-center justify-center gap-5 z-20">
                             <div className="text-6xl">💥</div>
                             <h2 className="text-2xl font-bold text-red-400">Phân loại thất bại!</h2>
-                            <p className="text-white/60">Điểm: <span className="text-neon-cyan font-bold">{score} XP</span></p>
+                            <p className="text-white/60">Điểm: <span className="text-neon-cyan font-bold">{score} ✦</span></p>
                             <div className="flex gap-3">
                                 <button onClick={startGame}
                                     className="px-6 py-3 rounded-full bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-bold hover:scale-105 transition-transform">

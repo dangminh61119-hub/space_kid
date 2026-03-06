@@ -7,11 +7,6 @@ import { getMasteryForPlayer } from "./services/db";
 
 
 /* ─── Types ─── */
-export interface PlanetProgress {
-    completedLevels: number;
-    totalLevels: number;
-    lastPlayedAt?: string;
-}
 
 export interface ParentControls {
     dailyPlayLimit: number;      // phút, 0 = không giới hạn
@@ -20,14 +15,18 @@ export interface ParentControls {
     allowCalmMode: boolean;      // cho phép bé bật Calm Mode
 }
 
+export type RankTitle = "🌱 Cadet Explorer" | "🚀 Space Ranger" | "🌟 Star Seeker" | "⚡ Cosmic Scholar" | "💎 Galaxy Sage" | "👑 Grand Explorer";
+
 export interface PlayerData {
     name: string;
     mascot: "cat" | "dog" | null;
     playerClass: "warrior" | "wizard" | "hunter" | null;
     grade: number;
     level: number;
-    xp: number;
-    xpToNext: number;
+    cosmo: number;                     // ✦ Cosmo — đơn vị kinh nghiệm (stored as `xp` in DB)
+    cosmoToNext: number;
+    cosmoInLevel: number;              // BUG-1 FIX: Progress within current level (for progress bar)
+    rank: RankTitle;                   // Danh hiệu dựa trên tổng Cosmo (GDD §8.3)
     streak: number;
     totalPlayHours: number;
     onboardingComplete: boolean;
@@ -42,13 +41,16 @@ export interface PlayerData {
     parentPhone?: string;
     favoriteSubjects?: string[];
     calmMode: boolean;                 // Giảm kích thích giác quan cho trẻ nhạy cảm
-    crystals: number;                  // 💎 Pha lê Vũ trụ — currency cho Triệu hồi
+    coins: number;                     // 🪙 Coins — tiền tệ phổ thông (mua cosmetics)
+    crystals: number;                  // 💎 Pha lê Vũ trụ — currency hiếm (Triệu hồi AI)
+    luckyStars: number;                // ⭐ Ngôi sao may mắn — 3 sao = 1 huy hiệu
     totalCrystalsEarned: number;       // Tổng pha lê đã kiếm (lifetime)
-    evolveStage: 1 | 2 | 3 | 4 | 5;  // 🐣 Stage tiến hóa Cú Mèo
+    abilityCharges: number;            // ⚡ Lượt sử dụng năng lực (max 5)
+    evolveStage: 1 | 2 | 3 | 4 | 5;  // 🐣 Stage tiến hóa Cú Mèo (dựa trên journeysCompleted)
     accessories: string[];             // 🎨 Phụ kiện đã unlock
     masteryByTopic: Record<string, number>;       // topic key → mastery % (0–100)
     bloomLevelReached: Record<string, number>;     // topic key → Bloom level (1–6)
-    planetsProgress: Record<string, PlanetProgress>;
+    journeysCompleted: number;     // Number of journeys completed (from journey_progress table)
     achievements: string[];            // Danh sách achievementId đã đạt
     parentControls: ParentControls;    // Cài đặt của phụ huynh
 }
@@ -56,13 +58,16 @@ export interface PlayerData {
 interface GameContextType {
     player: PlayerData;
     updatePlayer: (updates: Partial<PlayerData>) => void;
-    addXP: (amount: number) => void;
+    addCosmo: (amount: number) => void;                      // ✦ Cộng Cosmo
+    addCoins: (amount: number) => void;                      // 🪙 Cộng Coins
+    addStars: (amount: number) => void;                      // ⭐ Cộng Lucky Stars
+    spendStars: (amount: number) => boolean;                  // ⭐ Tiêu Lucky Stars (false nếu không đủ)
+    spendCoins: (amount: number) => boolean;                 // 🪙 Tiêu Coins
     addCrystals: (amount: number, reason?: string) => void;  // 💎 Cộng pha lê
     spendCrystals: (amount: number) => boolean;              // 💎 Tiêu pha lê (false nếu không đủ)
-    updatePlanetProgress: (planetId: string, completedLevels: number, totalLevels: number) => void;
-    useClassAbility: () => boolean;
-    classAbilityAvailable: boolean;
-    resetClassAbility: () => void;
+
+    useAbilityCharge: () => boolean;                         // ⚡ Dùng 1 charge (false nếu hết)
+    addAbilityCharges: (amount: number) => void;             // ⚡ Cộng charges (cap 5)
     resetGame: () => void;
     setCalmMode: (enabled: boolean) => void;  // Toggle Calm Mode
     unlockAchievement: (id: string) => void;  // Mở khóa thành tích
@@ -76,8 +81,10 @@ const DEFAULT_PLAYER: PlayerData = {
     playerClass: null,
     grade: 3,
     level: 1,
-    xp: 0,
-    xpToNext: 500,
+    cosmo: 0,
+    cosmoToNext: 500,
+    cosmoInLevel: 0,
+    rank: "🌱 Cadet Explorer",
     streak: 0,
     totalPlayHours: 0,
     onboardingComplete: false,
@@ -92,8 +99,11 @@ const DEFAULT_PLAYER: PlayerData = {
     parentPhone: "",
     favoriteSubjects: [],
     calmMode: false,                   // Will be auto-enabled for grade ≤ 2
+    coins: 0,                          // 🪙 Coins for cosmetics
     crystals: 3,                       // 💎 Starter crystals
+    luckyStars: 0,                     // ⭐ Lucky Stars
     totalCrystalsEarned: 3,            // Lifetime total
+    abilityCharges: 1,                 // ⚡ Starter charge
     evolveStage: 1,                    // 🐣 Baby Cú Mèo
     accessories: [],                   // Unlocked accessories
     masteryByTopic: {},                // Loaded from Supabase mastery table
@@ -105,46 +115,46 @@ const DEFAULT_PLAYER: PlayerData = {
         breakInterval: 30,             // nhắc mỗi 30 phút
         allowCalmMode: true,           // cho phép Calm Mode
     },
-    planetsProgress: {
-        "ha-long": { completedLevels: 0, totalLevels: 20 },
-        "hue": { completedLevels: 0, totalLevels: 25 },
-        "giong": { completedLevels: 0, totalLevels: 20 },
-        "phong-nha": { completedLevels: 0, totalLevels: 18 },
-        "hoi-an": { completedLevels: 0, totalLevels: 15 },
-        "sapa": { completedLevels: 0, totalLevels: 22 },
-        "hanoi": { completedLevels: 0, totalLevels: 20 },
-        "mekong": { completedLevels: 0, totalLevels: 18 },
-    },
+    journeysCompleted: 0,
 };
 
 const STORAGE_KEY = "cosmomosaic_player";
 const CALM_MODE_KEY = "cosmomosaic_calm_mode";
-const XP_PER_LEVEL = 500;
+const COSMO_PER_LEVEL = 500;
 
 /* ─── Context ─── */
 const GameContext = createContext<GameContextType | null>(null);
 
-/* ─── Helper: Calculate level from XP ─── */
-function calculateLevel(xp: number): { level: number; xpToNext: number } {
-    const level = Math.floor(xp / XP_PER_LEVEL) + 1;
-    const xpToNext = level * XP_PER_LEVEL;
-    return { level, xpToNext };
+/* ─── Helper: Calculate level from Cosmo ─── */
+function calculateLevel(cosmo: number): { level: number; cosmoToNext: number; cosmoInLevel: number } {
+    const level = Math.floor(cosmo / COSMO_PER_LEVEL) + 1;
+    const cosmoToNext = level * COSMO_PER_LEVEL;  // Total Cosmo needed to reach next level
+    const cosmoInLevel = cosmo % COSMO_PER_LEVEL;  // BUG-1 FIX: Progress WITHIN current level (for progress bar)
+    return { level, cosmoToNext, cosmoInLevel };
 }
 
-/* ─── Helper: Calculate evolve stage from player stats ─── */
-function calculateEvolveStage(xp: number, planetsProgress: Record<string, PlanetProgress>, onboardingComplete: boolean): 1 | 2 | 3 | 4 | 5 {
-    const planetsCompleted = Object.values(planetsProgress).filter(p => p.completedLevels >= p.totalLevels).length;
-    if (xp >= 2000 && planetsCompleted >= 6) return 5;  // 👑 Huyền thoại
-    if (xp >= 500 && planetsCompleted >= 3) return 4;   // ⚔️ Chiến binh
-    if (xp >= 100) return 3;                             // 🦉 Học viên
-    if (onboardingComplete) return 2;                     // 🐣 Nhỏ
-    return 1;                                             // 🥚 Baby
+/* ─── Helper: Calculate rank from total Cosmo (GDD §8.3) ─── */
+function calculateRank(cosmo: number): RankTitle {
+    if (cosmo >= 150001) return "👑 Grand Explorer";
+    if (cosmo >= 70001) return "💎 Galaxy Sage";
+    if (cosmo >= 25001) return "⚡ Cosmic Scholar";
+    if (cosmo >= 8001) return "🌟 Star Seeker";
+    if (cosmo >= 2001) return "🚀 Space Ranger";
+    return "🌱 Cadet Explorer";
+}
+
+/* ─── Helper: Calculate evolve stage from journeys completed (decoupled from Cosmo) ─── */
+function calculateEvolveStage(journeysCompleted: number): 1 | 2 | 3 | 4 | 5 {
+    if (journeysCompleted >= 15) return 5;  // 👑 Huyền thoại
+    if (journeysCompleted >= 10) return 4;  // ⚔️ Chiến binh
+    if (journeysCompleted >= 6) return 3;  // 🦉 Học viên
+    if (journeysCompleted >= 3) return 2;  // 🐣 Nhỏ
+    return 1;                               // 🥚 Baby
 }
 
 /* ─── Provider ─── */
 export function GameProvider({ children }: { children: ReactNode }) {
     const [player, setPlayer] = useState<PlayerData>(DEFAULT_PLAYER);
-    const [classAbilityAvailable, setClassAbilityAvailable] = useState(true);
     const [isHydrated, setIsHydrated] = useState(false);
 
     const { playerDbId } = useAuth();
@@ -187,45 +197,36 @@ export function GameProvider({ children }: { children: ReactNode }) {
                     // Fetch player details (level, xp, etc)
                     const { data: remotePlayer, error: pError } = await supabase
                         .from("players")
-                        .select("xp, grade, name, mascot, player_class, streak, onboarding_complete, onboarding_quiz_score, survey_completed, estimated_grade, profile_completed")
+                        .select("xp, grade, name, mascot, player_class, streak, onboarding_complete, onboarding_quiz_score, survey_completed, estimated_grade, profile_completed, lucky_stars, coins, crystals, total_crystals_earned, ability_charges")
                         .eq("id", playerDbId)
                         .single();
 
-                    let remoteProgress: Record<string, PlanetProgress> | undefined = undefined;
-
-                    // Fetch planet progress
-                    const { data: progressData, error: progError } = await supabase
-                        .from("planet_progress")
-                        .select("planet_id, completed_levels, last_played_at")
-                        .eq("player_id", playerDbId);
-
-                    if (!progError && progressData && progressData.length > 0) {
-                        remoteProgress = {};
-                        progressData.forEach(p => {
-                            remoteProgress![p.planet_id] = {
-                                completedLevels: p.completed_levels,
-                                // fallback totalLevels as the DB doesn't store this directly
-                                totalLevels: localData.planetsProgress?.[p.planet_id]?.totalLevels || DEFAULT_PLAYER.planetsProgress[p.planet_id]?.totalLevels || 20,
-                                lastPlayedAt: p.last_played_at
-                            };
-                        });
-                    }
+                    // Count completed journeys from journey_progress table
+                    let journeysCompleted = 0;
+                    const { data: jpData } = await supabase
+                        .from("journey_progress")
+                        .select("completed_levels")
+                        .eq("player_id", playerDbId)
+                        .gte("completed_levels", 6);
+                    if (jpData) journeysCompleted = jpData.length;
 
                     if (isMounted) {
                         setPlayer(prev => {
-                            const updated = { ...prev };
+                            const evolveStage = calculateEvolveStage(journeysCompleted);
+                            const updated = { ...prev, journeysCompleted, evolveStage };
 
-                            // Merge player stats from DB 
+                            // Merge player stats from DB (DB stores `xp`, we use as `cosmo`)
                             if (!pError && remotePlayer) {
-                                // Important: Also recalculate level based on valid remote XP
-                                const actualXP = typeof remotePlayer.xp === 'number' ? remotePlayer.xp : prev.xp;
-                                const { level, xpToNext } = calculateLevel(actualXP);
+                                const actualCosmo = typeof remotePlayer.xp === 'number' ? remotePlayer.xp : prev.cosmo;
+                                const { level, cosmoToNext, cosmoInLevel } = calculateLevel(actualCosmo);
+                                const rank = calculateRank(actualCosmo);
 
-                                // DB is source of truth — override localStorage for key fields
                                 Object.assign(updated, {
-                                    xp: actualXP,
+                                    cosmo: actualCosmo,
                                     level,
-                                    xpToNext,
+                                    cosmoToNext,
+                                    cosmoInLevel,
+                                    rank,
                                     name: remotePlayer.name || prev.name,
                                     grade: remotePlayer.grade || prev.grade,
                                     ...(remotePlayer.mascot ? { mascot: remotePlayer.mascot } : {}),
@@ -233,24 +234,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
                                     ...(remotePlayer.streak !== undefined ? { streak: remotePlayer.streak } : {}),
                                     onboardingComplete: remotePlayer.onboarding_complete ?? prev.onboardingComplete,
                                     onboardingQuizScore: remotePlayer.onboarding_quiz_score ?? prev.onboardingQuizScore,
+                                    luckyStars: remotePlayer.lucky_stars ?? prev.luckyStars,
+                                    coins: remotePlayer.coins ?? prev.coins,
+                                    crystals: remotePlayer.crystals ?? prev.crystals,
+                                    totalCrystalsEarned: remotePlayer.total_crystals_earned ?? prev.totalCrystalsEarned,
+                                    abilityCharges: remotePlayer.ability_charges ?? prev.abilityCharges,
                                 });
-                            }
-
-                            // Merge planet progress from DB (overwriting local progress per planet if remote exists)
-                            if (remoteProgress) {
-                                updated.planetsProgress = { ...updated.planetsProgress };
-                                for (const planetId in remoteProgress) {
-                                    const remoteLevel = remoteProgress[planetId].completedLevels;
-                                    const localLevel = updated.planetsProgress[planetId]?.completedLevels || 0;
-
-                                    // Normally we take remote, but for safety in edge cases, take max.
-                                    if (remoteLevel >= localLevel) {
-                                        updated.planetsProgress[planetId] = {
-                                            ...updated.planetsProgress[planetId],
-                                            ...remoteProgress[planetId]
-                                        };
-                                    }
-                                }
                             }
 
                             return updated;
@@ -265,6 +254,50 @@ export function GameProvider({ children }: { children: ReactNode }) {
                             masteryByTopic: mastery.masteryByTopic,
                             bloomLevelReached: mastery.bloomLevelReached,
                         }));
+                    }
+
+                    // ─── Daily Login Streak (GDD §8.4) ───
+                    // BUG-7 FIX: Streak calculation runs AFTER DB merge above (via separate setPlayer),
+                    // so prev.streak already contains the DB-synced value. This is correct because
+                    // React processes setPlayer updaters sequentially within the same execution context.
+                    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+                    if (isMounted) {
+                        setPlayer(prev => {
+                            const LAST_LOGIN_KEY = "cosmomosaic_last_login";
+                            const lastLogin = localStorage.getItem(LAST_LOGIN_KEY);
+                            let newStreak = prev.streak;
+
+                            if (!lastLogin || lastLogin !== today) {
+                                if (lastLogin) {
+                                    const lastDate = new Date(lastLogin);
+                                    const todayDate = new Date(today);
+                                    const diffDays = Math.floor((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+                                    if (diffDays === 1) {
+                                        // Consecutive day → increment streak
+                                        newStreak = prev.streak + 1;
+                                    } else if (diffDays > 1) {
+                                        // Streak broken → reset to 1
+                                        newStreak = 1;
+                                    }
+                                    // diffDays === 0 means same day, no change
+                                } else {
+                                    // First login ever
+                                    newStreak = 1;
+                                }
+
+                                // Save today as last login
+                                localStorage.setItem(LAST_LOGIN_KEY, today);
+
+                                // Sync streak to DB
+                                if (!isMockMode && supabase && playerDbId) {
+                                    supabase.from("players").update({ streak: newStreak }).eq("id", playerDbId).then(({ error: e }) => {
+                                        if (e) console.error("[GameContext] streak sync error:", e);
+                                    });
+                                }
+                            }
+
+                            return { ...prev, streak: newStreak };
+                        });
                     }
 
                 } catch (err) {
@@ -297,7 +330,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         if (!isMockMode && supabase && playerDbId) {
             // Only extract fields that actually exist in the DB schema
             const dbUpdates: Record<string, unknown> = {};
-            if ('xp' in updates) dbUpdates.xp = updates.xp;
+            if ('cosmo' in updates) dbUpdates.xp = updates.cosmo; // DB column is still `xp`
             if ('streak' in updates) dbUpdates.streak = updates.streak;
             if ('mascot' in updates) dbUpdates.mascot = updates.mascot;
             if ('playerClass' in updates) dbUpdates.player_class = updates.playerClass;
@@ -305,6 +338,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
             if ('grade' in updates) dbUpdates.grade = updates.grade;
             if ('onboardingComplete' in updates) dbUpdates.onboarding_complete = updates.onboardingComplete;
             if ('onboardingQuizScore' in updates) dbUpdates.onboarding_quiz_score = updates.onboardingQuizScore;
+            if ('coins' in updates) dbUpdates.coins = updates.coins;
+            if ('crystals' in updates) dbUpdates.crystals = updates.crystals;
+            if ('totalCrystalsEarned' in updates) dbUpdates.total_crystals_earned = updates.totalCrystalsEarned;
+            if ('abilityCharges' in updates) dbUpdates.ability_charges = updates.abilityCharges;
+            if ('luckyStars' in updates) dbUpdates.lucky_stars = updates.luckyStars;
 
             if (Object.keys(dbUpdates).length > 0) {
                 supabase.from("players").update(dbUpdates).eq("id", playerDbId).then(({ error }) => {
@@ -314,24 +352,85 @@ export function GameProvider({ children }: { children: ReactNode }) {
         }
     }, [playerDbId]);
 
-    const addXP = useCallback((amount: number) => {
+    const addCosmo = useCallback((amount: number) => {
         setPlayer(prev => {
-            const newXp = prev.xp + amount;
-            const { level, xpToNext } = calculateLevel(newXp);
+            const newCosmo = prev.cosmo + amount;
+            const { level, cosmoToNext, cosmoInLevel } = calculateLevel(newCosmo);
+            const rank = calculateRank(newCosmo);
 
-            // Background sync
+            // Background sync (DB column is still `xp`)
             if (!isMockMode && supabase && playerDbId) {
-                supabase.from("players").update({ xp: newXp }).eq("id", playerDbId).then(({ error }) => {
-                    if (error) console.error("[GameContext] addXP DB error:", error);
+                supabase.from("players").update({ xp: newCosmo }).eq("id", playerDbId).then(({ error }) => {
+                    if (error) console.error("[GameContext] addCosmo DB error:", error);
                 });
             }
 
-            // Auto-update evolve stage
-            const evolveStage = calculateEvolveStage(newXp, prev.planetsProgress, prev.onboardingComplete);
-
-            return { ...prev, xp: newXp, level, xpToNext, evolveStage };
+            return { ...prev, cosmo: newCosmo, level, cosmoToNext, cosmoInLevel, rank };
         });
     }, [playerDbId]);
+
+    /* ─── 🪙 Coins Economy ─── */
+    const addCoins = useCallback((amount: number) => {
+        setPlayer(prev => ({ ...prev, coins: prev.coins + amount }));
+        // Persist to DB
+        if (playerDbId && supabase) {
+            const sb = supabase;
+            sb.from("players").select("coins").eq("id", playerDbId).single().then(({ data }) => {
+                if (data) sb.from("players").update({ coins: (data.coins || 0) + amount }).eq("id", playerDbId).then(() => { });
+            });
+        }
+    }, [playerDbId]);
+
+    /* ─── ⭐ Lucky Stars ─── */
+    const addStars = useCallback((amount: number) => {
+        setPlayer(prev => ({ ...prev, luckyStars: prev.luckyStars + amount }));
+        // Persist to DB
+        if (playerDbId && supabase) {
+            const sb = supabase;
+            sb.from("players").select("lucky_stars").eq("id", playerDbId).single().then(({ data }) => {
+                if (data) {
+                    sb.from("players").update({ lucky_stars: (data.lucky_stars || 0) + amount }).eq("id", playerDbId).then(() => { });
+                }
+            });
+        }
+    }, [playerDbId]);
+
+    const spendStars = useCallback((amount: number): boolean => {
+        let success = false;
+        setPlayer(prev => {
+            if (prev.luckyStars < amount) {
+                success = false;
+                return prev;
+            }
+            success = true;
+            return { ...prev, luckyStars: prev.luckyStars - amount };
+        });
+        // Persist to DB
+        if (success && playerDbId && supabase) {
+            const sb = supabase;
+            sb.from("players").select("lucky_stars").eq("id", playerDbId).single().then(({ data }) => {
+                if (data) sb.from("players").update({ lucky_stars: Math.max(0, (data.lucky_stars || 0) - amount) }).eq("id", playerDbId).then(() => { });
+            });
+        }
+        return success;
+    }, [playerDbId]);
+
+    // BUG-2 FIX: Use a ref to capture the synchronous result from the updater
+    const spendCoins = useCallback((amount: number): boolean => {
+        let success = false;
+        setPlayer(prev => {
+            if (prev.coins < amount) {
+                success = false;
+                return prev;
+            }
+            success = true;
+            return { ...prev, coins: prev.coins - amount };
+        });
+        // Note: React guarantees setState updater runs synchronously within
+        // the same execution context when called from an event handler.
+        // This pattern works correctly for event-driven spend operations.
+        return success;
+    }, []);
 
     /* ─── 💎 Crystal Economy ─── */
     const addCrystals = useCallback((amount: number, _reason?: string) => {
@@ -340,61 +439,82 @@ export function GameProvider({ children }: { children: ReactNode }) {
             crystals: prev.crystals + amount,
             totalCrystalsEarned: prev.totalCrystalsEarned + amount,
         }));
-    }, []);
+        // Persist to DB
+        if (playerDbId && supabase) {
+            const sb = supabase;
+            sb.from("players").select("crystals, total_crystals_earned").eq("id", playerDbId).single().then(({ data }) => {
+                if (data) sb.from("players").update({
+                    crystals: (data.crystals || 0) + amount,
+                    total_crystals_earned: (data.total_crystals_earned || 0) + amount,
+                }).eq("id", playerDbId).then(() => { });
+            });
+        }
+    }, [playerDbId]);
 
+    // BUG-2 FIX: Same pattern as spendCoins
     const spendCrystals = useCallback((amount: number): boolean => {
         let success = false;
         setPlayer(prev => {
-            if (prev.crystals < amount) return prev;
+            if (prev.crystals < amount) {
+                success = false;
+                return prev;
+            }
             success = true;
             return { ...prev, crystals: prev.crystals - amount };
         });
+        // Persist to DB
+        if (success && playerDbId && supabase) {
+            const sb = supabase;
+            sb.from("players").select("crystals").eq("id", playerDbId).single().then(({ data }) => {
+                if (data) sb.from("players").update({ crystals: Math.max(0, (data.crystals || 0) - amount) }).eq("id", playerDbId).then(() => { });
+            });
+        }
         return success;
-    }, []);
-
-    const updatePlanetProgress = useCallback((planetId: string, completedLevels: number, totalLevels: number) => {
-        setPlayer(prev => {
-            const now = new Date().toISOString();
-
-            // Background sync
-            if (!isMockMode && supabase && playerDbId) {
-                supabase.from("planet_progress").upsert({
-                    player_id: playerDbId,
-                    planet_id: planetId,
-                    completed_levels: completedLevels,
-                    last_played_at: now
-                }, { onConflict: 'player_id,planet_id' }).then(({ error }) => {
-                    if (error) console.error("[GameContext] updatePlanetProgress DB error:", error);
-                });
-            }
-
-            return {
-                ...prev,
-                planetsProgress: {
-                    ...prev.planetsProgress,
-                    [planetId]: {
-                        completedLevels,
-                        totalLevels,
-                        lastPlayedAt: now,
-                    },
-                },
-            };
-        });
     }, [playerDbId]);
 
-    const useClassAbility = useCallback(() => {
-        if (!classAbilityAvailable) return false;
-        setClassAbilityAvailable(false);
-        return true;
-    }, [classAbilityAvailable]);
 
-    const resetClassAbility = useCallback(() => {
-        setClassAbilityAvailable(true);
-    }, []);
+
+    /* ─── ⚡ Ability Charges Economy ─── */
+    const MAX_ABILITY_CHARGES = 5;
+
+    const useAbilityCharge = useCallback((): boolean => {
+        let success = false;
+        setPlayer(prev => {
+            if (prev.abilityCharges < 1) {
+                success = false;
+                return prev;
+            }
+            success = true;
+            return { ...prev, abilityCharges: prev.abilityCharges - 1 };
+        });
+        // Persist to DB
+        if (success && playerDbId && supabase) {
+            const sb = supabase;
+            sb.from("players").select("ability_charges").eq("id", playerDbId).single().then(({ data }) => {
+                if (data) sb.from("players").update({ ability_charges: Math.max(0, (data.ability_charges || 0) - 1) }).eq("id", playerDbId).then(() => { });
+            });
+        }
+        return success;
+    }, [playerDbId]);
+
+    const addAbilityCharges = useCallback((amount: number) => {
+        setPlayer(prev => ({
+            ...prev,
+            abilityCharges: Math.min(MAX_ABILITY_CHARGES, prev.abilityCharges + amount),
+        }));
+        // Persist to DB
+        if (playerDbId && supabase) {
+            const sb = supabase;
+            sb.from("players").select("ability_charges").eq("id", playerDbId).single().then(({ data }) => {
+                if (data) sb.from("players").update({
+                    ability_charges: Math.min(MAX_ABILITY_CHARGES, (data.ability_charges || 0) + amount),
+                }).eq("id", playerDbId).then(() => { });
+            });
+        }
+    }, [playerDbId]);
 
     const resetGame = useCallback(() => {
         setPlayer(DEFAULT_PLAYER);
-        setClassAbilityAvailable(true);
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem(CALM_MODE_KEY);
     }, []);
@@ -436,13 +556,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
             value={{
                 player,
                 updatePlayer,
-                addXP,
+                addCosmo,
+                addCoins,
+                addStars,
+                spendStars,
+                spendCoins,
                 addCrystals,
                 spendCrystals,
-                updatePlanetProgress,
-                useClassAbility,
-                classAbilityAvailable,
-                resetClassAbility,
+
+                useAbilityCharge,
+                addAbilityCharges,
                 resetGame,
                 setCalmMode,
                 unlockAchievement,

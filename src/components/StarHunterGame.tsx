@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { GameLevel } from "@/lib/services/db";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { useGame } from "@/lib/game-context";
+import MascotAbilityButton from "@/components/MascotAbilityButton";
 
 // ─── Types ───────────────────────────────────────────────
 interface StarData {
@@ -32,12 +34,14 @@ interface Props {
     onExit?: () => void;
     playerClass?: "warrior" | "wizard" | "hunter" | null;
     onGameComplete?: (finalScore: number, levelsCompleted: number) => void;
+    onAnswered?: (questionId: string, isCorrect: boolean, subject: string, bloomLevel: number) => void;
     calmMode?: boolean;
+    paused?: boolean;
 }
 
 // ─── Constants ───────────────────────────────────────────
 const MAX_HP = 3;
-const BASE_XP = 100;
+const BASE_COSMO = 100;
 const STAR_D = 112; // star diameter px
 const BASE_SPEED = 1.6;
 const QUESTION_TIME = 10; // secs
@@ -53,8 +57,9 @@ const COMBO_MULTIPLIERS = [1, 1, 2, 3, 4];
 function uid() { return Math.random().toString(36).slice(2, 9); }
 
 // ─── Component ───────────────────────────────────────────
-export default function StarHunterGame({ levels, onExit, playerClass, onGameComplete, calmMode = false }: Props) {
+export default function StarHunterGame({ levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false, paused = false }: Props) {
     const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
+    const { player, useAbilityCharge, addAbilityCharges } = useGame();
 
     // ── Game state ──
     const [hp, setHp] = useState(MAX_HP);
@@ -161,6 +166,7 @@ export default function StarHunterGame({ levels, onExit, playerClass, onGameComp
     // ─── Physics animation loop ───────────────────────────
     useEffect(() => {
         if (gameState !== "playing") { cancelAnimationFrame(animRef.current); return; }
+        if (paused) { cancelAnimationFrame(animRef.current); return; } // BUG-4 FIX: freeze physics when paused
         const container = containerRef.current;
         if (!container) return;
 
@@ -187,11 +193,11 @@ export default function StarHunterGame({ levels, onExit, playerClass, onGameComp
         };
         animRef.current = requestAnimationFrame(loop);
         return () => cancelAnimationFrame(animRef.current);
-    }, [gameState, stars]);
+    }, [gameState, stars, paused]);
 
     // ─── Timer countdown ─────────────────────────────────
     useEffect(() => {
-        if (gameState !== "playing") { if (timerRef.current) clearInterval(timerRef.current); return; }
+        if (gameState !== "playing" || paused) { if (timerRef.current) clearInterval(timerRef.current); return; } // BUG-4 FIX: pause timer
         if (timerRef.current) clearInterval(timerRef.current);
 
         timerRef.current = setInterval(() => {
@@ -199,9 +205,28 @@ export default function StarHunterGame({ levels, onExit, playerClass, onGameComp
                 if (prev <= 1) {
                     setCombo(1);
                     playWrong();
+                    // IMP-1: Track timeout as wrong answer via onAnswered
+                    onAnswered?.(currentQ?.id ?? "", false, currentLevel?.subject ?? "", currentQ?.bloomLevel ?? 1);
                     setHp(h => {
                         const next = h - 1;
-                        if (next <= 0) setGameState("gameOver");
+                        if (next <= 0) {
+                            setGameState("gameOver");
+                        } else {
+                            // IMP-1 FIX: Auto-advance to next question on timeout
+                            const nextQ = qIdx + 1;
+                            if (nextQ >= (currentLevel?.questions.length ?? 0)) {
+                                const nextLevel = levelIdx + 1;
+                                setLevelsCompleted(l => l + 1);
+                                if (nextLevel >= levels.length) {
+                                    setGameState("win");
+                                } else {
+                                    setLevelIdx(nextLevel);
+                                    setQIdx(0);
+                                }
+                            } else {
+                                setQIdx(nextQ);
+                            }
+                        }
                         return Math.max(0, next);
                     });
                     return QUESTION_TIME;
@@ -240,7 +265,7 @@ export default function StarHunterGame({ levels, onExit, playerClass, onGameComp
 
     // ─── Click handler ────────────────────────────────────
     const handleStarClick = useCallback((star: StarData, starIdx: number) => {
-        if (gameState !== "playing" || !interactableRef.current) return;
+        if (gameState !== "playing" || !interactableRef.current || paused) return; // BUG-4: block clicks when paused
         if (explodingIds.has(star.id)) return;
 
         if (star.isCorrect) {
@@ -248,7 +273,10 @@ export default function StarHunterGame({ levels, onExit, playerClass, onGameComp
             interactableRef.current = false;
             const newCombo = Math.min(combo + 1, COMBO_MULTIPLIERS.length);
             const mult = COMBO_MULTIPLIERS[Math.min(newCombo - 1, COMBO_MULTIPLIERS.length - 1)];
-            const xp = BASE_XP * mult;
+            const xp = BASE_COSMO * mult;
+
+            // BUG-3 FIX: Track correct answer
+            onAnswered?.(currentQ?.id ?? "", true, currentLevel?.subject ?? "", currentQ?.bloomLevel ?? 1);
 
             // Particle burst at star position
             const pos = starPosRef.current[starIdx];
@@ -264,6 +292,7 @@ export default function StarHunterGame({ levels, onExit, playerClass, onGameComp
             const allIds = new Set(stars.map(s => s.id));
             setExplodingIds(allIds);
             setCombo(newCombo);
+            if (newCombo === 4) addAbilityCharges(1); // Combo reward (starts at 1, so 4 = 3 correct)
             setScore(s => s + xp);
 
             setTimeout(() => {
@@ -289,6 +318,8 @@ export default function StarHunterGame({ levels, onExit, playerClass, onGameComp
         } else {
             // Wrong
             playWrong();
+            // BUG-3 FIX: Track wrong answer
+            onAnswered?.(currentQ?.id ?? "", false, currentLevel?.subject ?? "", currentQ?.bloomLevel ?? 1);
             if (shieldActive && playerClass === "warrior") {
                 setShieldActive(false);
             } else {
@@ -302,31 +333,31 @@ export default function StarHunterGame({ levels, onExit, playerClass, onGameComp
             setShakingId(star.id);
             setTimeout(() => setShakingId(null), 500);
         }
-    }, [gameState, stars, combo, qIdx, levelIdx, levels, currentLevel, shieldActive, playerClass, explodingIds]);
+    }, [gameState, stars, combo, qIdx, levelIdx, levels, currentLevel, shieldActive, playerClass, explodingIds, paused, onAnswered, currentQ, calmMode]);
 
     // ─── Ability button ───────────────────────────────────
     const useAbility = useCallback(() => {
         if (abilityUsed || gameState !== "playing") return;
+        if (!useAbilityCharge()) return; // No charges left
         setAbilityUsed(true);
         if (playerClass === "wizard") { setFrozenActive(true); }
         else if (playerClass === "hunter") {
             const wrongStar = stars.find(s => !s.isCorrect);
             if (wrongStar) setHintStarId(wrongStar.id);
         }
-        // warrior ability auto-activates on first wrong click
-    }, [abilityUsed, gameState, playerClass, stars]);
+    }, [abilityUsed, gameState, playerClass, stars, useAbilityCharge]);
 
     const abilityInfo = {
-        warrior: { label: "Khiên Bất Bại", icon: "🛡️", desc: "Miễn 1 lần sai" },
-        wizard: { label: "Đóng Băng TG", icon: "❄️", desc: "Sao đứng yên 5s" },
-        hunter: { label: "Mắt Đại Bàng", icon: "🎯", desc: "Hé lộ 1 sao sai" },
+        warrior: { label: "Khiên Bất Bại", icon: "🛡️", desc: `Miễn 1 lần sai (⚡${player.abilityCharges})` },
+        wizard: { label: "Đóng Băng TG", icon: "❄️", desc: `Đứng yên 5s (⚡${player.abilityCharges})` },
+        hunter: { label: "Mắt Đại Bàng", icon: "🎯", desc: `Hé lộ 1 sai (⚡${player.abilityCharges})` },
     };
     const ability = playerClass ? abilityInfo[playerClass] : null;
 
     // ─── Render overlays ──────────────────────────────────
     if (gameState === "ready") {
         return (
-            <div className="flex-1 flex items-center justify-center relative overflow-hidden">
+            <div className="w-full max-w-5xl mx-auto min-h-[500px] flex items-center justify-center relative overflow-hidden rounded-2xl border border-white/10 bg-space-deep">
                 <div className="absolute inset-0 bg-space-deep/90 flex flex-col items-center justify-center gap-6 z-30 animate-in fade-in duration-500">
                     <div className="text-6xl animate-float">⭐</div>
                     <h2 className="text-3xl sm:text-4xl font-bold font-[var(--font-heading)] neon-text text-center">
@@ -363,7 +394,7 @@ export default function StarHunterGame({ levels, onExit, playerClass, onGameComp
         const isWin = gameState === "win";
         const stars3 = hp >= 3 ? 3 : hp >= 2 ? 2 : 1;
         return (
-            <div className="flex-1 flex items-center justify-center">
+            <div className="w-full max-w-5xl mx-auto min-h-[500px] flex items-center justify-center rounded-2xl border border-white/10 bg-space-deep">
                 <div className="glass-card text-center space-y-6 max-w-md mx-auto !p-10">
                     <div className="text-6xl">{isWin ? "🏆" : "💫"}</div>
                     <h2 className="text-3xl font-bold text-white font-[var(--font-heading)]">
@@ -375,7 +406,7 @@ export default function StarHunterGame({ levels, onExit, playerClass, onGameComp
                         ))}
                     </div>
                     <div className="glass-card !bg-white/5 !p-4 space-y-2">
-                        <div className="flex justify-between text-white/70"><span>Tổng điểm</span><span className="font-bold text-neon-gold">{score.toLocaleString()} XP</span></div>
+                        <div className="flex justify-between text-white/70"><span>Tổng điểm</span><span className="font-bold text-neon-gold">{score.toLocaleString()} ✦</span></div>
                         <div className="flex justify-between text-white/70"><span>Levels hoàn thành</span><span className="font-bold text-white">{levelsCompleted}/{levels.length}</span></div>
                         <div className="flex justify-between text-white/70"><span>Combo cao nhất</span><span className="font-bold text-neon-pink">×{multiplier}</span></div>
                     </div>
@@ -399,7 +430,7 @@ export default function StarHunterGame({ levels, onExit, playerClass, onGameComp
     const timerColor = timerPct > 60 ? "#00FF88" : timerPct > 30 ? "#FFD700" : "#FF4444";
 
     return (
-        <div className="flex-1 flex flex-col min-h-0 relative select-none">
+        <div className="w-full max-w-5xl mx-auto min-h-[500px] flex flex-col relative select-none rounded-2xl border border-white/10 bg-space-deep overflow-hidden">
             {/* ─── Global style for animations ─── */}
             <style>{`
                 @keyframes starFloat { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.3); } }
@@ -444,7 +475,7 @@ export default function StarHunterGame({ levels, onExit, playerClass, onGameComp
                     )}
                     <div className="glass-card !p-2 !px-3 !rounded-xl">
                         <div className="text-neon-gold font-bold text-sm">{score.toLocaleString()}</div>
-                        <div className="text-white/40 text-xs">XP</div>
+                        <div className="text-white/40 text-xs">✦</div>
                     </div>
                 </div>
             </div>
@@ -470,22 +501,16 @@ export default function StarHunterGame({ levels, onExit, playerClass, onGameComp
                     {currentLevel?.subject} · Level {currentLevel?.level}
                 </div>
 
-                {/* Ability button */}
+                {/* Ability button — Mascot */}
                 {ability && (
-                    <button
+                    <MascotAbilityButton
                         onClick={useAbility}
                         disabled={abilityUsed || gameState !== "playing"}
-                        className="absolute bottom-4 right-4 glass-card !p-3 !rounded-2xl z-20 flex flex-col items-center gap-1 transition-all"
-                        style={{
-                            opacity: abilityUsed ? 0.35 : 1,
-                            filter: !abilityUsed ? "drop-shadow(0 0 8px #9D4EDD)" : "none",
-                            cursor: abilityUsed ? "not-allowed" : "pointer",
-                        }}
-                    >
-                        <span className="text-xl">{ability.icon}</span>
-                        <span className="text-xs text-white/70">{ability.label}</span>
-                        {!abilityUsed && <span className="text-xs text-neon-gold">{ability.desc}</span>}
-                    </button>
+                        charges={player.abilityCharges}
+                        label={ability.label}
+                        description={ability.desc}
+                        position="bottom-right"
+                    />
                 )}
 
                 {/* Shield indicator */}

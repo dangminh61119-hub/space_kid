@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { GameLevel } from "@/lib/services/db";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { useGame } from "@/lib/game-context";
+import MascotAbilityButton from "@/components/MascotAbilityButton";
 
 /* ─── Types ─── */
 interface Meteor {
@@ -23,13 +25,13 @@ interface Props {
     onExit?: () => void;
     playerClass?: "warrior" | "wizard" | "hunter" | null;
     onGameComplete?: (finalScore: number, levelsCompleted: number) => void;
-    onAnswered?: (isCorrect: boolean, subject: string, bloomLevel: number) => void;
+    onAnswered?: (questionId: string, isCorrect: boolean, subject: string, bloomLevel: number) => void;
     calmMode?: boolean;
 }
 
 /* ─── Constants ─── */
 const MAX_HP = 3;
-const BASE_XP = 100;
+const BASE_COSMO = 100;
 const BASE_SPEED = 2.5;
 const METEOR_COLORS = [
     { trail: "#00F5FF", body: "linear-gradient(135deg, #00F5FF, #0077B6)", glow: "0 0 20px #00F5FF88" },
@@ -48,6 +50,7 @@ export default function MeteorShowerGame({
     levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false,
 }: Props) {
     const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
+    const { player, useAbilityCharge, addAbilityCharges } = useGame();
 
     const [hp, setHp] = useState(MAX_HP);
     const [score, setScore] = useState(0);
@@ -221,18 +224,20 @@ export default function MeteorShowerGame({
             const newCombo = combo + 1;
             const mult = COMBO_THRESHOLDS[Math.min(newCombo, COMBO_THRESHOLDS.length - 1)];
             setCombo(newCombo);
-            setScore(s => s + BASE_XP * mult);
+            if (newCombo === 3) addAbilityCharges(1); // Combo reward
+            setScore(s => s + BASE_COSMO * mult);
             setExplodedIds(new Set(meteorsRef.current.map(m => m.id)));
-            onAnswered?.(true, currentLevel?.subject || "", 1);
+            onAnswered?.(currentQ?.id ?? "", true, currentLevel?.subject || "", currentQ?.bloomLevel ?? 1);
             setTimeout(() => {
                 setExplodedIds(new Set());
                 advanceQuestion();
             }, 600);
         } else {
             playWrong();
-            onAnswered?.(false, currentLevel?.subject || "", 1);
+            onAnswered?.(currentQ?.id ?? "", false, currentLevel?.subject || "", currentQ?.bloomLevel ?? 1);
             if (shieldActive && playerClass === "warrior") {
                 setShieldActive(false);
+                // Shield consumed passively, charge was spent on game start
             } else {
                 setCombo(0);
                 setHp(h => {
@@ -249,96 +254,26 @@ export default function MeteorShowerGame({
     /* ─── Ability ─── */
     const useAbility = useCallback(() => {
         if (abilityUsed || gameState !== "playing") return;
+        if (!useAbilityCharge()) return; // No charges left
         setAbilityUsed(true);
         if (playerClass === "wizard") setSlowActive(true);
         else if (playerClass === "hunter") {
             // Highlight wrong meteors in red
-            // We just mark them by adding a CSS class via state
         }
-    }, [abilityUsed, gameState, playerClass]);
+    }, [abilityUsed, gameState, playerClass, useAbilityCharge]);
 
     const abilityInfo = {
-        warrior: { label: "Khiên Thép", icon: "🛡️", desc: "Miễn 1 lần sai" },
-        wizard: { label: "Hạ Tốc Độ", icon: "🌀", desc: "Chậm 60% trong 5s" },
-        hunter: { label: "Tầm Nhiệt", icon: "🔥", desc: "Soi sáng sao sai" },
+        warrior: { label: "Khiên Thép", icon: "🛡️", desc: `Miễn 1 lần sai (⚡${player.abilityCharges})` },
+        wizard: { label: "Hạ Tốc Độ", icon: "🌀", desc: `Chậm 60% 5s (⚡${player.abilityCharges})` },
+        hunter: { label: "Tầm Nhiệt", icon: "🔥", desc: `Soi sáng sao sai (⚡${player.abilityCharges})` },
     };
     const ability = playerClass ? abilityInfo[playerClass] : null;
 
-    /* ─── Ready screen ─── */
-    if (gameState === "ready") {
-        return (
-            <div className="flex-1 flex items-center justify-center relative overflow-hidden">
-                <div className="absolute inset-0 bg-space-deep/90 flex flex-col items-center justify-center gap-6 z-30">
-                    <div className="text-6xl animate-float">☄️</div>
-                    <h2 className="text-3xl sm:text-4xl font-bold font-[var(--font-heading)] neon-text text-center">
-                        Mưa Thiên Thạch
-                    </h2>
-                    <p className="text-white/60 text-sm text-center max-w-md px-4 leading-relaxed">
-                        Thiên thạch mang đáp án bay qua bầu trời!<br />
-                        Nhấn vào thiên thạch <span className="text-neon-gold font-bold">ĐÚNG</span> trước khi nó bay mất!
-                    </p>
-                    {levels[0] && (
-                        <div className="glass-card !p-3 !rounded-xl text-center">
-                            <p className="text-xs text-white/50">Level {levels[0].level} · {levels[0].planet}</p>
-                            <p className="text-sm font-bold text-white">{levels[0].title}</p>
-                        </div>
-                    )}
-                    <button
-                        onClick={startGame}
-                        className="px-8 py-3 rounded-full text-white font-bold text-lg hover:scale-105 transition-transform"
-                        style={{ background: "linear-gradient(90deg, #FF8C00, #FF4444)", boxShadow: "0 0 25px rgba(255,140,0,0.5)" }}
-                    >
-                        SĂN THIÊN THẠCH ☄️
-                    </button>
-                    {onExit && (
-                        <button onClick={onExit} className="mt-2 text-sm text-white/40 hover:text-white transition-colors">
-                            ← Thoát
-                        </button>
-                    )}
-                </div>
-            </div>
-        );
-    }
-
-    /* ─── Win / GameOver ─── */
-    if (gameState === "win" || gameState === "gameOver") {
-        const isWin = gameState === "win";
-        const stars = hp >= 3 ? 3 : hp >= 2 ? 2 : 1;
-        return (
-            <div className="flex-1 flex items-center justify-center">
-                <div className="glass-card text-center space-y-6 max-w-md mx-auto !p-10">
-                    <div className="text-6xl">{isWin ? "🏆" : "☄️"}</div>
-                    <h2 className="text-3xl font-bold text-white font-[var(--font-heading)]">
-                        {isWin ? "Bão thiên thạch đã qua!" : "Thiên thạch quá mạnh..."}
-                    </h2>
-                    <div className="flex justify-center gap-1 text-3xl">
-                        {Array.from({ length: 3 }).map((_, i) => (
-                            <span key={i} className={i < stars ? "text-yellow-400" : "text-white/20"}>⭐</span>
-                        ))}
-                    </div>
-                    <div className="glass-card !bg-white/5 !p-4 space-y-2">
-                        <div className="flex justify-between text-white/70"><span>Tổng điểm</span><span className="font-bold text-neon-gold">{score.toLocaleString()} XP</span></div>
-                        <div className="flex justify-between text-white/70"><span>Levels hoàn thành</span><span className="font-bold text-white">{levelsCompleted}/{levels.length}</span></div>
-                    </div>
-                    <div className="flex gap-3 w-full">
-                        <button onClick={startGame} className="flex-1 py-3 rounded-xl font-bold text-white shadow-[0_0_15px_rgba(255,140,0,0.5)] hover:scale-105 transition-transform"
-                            style={{ background: "linear-gradient(90deg,#FF8C00,#FF4444)" }}>
-                            Chơi lại 🔄
-                        </button>
-                        {onExit && (
-                            <button onClick={onExit} className="flex-1 py-3 rounded-xl font-bold text-white border border-white/20 hover:bg-white/10 transition-colors">
-                                Thoát 🗺
-                            </button>
-                        )}
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    /* ─── Playing ─── */
+    /* ─── Main render (always mounts container for proper height) ─── */
+    const isWin = gameState === "win";
+    const endStars = hp >= 3 ? 3 : hp >= 2 ? 2 : 1;
     return (
-        <div className="flex-1 flex flex-col min-h-0 relative select-none">
+        <div className="flex-1 flex flex-col min-h-0 relative select-none min-h-[500px]">
             <style>{`
                 @keyframes meteorTrail { 0% { opacity: 0.8; transform: scaleX(1); } 100% { opacity: 0; transform: scaleX(0); } }
                 @keyframes meteorExplode { 0% { transform: scale(1); opacity:1; } 50% { transform: scale(2); opacity:0.6; } 100% { transform: scale(3); opacity:0; } }
@@ -371,7 +306,7 @@ export default function MeteorShowerGame({
                     )}
                     <div className="glass-card !p-2 !px-3 !rounded-xl">
                         <div className="text-neon-gold font-bold text-sm">{score.toLocaleString()}</div>
-                        <div className="text-white/40 text-xs">XP</div>
+                        <div className="text-white/40 text-xs">✦</div>
                     </div>
                 </div>
             </div>
@@ -390,22 +325,16 @@ export default function MeteorShowerGame({
                     {currentLevel?.subject} · Level {currentLevel?.level}
                 </div>
 
-                {/* Ability button */}
+                {/* Ability button — Mascot */}
                 {ability && (
-                    <button
+                    <MascotAbilityButton
                         onClick={useAbility}
                         disabled={abilityUsed || gameState !== "playing"}
-                        className="absolute bottom-4 right-4 glass-card !p-3 !rounded-2xl z-20 flex flex-col items-center gap-1 transition-all"
-                        style={{
-                            opacity: abilityUsed ? 0.35 : 1,
-                            filter: !abilityUsed ? "drop-shadow(0 0 8px #FF8C00)" : "none",
-                            cursor: abilityUsed ? "not-allowed" : "pointer",
-                        }}
-                    >
-                        <span className="text-xl">{ability.icon}</span>
-                        <span className="text-xs text-white/70">{ability.label}</span>
-                        {!abilityUsed && <span className="text-xs text-neon-gold">{ability.desc}</span>}
-                    </button>
+                        charges={player.abilityCharges}
+                        label={ability.label}
+                        description={ability.desc}
+                        position="bottom-right"
+                    />
                 )}
 
                 {/* Shield indicator */}
@@ -517,6 +446,71 @@ export default function MeteorShowerGame({
                     </div>
                 )}
             </div>
+
+            {/* ─── OVERLAYS: Ready / Win / GameOver ─── */}
+            <AnimatePresence>
+                {gameState === "ready" && (
+                    <motion.div key="ready" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-space-deep/95 flex flex-col items-center justify-center gap-6 z-30">
+                        <div className="text-6xl animate-float">☄️</div>
+                        <h2 className="text-3xl sm:text-4xl font-bold font-[var(--font-heading)] neon-text text-center">
+                            Mưa Thiên Thạch
+                        </h2>
+                        <p className="text-white/60 text-sm text-center max-w-md px-4 leading-relaxed">
+                            Thiên thạch mang đáp án bay qua bầu trời!<br />
+                            Nhấn vào thiên thạch <span className="text-neon-gold font-bold">ĐÚNG</span> trước khi nó bay mất!
+                        </p>
+                        {levels[0] && (
+                            <div className="glass-card !p-3 !rounded-xl text-center">
+                                <p className="text-xs text-white/50">Level {levels[0].level} · {levels[0].title}</p>
+                                <p className="text-sm font-bold text-white">{levels[0].subject}</p>
+                            </div>
+                        )}
+                        <button
+                            onClick={startGame}
+                            className="px-8 py-3 rounded-full text-white font-bold text-lg hover:scale-105 transition-transform"
+                            style={{ background: "linear-gradient(90deg, #FF8C00, #FF4444)", boxShadow: "0 0 25px rgba(255,140,0,0.5)" }}
+                        >
+                            SĂN THIÊN THẠCH ☄️
+                        </button>
+                        {onExit && (
+                            <button onClick={onExit} className="mt-2 text-sm text-white/40 hover:text-white transition-colors">
+                                ← Thoát
+                            </button>
+                        )}
+                    </motion.div>
+                )}
+
+                {(gameState === "win" || gameState === "gameOver") && (
+                    <motion.div key="end" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-space-deep/95 flex flex-col items-center justify-center gap-5 z-30">
+                        <div className="text-6xl">{isWin ? "🏆" : "☄️"}</div>
+                        <h2 className="text-3xl font-bold text-white font-[var(--font-heading)]">
+                            {isWin ? "Bão thiên thạch đã qua!" : "Thiên thạch quá mạnh..."}
+                        </h2>
+                        <div className="flex justify-center gap-1 text-3xl">
+                            {Array.from({ length: 3 }).map((_, i) => (
+                                <span key={i} className={i < endStars ? "text-yellow-400" : "text-white/20"}>⭐</span>
+                            ))}
+                        </div>
+                        <div className="glass-card !bg-white/5 !p-4 space-y-2 min-w-[280px]">
+                            <div className="flex justify-between text-white/70"><span>Tổng điểm</span><span className="font-bold text-neon-gold">{score.toLocaleString()} ✦</span></div>
+                            <div className="flex justify-between text-white/70"><span>Levels hoàn thành</span><span className="font-bold text-white">{levelsCompleted}/{levels.length}</span></div>
+                        </div>
+                        <div className="flex gap-3">
+                            <button onClick={startGame} className="px-6 py-3 rounded-full font-bold text-white shadow-[0_0_15px_rgba(255,140,0,0.5)] hover:scale-105 transition-transform"
+                                style={{ background: "linear-gradient(90deg,#FF8C00,#FF4444)" }}>
+                                Chơi lại 🔄
+                            </button>
+                            {onExit && (
+                                <button onClick={onExit} className="px-6 py-3 rounded-full font-bold text-white border border-white/20 hover:bg-white/10 transition-colors">
+                                    Thoát 🗺
+                                </button>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

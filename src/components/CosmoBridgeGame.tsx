@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Maximize, Minimize } from "lucide-react";
 import type { GameLevel } from "@/lib/services/db";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { useGame } from "@/lib/game-context";
+import MascotAbilityButton from "@/components/MascotAbilityButton";
 
 /* ─── Types ─── */
 interface MatchPair {
@@ -23,13 +25,13 @@ interface Props {
     onExit?: () => void;
     playerClass?: "warrior" | "wizard" | "hunter" | null;
     onGameComplete?: (finalScore: number, levelsCompleted: number) => void;
-    onAnswered?: (isCorrect: boolean, subject: string, bloomLevel: number) => void;
+    onAnswered?: (questionId: string, isCorrect: boolean, subject: string, bloomLevel: number) => void;
     calmMode?: boolean;
 }
 
 /* ─── Constants ─── */
 const MAX_HP = 3;
-const BASE_XP = 80;
+const BASE_COSMO = 80;
 const BONUS_PERFECT = 200;
 const PAIR_COLORS = [
     { line: "#00F5FF", bg: "rgba(0,245,255,0.15)", border: "rgb(0,245,255)" },
@@ -102,6 +104,7 @@ export default function CosmoBridgeGame({
     levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false,
 }: Props) {
     const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
+    const { player, useAbilityCharge, addAbilityCharges } = useGame();
     const [gameState, setGameState] = useState<"ready" | "playing" | "roundComplete" | "gameOver" | "win">("ready");
     const [rounds, setRounds] = useState<BridgeRound[]>([]);
     const [roundIdx, setRoundIdx] = useState(0);
@@ -170,24 +173,39 @@ export default function CosmoBridgeGame({
             setNextColorIdx(c => (c + 1) % PAIR_COLORS.length);
             setMatches(prev => ({ ...prev, [selectedLeft]: rightPairId }));
             setMatchColors(prev => ({ ...prev, [selectedLeft]: colorIdx }));
-            setScore(s => s + BASE_XP);
-            onAnswered?.(true, levels[0]?.subject ?? "", 2);
+            setScore(s => s + BASE_COSMO);
+            onAnswered?.("", true, levels[0]?.subject ?? "", 2);
         } else {
             playWrong();
             setWrongFlash(rightPairId);
-            onAnswered?.(false, levels[0]?.subject ?? "", 2);
+            onAnswered?.("", false, levels[0]?.subject ?? "", 2);
 
             if (playerClass === "warrior" && !shieldUsed) {
-                setShieldUsed(true);
-                setAbilityNotice("🛡️ Lá chắn bảo vệ!");
-                setTimeout(() => setAbilityNotice(null), 1500);
-            } else {
+                const charged = useAbilityCharge();
+                if (charged) {
+                    setShieldUsed(true);
+                    setAbilityNotice("🛡️ Lá chắn bảo vệ!");
+                    setTimeout(() => setAbilityNotice(null), 1500);
+                } else {
+                    setHp(prev => {
+                        const n = prev - 1;
+                        if (n <= 0) {
+                            setTimeout(() => {
+                                stopBGM();
+                                onGameComplete?.(score, 0);
+                                setGameState("gameOver");
+                            }, 500);
+                        }
+                        return n;
+                    });
+                }
+            } else if (playerClass !== "warrior") {
                 setHp(prev => {
                     const n = prev - 1;
                     if (n <= 0) {
                         setTimeout(() => {
                             stopBGM();
-                            onGameComplete?.(score, roundIdx);
+                            onGameComplete?.(score, 0); // 0 = lose
                             setGameState("gameOver");
                         }, 500);
                     }
@@ -204,6 +222,7 @@ export default function CosmoBridgeGame({
     /* ─── Hunter: auto-match one pair ─── */
     const handleAutoMatch = () => {
         if (playerClass !== "hunter" || autoMatched || !round) return;
+        if (!useAbilityCharge()) return; // No charges
         const unmatched = round.pairs.filter(p => !matches[p.id]);
         if (unmatched.length === 0) return;
 
@@ -213,7 +232,7 @@ export default function CosmoBridgeGame({
         setAutoMatched(true);
         setMatches(prev => ({ ...prev, [pair.id]: pair.id }));
         setMatchColors(prev => ({ ...prev, [pair.id]: colorIdx }));
-        setScore(s => s + BASE_XP);
+        setScore(s => s + BASE_COSMO);
         setAbilityNotice("🎯 Tự nối 1 cặp!");
         setTimeout(() => setAbilityNotice(null), 1500);
     };
@@ -266,7 +285,7 @@ export default function CosmoBridgeGame({
                     {Array.from({ length: MAX_HP }).map((_, i) => (
                         <span key={i} className={`text-xl transition-all ${i < hp ? "opacity-100 scale-100" : "opacity-20 scale-75"}`}>❤️</span>
                     ))}
-                    {playerClass === "warrior" && !shieldUsed && <span className="text-xl ml-1 animate-pulse">🛡️</span>}
+                    {playerClass === "warrior" && !shieldUsed && player.abilityCharges > 0 && <span className="text-xl ml-1 animate-pulse">🛡️</span>}
                 </div>
 
                 <AnimatePresence>
@@ -280,7 +299,7 @@ export default function CosmoBridgeGame({
 
                 <div className="flex items-center gap-3">
                     <span className="text-neon-cyan font-bold text-lg">{score}</span>
-                    <span className="text-white/40 text-xs">XP</span>
+                    <span className="text-white/40 text-xs">✦</span>
                     <button onClick={toggleFullscreen} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 transition-colors">
                         {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
                     </button>
@@ -417,12 +436,17 @@ export default function CosmoBridgeGame({
                             </div>
                         </div>
 
-                        {/* Hunter ability */}
-                        {playerClass === "hunter" && !autoMatched && (
-                            <button onClick={handleAutoMatch}
-                                className="px-3 py-1.5 rounded-full border border-neon-gold/30 text-neon-gold text-xs font-bold hover:bg-neon-gold/10 transition-colors">
-                                🎯 Tự nối 1 cặp
-                            </button>
+                        {/* Hunter ability — Mascot */}
+                        {playerClass === "hunter" && !autoMatched && player.abilityCharges > 0 && (
+                            <MascotAbilityButton
+                                onClick={handleAutoMatch}
+                                disabled={autoMatched}
+                                charges={player.abilityCharges}
+                                label="Tự nối cặp"
+                                description="Nối đúng 1 cặp"
+                                position="inline"
+                                size="sm"
+                            />
                         )}
                     </div>
                 )}
@@ -438,15 +462,15 @@ export default function CosmoBridgeGame({
                             </h2>
                             <p className="text-white/60 text-sm text-center max-w-md px-4">
                                 Chọn bên trái, rồi nối với bên phải!<br />
-                                Nối đúng hết = <span className="text-neon-gold font-bold">bonus XP!</span> 🌟
+                                Nối đúng hết = <span className="text-neon-gold font-bold">bonus ✦!</span> 🌟
                             </p>
                             {playerClass && (
                                 <div className="glass-card !p-3 !rounded-xl text-center border border-neon-gold/20">
                                     <p className="text-xs text-white/50 mb-1">Khả năng đặc biệt</p>
                                     <p className="text-sm font-bold text-neon-gold">
-                                        {playerClass === "warrior" && "🛡️ 1 cặp sai không mất HP"}
+                                        {playerClass === "warrior" && `🛡️ 1 cặp sai không mất HP (⚡${player.abilityCharges})`}
                                         {playerClass === "wizard" && "⏳ +15 giây mỗi vòng"}
-                                        {playerClass === "hunter" && "🎯 Tự nối 1 cặp"}
+                                        {playerClass === "hunter" && `🎯 Tự nối 1 cặp (⚡${player.abilityCharges})`}
                                     </p>
                                 </div>
                             )}
@@ -462,7 +486,7 @@ export default function CosmoBridgeGame({
                             className="absolute inset-0 bg-space-deep/95 flex flex-col items-center justify-center gap-5 z-20">
                             <div className="text-5xl">🎉</div>
                             <h2 className="text-xl font-bold neon-text">Vòng {roundIdx + 1} hoàn thành!</h2>
-                            <p className="text-neon-gold font-bold">{score} XP</p>
+                            <p className="text-neon-gold font-bold">{score} ✦</p>
                             <button onClick={() => startRound(roundIdx + 1)}
                                 className="px-8 py-3 rounded-full bg-gradient-to-r from-pink-500 to-cyan-500 text-white font-bold hover:scale-105 transition-transform">
                                 Vòng tiếp →
@@ -475,7 +499,7 @@ export default function CosmoBridgeGame({
                             className="absolute inset-0 bg-space-deep/95 flex flex-col items-center justify-center gap-5 z-20">
                             <div className="text-6xl">💥</div>
                             <h2 className="text-2xl font-bold text-red-400">Cầu bị sập!</h2>
-                            <p className="text-white/60">Điểm: <span className="text-neon-cyan font-bold">{score} XP</span></p>
+                            <p className="text-white/60">Điểm: <span className="text-neon-cyan font-bold">{score} ✦</span></p>
                             <div className="flex gap-3">
                                 <button onClick={startGame} className="px-6 py-3 rounded-full bg-gradient-to-r from-pink-500 to-cyan-500 text-white font-bold hover:scale-105 transition-transform">Thử lại 🔄</button>
                                 {onExit && <button onClick={onExit} className="px-6 py-3 rounded-full border border-white/20 text-white/60 hover:bg-white/10">Thoát</button>}

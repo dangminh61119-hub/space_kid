@@ -77,7 +77,7 @@ export default function SettingsPage() {
                             {player.name}
                         </div>
                         <div className="text-sm" style={{ color: "var(--dash-muted)" }}>
-                            Lớp {player.grade} · Level {player.level} · {player.xp.toLocaleString()} XP
+                            Lớp {player.grade} · Level {player.level} · {player.cosmo.toLocaleString()} ✦
                         </div>
                     </div>
                 </div>
@@ -117,7 +117,7 @@ export default function SettingsPage() {
                 </button>
 
                 <p className="text-[11px] mt-3" style={{ color: "var(--dash-muted)" }}>
-                    Báo cáo bao gồm: thông tin bé, XP, mastery theo môn, tiến trình hành tinh. Tuân thủ COPPA.
+                    Báo cáo bao gồm: thông tin bé, Cosmo, mastery theo môn, tiến trình hành tinh. Tuân thủ COPPA.
                 </p>
             </div>
 

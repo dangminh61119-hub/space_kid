@@ -61,7 +61,7 @@ function generateInsights(player: ReturnType<typeof useGame>["player"]): Insight
     if (player.level >= 5) {
         insights.push({
             type: "strength",
-            message: `Phi hành gia level ${player.level}! Đã tích lũy ${player.xp} XP rồi đó!`,
+            message: `Phi hành gia level ${player.level}! Đã tích lũy ${player.cosmo} \u2726 rồi đó!`,
             icon: "🚀",
         });
     }

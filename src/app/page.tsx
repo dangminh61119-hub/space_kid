@@ -5,9 +5,7 @@ import StarField from "@/components/StarField";
 import Navbar from "@/components/Navbar";
 import NeonButton from "@/components/NeonButton";
 import GlassCard from "@/components/GlassCard";
-import PlanetIcon from "@/components/PlanetIcon";
 import MascotAI from "@/components/MascotAI";
-import ChallengePlanets from "@/components/ChallengePlanets";
 import Spaceship from "@/components/Spaceship";
 
 const features = [
@@ -72,13 +70,13 @@ export default function HomePage() {
               animate={{ y: [0, -15, 0], rotate: [0, 5, -5, 0] }}
               transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
             >
-              <PlanetIcon color1="#00F5FF" color2="#0077B6" size={70} ringColor="#00F5FF" />
+              <span className="text-6xl">🪐</span>
             </motion.div>
             <motion.div
               animate={{ y: [0, -10, 5, 0], rotate: [0, -3, 3, 0] }}
               transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
             >
-              <PlanetIcon color1="#FF8A4C" color2="#C2410C" size={50} ringColor="#FF8A4C" />
+              <span className="text-4xl">🌏</span>
             </motion.div>
           </div>
           <h1 className="text-5xl sm:text-7xl md:text-8xl font-black font-[var(--font-heading)] neon-text leading-tight tracking-wide text-white">
@@ -186,11 +184,37 @@ export default function HomePage() {
           viewport={{ once: true }}
           className="text-slate-400 text-center mb-16 max-w-2xl mx-auto text-lg"
         >
-          Mỗi hành tinh mang tên một di sản văn hóa Việt Nam, chứa đựng các thử thách dựa trên sách giáo khoa 2018. Hãy lần lượt khám phá!
+          Mỗi hành trình mang tên một di sản văn hóa Việt Nam, chứa đựng các thử thách dựa trên sách giáo khoa 2018. Hãy lần lượt khám phá!
         </motion.p>
 
-        {/* Replaced logic with new modular component */}
-        <ChallengePlanets />
+        {/* Journey Showcase */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 max-w-4xl mx-auto">
+          {[
+            { emoji: "🏝️", name: "Vịnh Hạ Long" },
+            { emoji: "🏯", name: "Cố đô Huế" },
+            { emoji: "⚔️", name: "Làng Gióng" },
+            { emoji: "🦇", name: "Phong Nha" },
+            { emoji: "🏮", name: "Hội An" },
+            { emoji: "🌾", name: "Sa Pa" },
+            { emoji: "🏙️", name: "Hà Nội" },
+            { emoji: "🌊", name: "Mê Kông" },
+            { emoji: "🌋", name: "Tây Nguyên" },
+            { emoji: "🏵️", name: "Côn Đảo" },
+          ].map((j, i) => (
+            <motion.div
+              key={j.name}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.05 }}
+            >
+              <GlassCard glow="none" className="!p-4 text-center hover:scale-105 transition-transform">
+                <div className="text-3xl mb-2">{j.emoji}</div>
+                <div className="text-xs text-white/70 font-medium">{j.name}</div>
+              </GlassCard>
+            </motion.div>
+          ))}
+        </div>
       </section>
 
       {/* Class System Separator */}

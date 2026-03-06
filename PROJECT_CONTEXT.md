@@ -1,5 +1,5 @@
 # PROJECT_CONTEXT.md — CosmoMosaic v2.0
-> Senior EdTech Architect Reference · Cập nhật: 2026-03-03 · Phiên bản: 2.1
+> Senior EdTech Architect Reference · Cập nhật: 2026-03-05 · Phiên bản: 2.2
 ## Hướng dẫn sử dụng
 - Đây là **Single Source of Truth** cho mọi AI agent.
 - Luôn đọc file này + CLAUDE_INSTRUCTIONS.md trước khi làm bất kỳ task nào.
@@ -125,26 +125,31 @@ interface PlayerData {
   mascot: "cat" | "dog" | null;
   playerClass: "warrior" | "wizard" | "hunter" | null;
   grade: number;                    // 1–5
-  level: number;                    // auto-calculated
-  xp: number;
-  xpToNext: number;                 // auto-calculated
+  level: number;                    // auto-calculated from cosmo
+  cosmo: number;                    // Tổng điểm kinh nghiệm (thay thế xp)
+  cosmoInLevel: number;             // Tiến trình trong level hiện tại (0–499)
+  cosmoToNext: number;              // = COSMO_PER_LEVEL (500)
+  coins: number;                    // Tiền tệ in-game
+  crystals: number;                 // Tiền tệ premium (summon Cú Mèo)
   streak: number;
   totalPlayHours: number;
   onboardingComplete: boolean;
   onboardingQuizScore: number;
-  calmMode: boolean;                // NEW v2.0
+  calmMode: boolean;
   planetsProgress: Record<string, PlanetProgress>;
-  masteryByTopic: Record<string, number>;  // NEW v2.0 — 0–100%
-  bloomLevelReached: Record<string, BloomLevel>; // NEW v2.0
+  masteryByTopic: Record<string, number>;  // 0–100%
+  bloomLevelReached: Record<string, BloomLevel>;
 }
 ```
 
 **API của GameContext:**
 - `updatePlayer()` — cập nhật bất kỳ field
-- `addXP(amount)` — XP chỉ được cộng qua đây
+- `addCosmo(amount)` — Cosmo (XP) chỉ được cộng qua đây, tự tính level/cosmoInLevel
+- `addCoins(amount)` / `spendCoins(amount)` — quản lý tiền tệ in-game
+- `addCrystals(amount)` / `spendCrystals(amount)` — quản lý tiền tệ premium
 - `updatePlanetProgress()` — cập nhật tiến trình hành tinh
 - `useClassAbility()` / `resetClassAbility()`
-- `setCalmMode(boolean)` — NEW v2.0
+- `setCalmMode(boolean)`
 - `resetGame()`
 
 > ⚠️ **KHÔNG tạo useState riêng cho player data.** Thêm field vào `PlayerData` + cập nhật `DEFAULT_PLAYER`.
@@ -232,19 +237,14 @@ interface Question {
 > **Mục tiêu v2.0:** 300+ câu hỏi, 100% đã review bởi giáo viên tiểu học có kinh nghiệm.
 
 ---
-4.5 Question Selection & Adaptive Difficulty
-Khi load câu hỏi cho người chơi:
+### 4.5 Adaptive Difficulty (TODO — Future Phase)
 
-Filter nghiêm ngặt: grade === player.grade (KHÔNG bao giờ lấy grade khác)
-Mặc định: chỉ lấy bloom_level phù hợp với level hiện tại của hành tinh
-Adaptive rule:
-Nếu mastery của topic ≥ 80% → tự động unlock +1 bloom level (vẫn cùng grade)
-Nếu mastery ≤ 40% → ưu tiên bloom_level thấp hơn
-Sử dụng difficultyScore (0.0–1.0) để sắp xếp: dễ → trung bình → khó trong cùng bloom
+Khi mastery data đủ lớn, hệ thống sẽ bổ sung:
+- Nếu mastery ≥ 80% → unlock +1 bloom level (vẫn cùng grade)
+- Nếu mastery ≤ 40% → ưu tiên bloom_level thấp hơn
+- Mỗi session tối đa 20% câu "thử thách" (bloom cao hơn)
 
-Mỗi session chỉ có tối đa 20% câu hỏi "thử thách" (bloom cao hơn)
-
-Mục tiêu: Trẻ luôn cảm thấy "vừa sức nhưng thú vị".
+> Hiện tại: progressive difficulty đảm bảo bằng bloom_level sort trong `getSmartQuestions`.
 
 ## 5. Hệ thống Nhân vật
 
@@ -263,18 +263,20 @@ Mục tiêu: Trẻ luôn cảm thấy "vừa sức nhưng thú vị".
 | `wizard` ⏳ | Thêm thời gian | +5 giây hoặc giảm tốc 30%, áp dụng cho mọi game mode |
 | `hunter` 🎯 | Loại 1 đáp án sai | Eliminate 1 wrong option, áp dụng cho mọi game mode |
 
-### 5.3 XP & Level System
+### 5.3 Cosmo & Level System
 
 ```
-XP_PER_LEVEL = 500
-Level = floor(totalXP / 500) + 1
-xpToNext = level × 500
+COSMO_PER_LEVEL = 500
+level = floor(totalCosmo / 500) + 1
+cosmoInLevel = totalCosmo % 500
+cosmoToNext = 500 (cố định)
 
-Nguồn XP:
-  SpaceShooter: +100 XP/từ đúng
-  MathForge:    +100 × combo XP/câu đúng (×1.5 khi ≥3 liên tiếp)
-  Các game mode khác: +100 XP/câu đúng
+Nguồn Cosmo:
+  Hoàn thành game: addCosmo(Math.max(100, finalScore))
+  → Thưởng dựa trên điểm thực tế, tối thiểu 100 Cosmo
 ```
+
+> Portal progress bar hiển thị `cosmoInLevel / cosmoToNext` cho level hiện tại.
 
 ---
 
@@ -513,11 +515,17 @@ Mọi game component PHẢI gọi `onGameComplete(score, levelsCompleted)` **nga
 Controller dùng `gameKey` để force-remount game khi chuyển level. Mỗi game nhận:
 - `levels`: mảng chỉ 1 level hiện tại
 - `onGameComplete`: callback, chỉ được gọi 1 lần (có `handledRef` chặn double-fire)
+- `onAnswered`: callback khi trả lời (đúng/sai), lưu vào `answered_questions`
+- `paused`: boolean, game phải dừng physics/timer/click khi `true` (SummonOverlay)
 - `onExit`: khi người chơi bấm thoát → controller chuyển sang `levelLose`
+
+> ⚠️ **React 19 key prop:** KHÔNG spread `key` qua `{...commonProps}`. Truyền `key={gameKey}` trực tiếp vào JSX element.
 
 ### 12.3 Thêm Game Mode Mới
 
-1. Tạo component `NewGame.tsx` với props: `levels, onExit, playerClass, onGameComplete, onAnswered?, calmMode?`
+1. Tạo component `NewGame.tsx` với props: `levels, onExit, playerClass, onGameComplete, onAnswered, paused, calmMode?`
 2. Thêm vào `MODE_ORDER` trong `GameModeController.tsx`
-3. Thêm `case` trong switch render
+3. Thêm `case` trong switch render — **phải truyền `key={gameKey}` trực tiếp**
 4. Ensure `onGameComplete` được gọi đúng contract (mục 12.1)
+5. Ensure `onAnswered` được gọi cho mỗi câu trả lời (đúng + sai + timeout)
+6. Ensure game dừng toàn bộ khi `paused === true`

@@ -13,15 +13,10 @@ interface StatItem {
 export default function StatsCards() {
     const { player } = useGame();
 
-    const planetsCompleted = Object.values(player.planetsProgress).filter(
-        (p) => p.completedLevels >= p.totalLevels
-    ).length;
-    const totalPlanets = Object.keys(player.planetsProgress).length;
-
     const stats: StatItem[] = [
         {
-            label: "Tổng XP",
-            value: player.xp.toLocaleString(),
+            label: "Tổng ✦",
+            value: player.cosmo.toLocaleString(),
             icon: "⭐",
             color: "#FFE066",
             bg: "#FFFBEB",
@@ -41,9 +36,9 @@ export default function StatsCards() {
             bg: "#EFF6FF",
         },
         {
-            label: "Hành tinh",
-            value: `${planetsCompleted}/${totalPlanets}`,
-            icon: "🪐",
+            label: "Hành trình",
+            value: `${player.journeysCompleted}/10`,
+            icon: "🗺️",
             color: "#A78BFA",
             bg: "#F5F3FF",
         },

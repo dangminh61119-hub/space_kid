@@ -28,7 +28,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: "xp_1000",
         name: "Tri thức dồi dào",
-        description: "Tích lũy 1000 XP",
+        description: "Tích lũy 1000 ✦",
         emoji: "💎",
         rarity: "rare",
     },

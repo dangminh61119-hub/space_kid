@@ -12,6 +12,7 @@ export const PLANET_VIDEOS: Record<string, string> = {
     "Hà Nội": "/videos/planets/hanoi.mp4",
     "Thủ đô Hà Nội": "/videos/planets/hanoi.mp4",
     "Đồng bằng Mê Kông": "/videos/planets/mekong.mp4",
+    "Helios": "/videos/planets/helios.mp4",
 };
 
 /** Get video source for a planet name, or undefined if no video */

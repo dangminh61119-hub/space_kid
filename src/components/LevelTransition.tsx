@@ -7,6 +7,7 @@ import { getWinMessage, getLoseMessage } from "@/lib/ai/emotion-templates";
 interface Props {
     type: "win" | "lose";
     score: number;
+    stars?: 0 | 1 | 2 | 3;
     levelCompleted: number;
     totalLevels: number;
     nextGameMode?: string;
@@ -24,10 +25,11 @@ const MODE_LABELS: Record<string, { icon: string; label: string }> = {
     "galaxy-sort": { icon: "🔬", label: "Phân Loại Thiên Hà" },
     "meteor": { icon: "☄️", label: "Mưa Thiên Thạch" },
     "rush": { icon: "⚡", label: "Đố Nhanh Vũ Trụ" },
+    "boss": { icon: "⚔️", label: "Boss Battle" },
 };
 
 export default function LevelTransition({
-    type, score, levelCompleted, totalLevels,
+    type, score, stars = 0, levelCompleted, totalLevels,
     nextGameMode, planetEmoji, planetName,
     onContinue, onExit,
 }: Props) {
@@ -86,7 +88,28 @@ export default function LevelTransition({
                         <span className="text-2xl">{planetEmoji}</span>
                         <span className="text-white/60 text-sm">{planetName}</span>
                     </div>
-                    <p className="text-neon-gold text-3xl font-bold mb-1">{score} XP</p>
+                    <p className="text-neon-gold text-3xl font-bold mb-1">{score} ✦</p>
+
+                    {/* ⭐ Star display */}
+                    {isWin && stars > 0 && (
+                        <div className="flex items-center justify-center gap-1 mb-2">
+                            {[1, 2, 3].map(i => (
+                                <motion.span
+                                    key={i}
+                                    initial={{ opacity: 0, scale: 0, rotate: -30 }}
+                                    animate={i <= stars
+                                        ? { opacity: 1, scale: 1, rotate: 0 }
+                                        : { opacity: 0.2, scale: 0.7, rotate: 0 }
+                                    }
+                                    transition={{ type: "spring", delay: 0.3 + i * 0.15, stiffness: 300 }}
+                                    className="text-2xl"
+                                >
+                                    {i <= stars ? "⭐" : "☆"}
+                                </motion.span>
+                            ))}
+                        </div>
+                    )}
+
                     <p className="text-white/40 text-xs">Màn {levelCompleted} / {totalLevels}</p>
 
                     {/* Progress bar */}

@@ -19,28 +19,42 @@ export interface DBPlanet {
     id: string;
     name: string;
     emoji: string;
-    subjects: string[];
-    game_type: "shooter" | "math";
-    color1: string;
-    color2: string;
-    ring_color: string;
     description: string;
-    total_levels: number;
+    grade: number;
     order_index: number;
-    grade_range?: number[];
+    color1?: string;
+    color2?: string;
+    ring_color?: string;
+    subjects?: string[];
+    total_levels?: number;
+    unlock_badges: number;
+    ship_required: string | null;
+}
+
+export interface DBJourney {
+    id: string;
+    slug: string;
+    title: string;
+    description: string;
+    emoji: string;
+    subject: string;
+    subjects: string[];
+    grade_min: number;
+    grade_max: number;
+    order_index: number;
 }
 
 export interface DBLevel {
     id: string;
-    planet_id: string;
+    journey_id: string;
+    planet_id?: string;
     level_number: number;
     title: string;
     subject: string;
-    grade_min: number;
-    grade_max: number;
     speed: number;
     time_per_q: number;
     order_index: number;
+    game_mode: string;
 }
 
 export interface DBQuestion {
@@ -108,6 +122,19 @@ export interface DBPlanetProgress {
     last_played_at: string | null;
 }
 
+export interface DBJourneyProgress {
+    id: string;
+    player_id: string;
+    journey_id: string;
+    planet_id: string;
+    current_level: number;
+    completed_levels: number;
+    total_stars: number;
+    mastery_score: number;
+    started_at: string;
+    completed_at: string | null;
+}
+
 export interface DBSurveyQuestion {
     id: string;
     subject: string;
@@ -158,4 +185,40 @@ export interface DBMastery {
     total_attempts: number;
     grade: number;            // 1–5
     updated_at: string;
+}
+
+/* Badge & Ship system */
+export interface DBBadge {
+    id: string;
+    name: string;
+    emoji: string;
+    description: string;
+    journey_slug: string | null;
+    badge_type: 'heritage' | 'planet' | 'special';
+    order_index: number;
+    condition: Record<string, unknown> | null;
+}
+
+export interface DBShip {
+    id: string;
+    name: string;
+    emoji: string;
+    description: string;
+    required_badges: number;
+    order_index: number;
+}
+
+export interface DBPlayerBadge {
+    id: string;
+    player_id: string;
+    badge_slug: string;
+    badge_name: string;
+    earned_at: string;
+}
+
+export interface DBPlayerShip {
+    id: string;
+    player_id: string;
+    ship_id: string;
+    earned_at: string;
 }

@@ -57,7 +57,7 @@ export function CHAT_SYSTEM_PROMPT_MEMBER(ctx: {
     };
     const cls = ctx.playerClass ? (clsMap[ctx.playerClass] || ctx.playerClass) : null;
     const planet = ctx.planet || null;
-    const xp = ctx.xp ?? 0;
+    const cosmo = ctx.xp ?? 0;
 
     return `Bạn là Cú Mèo – người bạn đồng hành vũ trụ của ${name} trong CosmoMosaic.
 
@@ -65,7 +65,7 @@ THÔNG TIN VỀ NGƯỜI CHƠI:
 - Tên: ${name}
 ${cls ? `- Lớp chiến binh: ${cls}` : ""}
 ${planet ? `- Đang khám phá: Hành tinh ${planet}` : ""}
-- Kinh nghiệm: ${xp} XP
+- Kinh nghiệm: ${cosmo} ✦ Cosmo
 
 NHIỆM VỤ:
 1. Đồng hành thân thiết, gọi tên ${name} tự nhiên trong câu

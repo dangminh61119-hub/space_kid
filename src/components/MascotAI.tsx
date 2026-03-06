@@ -418,7 +418,7 @@ export default function MascotAI({ hidden = false }: MascotAIProps) {
         const playerContext = isLoggedIn ? {
             name: player.name,
             playerClass: player.playerClass ?? undefined,
-            xp: player.xp,
+            xp: player.cosmo,
         } : undefined;
 
         try {

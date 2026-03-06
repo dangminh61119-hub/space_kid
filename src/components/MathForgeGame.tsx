@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Maximize, Minimize } from "lucide-react";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { useGame } from "@/lib/game-context";
 
 /* ─── Types ─── */
 interface MathQuestion {
@@ -26,7 +27,7 @@ interface Props {
     onExit?: () => void;
     playerClass?: "warrior" | "wizard" | "hunter" | null;
     onGameComplete?: (finalScore: number, levelsCompleted: number) => void;
-    onAnswered?: (isCorrect: boolean, subject: string, bloomLevel: number) => void;
+    onAnswered?: (questionId: string, isCorrect: boolean, subject: string, bloomLevel: number) => void;
     calmMode?: boolean;
 }
 
@@ -36,6 +37,7 @@ const MAX_HP = 3;
 /* ─── Component ─── */
 export default function MathForgeGame({ levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false }: Props) {
     const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
+    const { player, useAbilityCharge, addAbilityCharges } = useGame();
     const [gameState, setGameState] = useState<"ready" | "playing" | "levelComplete" | "gameOver" | "win">("ready");
     const [currentLevel, setCurrentLevel] = useState(0);
     const [questionIdx, setQuestionIdx] = useState(0);
@@ -108,29 +110,45 @@ export default function MathForgeGame({ levels, onExit, playerClass, onGameCompl
             const comboBonus = Math.min(comboCount, 5) * 10;
             setScore(s => s + 100 + comboBonus);
             setComboCount(c => c + 1);
+            // Combo reward: +1 charge at 3 consecutive correct
+            if (comboCount + 1 === 3) addAbilityCharges(1);
             setDroppedAnswer(value);
             // Record mastery (bloom=2 for Apply-level math; exact bloom would come from question record)
-            onAnswered?.(true, level?.subject ?? "", 2);
+            onAnswered?.("", true, level?.subject ?? "", 2);
         } else {
             playWrong();
             setFeedback("wrong");
             setComboCount(0);
             setShakeWrong(true);
-            onAnswered?.(false, level?.subject ?? "", 2);
+            onAnswered?.("", false, level?.subject ?? "", 2);
 
             // Warrior shield: absorb first wrong
             if (playerClass === "warrior" && !shieldUsed) {
-                setShieldUsed(true);
-                setAbilityNotice("🛡️ Lá chắn thép đã bảo vệ bạn!");
-                setTimeout(() => setAbilityNotice(null), 2000);
-                // Don't lose HP
-            } else {
+                const charged = useAbilityCharge();
+                if (charged) {
+                    setShieldUsed(true);
+                    setAbilityNotice("🛡️ Lá chắn thép đã bảo vệ bạn!");
+                    setTimeout(() => setAbilityNotice(null), 2000);
+                } else {
+                    setHp(prev => {
+                        const newHp = prev - 1;
+                        if (newHp <= 0) {
+                            setTimeout(() => {
+                                stopBGM();
+                                onGameComplete?.(score, 0);
+                                setGameState("gameOver");
+                            }, 800);
+                        }
+                        return newHp;
+                    });
+                }
+            } else if (playerClass !== "warrior") {
                 setHp(prev => {
                     const newHp = prev - 1;
                     if (newHp <= 0) {
                         setTimeout(() => {
                             stopBGM();
-                            onGameComplete?.(score, currentLevel);
+                            onGameComplete?.(score, 0); // 0 = lose
                             setGameState("gameOver");
                         }, 800);
                     }
@@ -284,7 +302,7 @@ export default function MathForgeGame({ levels, onExit, playerClass, onGameCompl
                         </span>
                     ))}
                     {/* Warrior shield indicator */}
-                    {playerClass === "warrior" && !shieldUsed && (
+                    {playerClass === "warrior" && !shieldUsed && player.abilityCharges > 0 && (
                         <span className="text-xl ml-1 animate-pulse" title="Lá chắn thép – miễn 1 lần sai">🛡️</span>
                     )}
                 </div>
@@ -326,7 +344,7 @@ export default function MathForgeGame({ levels, onExit, playerClass, onGameCompl
                             </motion.span>
                         )}
                         <span className="text-neon-cyan font-bold text-lg">{score}</span>
-                        <span className="text-white/40 text-xs">XP</span>
+                        <span className="text-white/40 text-xs">✦</span>
                     </div>
                     {gameState === "playing" && (
                         <button
@@ -451,7 +469,7 @@ export default function MathForgeGame({ levels, onExit, playerClass, onGameCompl
                             <div className="text-center">
                                 <div className="text-5xl mb-2">✨</div>
                                 <p className="text-green-400 font-bold text-xl">Đúng rồi!</p>
-                                <p className="text-neon-gold text-sm font-bold">+100 XP</p>
+                                <p className="text-neon-gold text-sm font-bold">+100 ✦</p>
                             </div>
                         </motion.div>
                     )}
@@ -527,7 +545,7 @@ export default function MathForgeGame({ levels, onExit, playerClass, onGameCompl
                             <h2 className="text-2xl sm:text-3xl font-bold neon-text">
                                 Level {levels[currentLevel]?.level} Hoàn thành!
                             </h2>
-                            <p className="text-neon-gold text-lg font-bold">+{score} XP</p>
+                            <p className="text-neon-gold text-lg font-bold">+{score} ✦</p>
                             <button
                                 onClick={() => startLevel(currentLevel + 1)}
                                 className="px-8 py-3 rounded-full bg-gradient-to-r from-neon-gold to-neon-orange text-white font-bold text-lg hover:scale-105 transition-transform shadow-[0_0_25px_rgba(255,224,102,0.4)]"
@@ -547,7 +565,7 @@ export default function MathForgeGame({ levels, onExit, playerClass, onGameCompl
                         >
                             <div className="text-6xl">💥</div>
                             <h2 className="text-2xl sm:text-3xl font-bold text-red-400">Lò rèn quá tải!</h2>
-                            <p className="text-white/60">Điểm: <span className="text-neon-cyan font-bold">{score} XP</span></p>
+                            <p className="text-white/60">Điểm: <span className="text-neon-cyan font-bold">{score} ✦</span></p>
                             <div className="flex gap-3">
                                 <button
                                     onClick={startGame}

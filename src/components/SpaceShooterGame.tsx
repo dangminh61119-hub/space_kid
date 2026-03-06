@@ -4,6 +4,7 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Maximize, Minimize } from "lucide-react";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { useGame } from "@/lib/game-context";
 
 /* ─── Types ─── */
 interface Question {
@@ -65,7 +66,7 @@ interface Props {
     onExit?: () => void;
     playerClass?: "warrior" | "wizard" | "hunter" | null;
     onGameComplete?: (finalScore: number, levelsCompleted: number) => void;
-    onAnswered?: (isCorrect: boolean, subject: string, bloomLevel: number) => void;
+    onAnswered?: (questionId: string, isCorrect: boolean, subject: string, bloomLevel: number) => void;
     calmMode?: boolean;
 }
 
@@ -82,6 +83,8 @@ const MAX_HP = 3;
 /* ─── Component ─── */
 export default function SpaceShooterGame({ levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false }: Props) {
     const { playShoot, playHit, playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
+    const { player, useAbilityCharge } = useGame();
+    const useAbilityChargeRef = useRef(useAbilityCharge);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -124,6 +127,7 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
     useEffect(() => { scoreRef.current = score; }, [score]);
     useEffect(() => { hpRef.current = hp; }, [hp]);
     useEffect(() => { questionIdxRef.current = questionIdx; }, [questionIdx]);
+    useEffect(() => { useAbilityChargeRef.current = useAbilityCharge; }, [useAbilityCharge]);
 
     /* ─── Init stars once ─── */
     useEffect(() => {
@@ -383,23 +387,41 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
             if (bombHitBottom) {
                 // Warrior shield: absorb first hit
                 if (playerClass === "warrior" && !shieldUsed) {
-                    setShieldUsed(true);
-                    setAbilityNotice("🛡️ Lá chắn thép đã bảo vệ bạn!");
-                    setTimeout(() => setAbilityNotice(null), 2000);
-                    playHit();
-                    spawnExplosion(CANVAS_W / 2, CANVAS_H - 30, "#FFE066");
-                    onAnswered?.(false, levels[currentLevel]?.subject ?? "", 2);
-                    advanceQuestion();
+                    const charged = useAbilityChargeRef.current();
+                    if (charged) {
+                        setShieldUsed(true);
+                        setAbilityNotice("🛡️ Lá chắn thép đã bảo vệ bạn!");
+                        setTimeout(() => setAbilityNotice(null), 2000);
+                        playHit();
+                        spawnExplosion(CANVAS_W / 2, CANVAS_H - 30, "#FFE066");
+                        onAnswered?.("", false, levels[currentLevel]?.subject ?? "", 2);
+                        advanceQuestion();
+                    } else {
+                        // No charges — take damage
+                        const newHp = hpRef.current - 1;
+                        hpRef.current = newHp;
+                        setHp(newHp);
+                        playWrong();
+                        onAnswered?.("", false, levels[currentLevel]?.subject ?? "", 2);
+                        spawnExplosion(CANVAS_W / 2, CANVAS_H - 30, "#FF4444");
+                        if (newHp <= 0) {
+                            stopBGM();
+                            onGameComplete?.(scoreRef.current, 0);
+                            setGameState("gameOver");
+                            return;
+                        }
+                        advanceQuestion();
+                    }
                 } else {
                     const newHp = hpRef.current - 1;
                     hpRef.current = newHp;
                     setHp(newHp);
                     playWrong();
-                    onAnswered?.(false, levels[currentLevel]?.subject ?? "", 2);
+                    onAnswered?.("", false, levels[currentLevel]?.subject ?? "", 2);
                     spawnExplosion(CANVAS_W / 2, CANVAS_H - 30, "#FF4444");
                     if (newHp <= 0) {
                         stopBGM();
-                        onGameComplete?.(scoreRef.current, currentLevel);
+                        onGameComplete?.(scoreRef.current, 0); // 0 = lose
                         setGameState("gameOver");
                         return;
                     }
@@ -431,29 +453,47 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                             spawnExplosion(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, "#00F5FF", 2, 25);
                             spawnText("+100 XP!", bomb.x + bomb.width / 2, bomb.y, "#00F5FF");
                             // Record mastery (default bloom=2 for word recall; question id would give exact bloom)
-                            onAnswered?.(true, levels[currentLevel]?.subject ?? "", 2);
+                            onAnswered?.("", true, levels[currentLevel]?.subject ?? "", 2);
                             advanceQuestion();
                         } else {
                             // Warrior shield check
                             if (playerClass === "warrior" && !shieldUsed) {
-                                setShieldUsed(true);
-                                setAbilityNotice("🛡️ Lá chắn thép đã bảo vệ bạn!");
-                                setTimeout(() => setAbilityNotice(null), 2000);
-                                playHit();
-                                spawnExplosion(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, "#FFE066", 1.5, 20);
-                                spawnText("🛡️ Chắn!", bomb.x + bomb.width / 2, bomb.y, "#FFE066");
+                                const charged = useAbilityChargeRef.current();
+                                if (charged) {
+                                    setShieldUsed(true);
+                                    setAbilityNotice("🛡️ Lá chắn thép đã bảo vệ bạn!");
+                                    setTimeout(() => setAbilityNotice(null), 2000);
+                                    playHit();
+                                    spawnExplosion(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, "#FFE066", 1.5, 20);
+                                    spawnText("🛡️ Chắn!", bomb.x + bomb.width / 2, bomb.y, "#FFE066");
+                                } else {
+                                    // No charges
+                                    const newHp = hpRef.current - 1;
+                                    hpRef.current = newHp;
+                                    setHp(newHp);
+                                    playWrong();
+                                    onAnswered?.("", false, levels[currentLevel]?.subject ?? "", 2);
+                                    spawnExplosion(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, "#FF4444", 1.5, 20);
+                                    spawnText("Oops!", bomb.x + bomb.width / 2, bomb.y, "#FF4444");
+                                    if (newHp <= 0) {
+                                        stopBGM();
+                                        onGameComplete?.(scoreRef.current, 0);
+                                        setGameState("gameOver");
+                                        return;
+                                    }
+                                }
                             } else {
                                 // Wrong hit → lose HP
                                 const newHp = hpRef.current - 1;
                                 hpRef.current = newHp;
                                 setHp(newHp);
                                 playWrong();
-                                onAnswered?.(false, levels[currentLevel]?.subject ?? "", 2);
+                                onAnswered?.("", false, levels[currentLevel]?.subject ?? "", 2);
                                 spawnExplosion(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, "#FF4444", 1.5, 20);
                                 spawnText("Oops!", bomb.x + bomb.width / 2, bomb.y, "#FF4444");
                                 if (newHp <= 0) {
                                     stopBGM();
-                                    onGameComplete?.(scoreRef.current, currentLevel);
+                                    onGameComplete?.(scoreRef.current, 0); // 0 = lose
                                     setGameState("gameOver");
                                     return;
                                 }
@@ -707,7 +747,7 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                             ❤️
                         </span>
                     ))}
-                    {playerClass === "warrior" && !shieldUsed && (
+                    {playerClass === "warrior" && !shieldUsed && player.abilityCharges > 0 && (
                         <span className="text-xl ml-1" title="Lá chắn thép">🛡️</span>
                     )}
                 </div>
@@ -747,7 +787,7 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                         <span className="text-neon-cyan font-bold text-lg">{score}</span>
-                        <span className="text-white/40 text-xs">XP</span>
+                        <span className="text-white/40 text-xs">✦</span>
                     </div>
                     {gameState === "playing" && (
                         <button
@@ -839,7 +879,7 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                             <h2 className="text-2xl sm:text-3xl font-bold neon-text">
                                 Level {levels[currentLevel]?.level} Hoàn thành!
                             </h2>
-                            <p className="text-neon-gold text-lg font-bold">+{score} XP</p>
+                            <p className="text-neon-gold text-lg font-bold">+{score} ✦</p>
                             <button
                                 onClick={() => startLevel(currentLevel + 1)}
                                 className="px-8 py-3 rounded-full bg-gradient-to-r from-neon-gold to-neon-orange text-white font-bold text-lg hover:scale-105 transition-transform shadow-[0_0_25px_rgba(255,224,102,0.4)]"
@@ -861,7 +901,7 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                             <h2 className="text-2xl sm:text-3xl font-bold text-red-400">
                                 Tàu bị phá hủy!
                             </h2>
-                            <p className="text-white/60">Điểm: <span className="text-neon-cyan font-bold">{score} XP</span></p>
+                            <p className="text-white/60">Điểm: <span className="text-neon-cyan font-bold">{score} ✦</span></p>
                             <div className="flex gap-3">
                                 <button
                                     onClick={startGame}

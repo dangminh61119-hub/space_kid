@@ -1,6 +1,11 @@
 /**
  * proficiency.ts – CosmoMosaic Proficiency Tracking
  *
+ * ⚠️ DEPRECATED — Legacy system used ONLY by the survey/onboarding flow.
+ * For in-game mastery tracking, use db.ts → updateMastery() + getMasteryForPlayer()
+ * which writes to the `mastery` + `answered_questions` tables.
+ * Do NOT use this file for new game components.
+ *
  * Tracks player mastery per subject, provides difficulty recommendations,
  * and records answer history to avoid repeating mastered questions.
  */

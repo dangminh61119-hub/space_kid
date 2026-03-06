@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { GameLevel } from "@/lib/services/db";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { useGame } from "@/lib/game-context";
+import MascotAbilityButton from "@/components/MascotAbilityButton";
 
 /* ─── Types ─── */
 interface Props {
@@ -11,13 +13,13 @@ interface Props {
     onExit?: () => void;
     playerClass?: "warrior" | "wizard" | "hunter" | null;
     onGameComplete?: (finalScore: number, levelsCompleted: number) => void;
-    onAnswered?: (isCorrect: boolean, subject: string, bloomLevel: number) => void;
+    onAnswered?: (questionId: string, isCorrect: boolean, subject: string, bloomLevel: number) => void;
     calmMode?: boolean;
 }
 
 /* ─── Constants ─── */
 const MAX_HP = 3;
-const BASE_XP = 100;
+const BASE_COSMO = 100;
 const BASE_TIME = 12; // seconds per question
 const MIN_TIME = 5;
 const COMBO_MULTIPLIERS = [1, 1, 2, 3, 5];
@@ -33,6 +35,7 @@ export default function WordRushGame({
     levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false,
 }: Props) {
     const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
+    const { player, useAbilityCharge, addAbilityCharges } = useGame();
 
     const [hp, setHp] = useState(MAX_HP);
     const [score, setScore] = useState(0);
@@ -175,14 +178,15 @@ export default function WordRushGame({
             const newCombo = combo + 1;
             const mult = COMBO_MULTIPLIERS[Math.min(newCombo, COMBO_MULTIPLIERS.length - 1)];
             setCombo(newCombo);
-            setScore(s => s + BASE_XP * mult);
+            if (newCombo === 3) addAbilityCharges(1); // Combo reward
+            setScore(s => s + BASE_COSMO * mult);
             setLastResult("correct");
-            onAnswered?.(true, currentLevel?.subject || "", 1);
+            onAnswered?.(currentQ?.id ?? "", true, currentLevel?.subject || "", currentQ?.bloomLevel ?? 1);
             setTimeout(() => advanceQuestion(), 600);
         } else {
             playWrong();
             setLastResult("wrong");
-            onAnswered?.(false, currentLevel?.subject || "", 1);
+            onAnswered?.(currentQ?.id ?? "", false, currentLevel?.subject || "", currentQ?.bloomLevel ?? 1);
             if (shieldActive && playerClass === "warrior") {
                 setShieldActive(false);
             } else {
@@ -200,21 +204,20 @@ export default function WordRushGame({
     /* ─── Ability ─── */
     const useAbility = useCallback(() => {
         if (abilityUsed || gameState !== "playing") return;
+        if (!useAbilityCharge()) return; // No charges left
         setAbilityUsed(true);
         if (playerClass === "wizard") {
-            // Add 5 seconds
             setTimeLeft(t => t + 5);
         } else if (playerClass === "hunter") {
-            // Hide one wrong answer
             const wrongItem = answers.find(a => !a.isCorrect && a.text !== hiddenWrong);
             if (wrongItem) setHiddenWrong(wrongItem.text);
         }
-    }, [abilityUsed, gameState, playerClass, answers, hiddenWrong]);
+    }, [abilityUsed, gameState, playerClass, answers, hiddenWrong, useAbilityCharge]);
 
     const abilityInfo = {
-        warrior: { label: "Khiên Thép", icon: "🛡️", desc: "Miễn 1 lần sai" },
-        wizard: { label: "Thêm Giờ", icon: "⏳", desc: "+5 giây timer" },
-        hunter: { label: "Loại Sai", icon: "🎯", desc: "Ẩn 1 đáp án sai" },
+        warrior: { label: "Khiên Thép", icon: "🛡️", desc: `Miễn 1 lần sai (⚡${player.abilityCharges})` },
+        wizard: { label: "Thêm Giờ", icon: "⏳", desc: `+5 giây (⚡${player.abilityCharges})` },
+        hunter: { label: "Loại Sai", icon: "🎯", desc: `Ẩn 1 sai (⚡${player.abilityCharges})` },
     };
     const ability = playerClass ? abilityInfo[playerClass] : null;
 
@@ -229,7 +232,7 @@ export default function WordRushGame({
                     </h2>
                     <p className="text-white/60 text-sm text-center max-w-md px-4 leading-relaxed">
                         Trả lời thật nhanh! Timer giảm dần khi combo tăng.<br />
-                        Combo càng cao, <span className="text-neon-gold font-bold">XP nhân đôi</span>!
+                        Combo càng cao, <span className="text-neon-gold font-bold">✦ nhân đôi</span>!
                     </p>
                     {levels[0] && (
                         <div className="glass-card !p-3 !rounded-xl text-center">
@@ -269,7 +272,7 @@ export default function WordRushGame({
                         ))}
                     </div>
                     <div className="glass-card !bg-white/5 !p-4 space-y-2">
-                        <div className="flex justify-between text-white/70"><span>Tổng điểm</span><span className="font-bold text-neon-gold">{score.toLocaleString()} XP</span></div>
+                        <div className="flex justify-between text-white/70"><span>Tổng điểm</span><span className="font-bold text-neon-gold">{score.toLocaleString()} ✦</span></div>
                         <div className="flex justify-between text-white/70"><span>Levels</span><span className="font-bold text-white">{levelsCompleted}/{levels.length}</span></div>
                         <div className="flex justify-between text-white/70"><span>Combo cao nhất</span><span className="font-bold text-neon-pink">×{multiplier}</span></div>
                     </div>
@@ -324,7 +327,7 @@ export default function WordRushGame({
                     )}
                     <div className="glass-card !p-2 !px-3 !rounded-xl">
                         <div className="text-neon-gold font-bold text-sm">{score.toLocaleString()}</div>
-                        <div className="text-white/40 text-xs">XP</div>
+                        <div className="text-white/40 text-xs">✦</div>
                     </div>
                 </div>
             </div>
@@ -409,19 +412,17 @@ export default function WordRushGame({
                     })}
                 </div>
 
-                {/* Ability button */}
-                {ability && !abilityUsed && (
-                    <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
+                {/* Ability button — Mascot */}
+                {ability && !abilityUsed && player.abilityCharges > 0 && (
+                    <MascotAbilityButton
                         onClick={useAbility}
-                        className="glass-card !px-5 !py-2 !rounded-full flex items-center gap-2 mt-2"
-                        style={{ filter: "drop-shadow(0 0 8px #9333EA)" }}
-                    >
-                        <span className="text-lg">{ability.icon}</span>
-                        <span className="text-xs font-bold text-white">{ability.label}</span>
-                        <span className="text-xs text-neon-gold">{ability.desc}</span>
-                    </motion.button>
+                        disabled={abilityUsed}
+                        charges={player.abilityCharges}
+                        label={ability.label}
+                        description={ability.desc}
+                        position="inline"
+                        size="sm"
+                    />
                 )}
 
                 {/* Shield indicator */}

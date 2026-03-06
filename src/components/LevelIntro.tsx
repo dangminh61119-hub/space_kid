@@ -11,7 +11,7 @@ interface LevelIntroProps {
     subject: string;
     onStart: () => void;
     playerClass?: "warrior" | "wizard" | "hunter" | null;
-    gameMode?: "shooter" | "star-hunter" | "math-forge" | "meteor" | "rush" | "word-craft" | "timebomb" | "galaxy-sort" | "cosmo-bridge";
+    gameMode?: "shooter" | "star-hunter" | "math-forge" | "meteor" | "rush" | "word-craft" | "timebomb" | "galaxy-sort" | "cosmo-bridge" | "boss" | "star-race";
 }
 
 const classMessages = {
@@ -30,6 +30,8 @@ const MODE_INTRO = {
     "timebomb": { icon: "💣", label: "Bom Hẹn Giờ" },
     "galaxy-sort": { icon: "🔬", label: "Phân Loại Thiên Hà" },
     "cosmo-bridge": { icon: "🌉", label: "Cầu Nối Tri Thức" },
+    "boss": { icon: "⚔️", label: "Boss Battle" },
+    "star-race": { icon: "🏁", label: "Cuộc Đua Sao" },
 };
 
 const storyIntros: Record<string, string> = {

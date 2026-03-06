@@ -20,33 +20,23 @@ function computeUnlockedAchievements(player: ReturnType<typeof useGame>["player"
         if (!unlocked.includes(id)) unlocked.push(id);
     };
 
-    const planetsCompleted = Object.values(player.planetsProgress).filter(
-        (p) => p.completedLevels >= p.totalLevels && p.totalLevels > 0
-    ).length;
-
-    // Tổng số level đã hoàn thành trên tất cả hành tinh
-    const totalLevelsCompleted = Object.values(player.planetsProgress).reduce(
-        (sum, p) => sum + (p.completedLevels || 0),
-        0
-    );
-
-    // first_win: chỉ khi thực sự đã hoàn thành ít nhất 1 level
-    if (totalLevelsCompleted >= 1) addIfMissing("first_win");
+    // Journey-based achievements
+    if (player.journeysCompleted >= 1 || player.cosmo >= 100) addIfMissing("first_win");
 
     // streak_3: đã chơi đủ 3 ngày liên tiếp
     if (player.streak >= 3) addIfMissing("streak_3");
 
-    // xp_1000: tích lũy đủ XP từ gameplay thực sự
-    if (player.xp >= 1000) addIfMissing("xp_1000");
+    // cosmo_1000: tích lũy đủ Cosmo từ gameplay thực sự
+    if (player.cosmo >= 1000) addIfMissing("xp_1000");
 
     // level_5: level cao từ gameplay thực
     if (player.level >= 5) addIfMissing("level_5");
 
-    // planet_master: hoàn thành 100% ít nhất 1 hành tinh
-    if (planetsCompleted >= 1) addIfMissing("planet_master");
+    // planet_master: hoàn thành ít nhất 1 hành trình
+    if (player.journeysCompleted >= 1) addIfMissing("planet_master");
 
-    // multi_planet: hoàn thành 3 hành tinh
-    if (planetsCompleted >= 3) addIfMissing("multi_planet");
+    // multi_planet: hoàn thành 3 hành trình
+    if (player.journeysCompleted >= 3) addIfMissing("multi_planet");
 
     // calm_explorer: đã kích hoạt calm mode (hành động có chủ đích)
     if (player.calmMode) addIfMissing("calm_explorer");
@@ -100,13 +90,10 @@ export default function PlayerPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const xpProgress = ((player.xp % 500) / 500) * 100;
+    const cosmoProgress = ((player.cosmo % 500) / 500) * 100;
     const mascotEmoji = player.mascot ? MASCOT_INFO[player.mascot].emoji : "🚀";
     const classInfo = player.playerClass ? CLASS_ABILITIES[player.playerClass] : null;
-    const planetsCompleted = Object.values(player.planetsProgress).filter(
-        (p) => p.completedLevels >= p.totalLevels && p.totalLevels > 0
-    ).length;
-    const totalPlanets = Object.keys(player.planetsProgress).length;
+
 
     /* ── Save handler ── */
     const handleSave = () => {
@@ -225,7 +212,7 @@ export default function PlayerPage() {
                                     <div className="flex justify-between text-xs text-white/50 mb-1.5">
                                         <span>Level {player.level}</span>
                                         <span>
-                                            {player.xp % 500} / 500 XP để lên cấp
+                                            {player.cosmo % 500} / 500 ✦ để lên cấp
                                         </span>
                                     </div>
                                     <div className="h-2.5 bg-white/10 rounded-full overflow-hidden">
@@ -237,7 +224,7 @@ export default function PlayerPage() {
                                                 boxShadow: "0 0 8px rgba(0,245,255,0.5)",
                                             }}
                                             initial={{ width: 0 }}
-                                            animate={{ width: `${xpProgress}%` }}
+                                            animate={{ width: `${cosmoProgress}%` }}
                                             transition={{ duration: 1, ease: "easeOut", delay: 0.3 }}
                                         />
                                     </div>
@@ -272,9 +259,9 @@ export default function PlayerPage() {
                 >
                     {[
                         { label: "Cấp độ", value: player.level, icon: "⭐", color: "var(--neon-gold)" },
-                        { label: "Tổng XP", value: player.xp.toLocaleString(), icon: "💎", color: "var(--neon-cyan)" },
+                        { label: "Tổng ✦", value: player.cosmo.toLocaleString(), icon: "✦", color: "var(--neon-cyan)" },
                         { label: "Streak", value: `${player.streak} 🔥`, icon: "🔥", color: "#FF6B6B" },
-                        { label: "Hành tinh", value: `${planetsCompleted}/${totalPlanets}`, icon: "🪐", color: "var(--neon-magenta)" },
+                        { label: "Hành trình", value: `${player.journeysCompleted}/10`, icon: "🗺️", color: "var(--neon-magenta)" },
                     ].map((stat, i) => (
                         <motion.div
                             key={stat.label}
@@ -334,81 +321,17 @@ export default function PlayerPage() {
                     >
                         <GlassCard glow="none">
                             <h2 className="text-lg font-bold font-[var(--font-heading)] text-white mb-5">
-                                🌌 Tiến trình Hành tinh
+                                🗺️ Hành trình Di sản
                             </h2>
-                            {(() => {
-                                const PLANET_EMOJI: Record<string, string> = {
-                                    "ha-long": "🏝️",
-                                    "hue": "🏯",
-                                    "giong": "⚔️",
-                                    "phong-nha": "🦇",
-                                    "hoi-an": "🏮",
-                                    "sapa": "🌾",
-                                    "hanoi": "🏙️",
-                                    "mekong": "🌊",
-                                };
-                                const PLANET_NAME: Record<string, string> = {
-                                    "ha-long": "Vịnh Hạ Long",
-                                    "hue": "Cố đô Huế",
-                                    "giong": "Làng Gióng",
-                                    "phong-nha": "Phong Nha",
-                                    "hoi-an": "Phố cổ Hội An",
-                                    "sapa": "Sa Pa",
-                                    "hanoi": "Hà Nội",
-                                    "mekong": "Mê Kông",
-                                };
-
-                                // Chỉ hiển thị hành tinh đã từng ghé thăm
-                                const visitedEntries = Object.entries(player.planetsProgress).filter(
-                                    ([, prog]) => prog.completedLevels > 0 || !!prog.lastPlayedAt
-                                );
-
-                                if (visitedEntries.length === 0) {
-                                    return (
-                                        <div className="text-center py-8">
-                                            <div className="text-5xl mb-3">🪐</div>
-                                            <p className="text-white/40 text-sm">Chưa khám phá hành tinh nào</p>
-                                            <p className="text-white/25 text-xs mt-1">Vào Bản đồ để bắt đầu hành trình!</p>
-                                        </div>
-                                    );
-                                }
-
-                                return (
-                                    <div className="space-y-3">
-                                        {visitedEntries.map(([id, prog]) => {
-                                            const pct = prog.totalLevels > 0
-                                                ? Math.round((prog.completedLevels / prog.totalLevels) * 100)
-                                                : 0;
-                                            return (
-                                                <div key={id}>
-                                                    <div className="flex items-center justify-between mb-1">
-                                                        <span className="text-xs text-white/70 flex items-center gap-1.5">
-                                                            <span>{PLANET_EMOJI[id] ?? "🪐"}</span>
-                                                            <span>{PLANET_NAME[id] ?? id}</span>
-                                                        </span>
-                                                        <span className="text-xs text-white/40">
-                                                            {prog.completedLevels}/{prog.totalLevels}
-                                                        </span>
-                                                    </div>
-                                                    <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                                                        <motion.div
-                                                            className="h-full rounded-full"
-                                                            style={{
-                                                                background: pct === 100
-                                                                    ? "linear-gradient(90deg, var(--neon-green), #00d4aa)"
-                                                                    : "linear-gradient(90deg, var(--neon-cyan), var(--neon-magenta))",
-                                                            }}
-                                                            initial={{ width: 0 }}
-                                                            animate={{ width: `${pct}%` }}
-                                                            transition={{ duration: 0.8, ease: "easeOut", delay: 0.3 }}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                );
-                            })()}
+                            <div className="text-center py-8">
+                                <div className="text-5xl mb-3">🗺️</div>
+                                <p className="text-white/50 text-sm">
+                                    {player.journeysCompleted > 0
+                                        ? `Đã hoàn thành ${player.journeysCompleted}/10 hành trình`
+                                        : "Chưa hoàn thành hành trình nào"}
+                                </p>
+                                <p className="text-white/25 text-xs mt-1">Vào Bản đồ để bắt đầu hành trình!</p>
+                            </div>
                         </GlassCard>
                     </motion.div>
                 </div>
@@ -558,7 +481,7 @@ export default function PlayerPage() {
                             ⚠️ Vùng nguy hiểm
                         </h2>
                         <p className="text-white/40 text-sm mb-4">
-                            Reset hành trình sẽ xóa toàn bộ tiến trình, XP và thành tích. Không thể hoàn tác!
+                            Reset hành trình sẽ xóa toàn bộ tiến trình, Cosmo và thành tích. Không thể hoàn tác!
                         </p>
                         <button
                             onClick={() => setShowResetConfirm(true)}

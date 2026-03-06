@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Maximize, Minimize } from "lucide-react";
 import type { GameLevel } from "@/lib/services/db";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { useGame } from "@/lib/game-context";
 
 /* ─── Types ─── */
 interface Props {
@@ -12,7 +13,7 @@ interface Props {
     onExit?: () => void;
     playerClass?: "warrior" | "wizard" | "hunter" | null;
     onGameComplete?: (finalScore: number, levelsCompleted: number) => void;
-    onAnswered?: (isCorrect: boolean, subject: string, bloomLevel: number) => void;
+    onAnswered?: (questionId: string, isCorrect: boolean, subject: string, bloomLevel: number) => void;
     calmMode?: boolean;
 }
 
@@ -20,7 +21,7 @@ interface Props {
 const START_TIME = 15;         // seconds
 const TIME_BONUS = 5;          // +5s on correct
 const TIME_PENALTY = 3;        // -3s on wrong
-const BASE_XP = 100;
+const BASE_COSMO = 100;
 const COMBO_MULTIPLIERS = [1, 1, 1.5, 2, 3, 5];
 
 /* ─── Component ─── */
@@ -28,6 +29,7 @@ export default function TimeBombGame({
     levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false,
 }: Props) {
     const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
+    const { player, useAbilityCharge, addAbilityCharges } = useGame();
     const [gameState, setGameState] = useState<"ready" | "playing" | "gameOver" | "win">("ready");
     const [currentLevel, setCurrentLevel] = useState(0);
     const [questionIdx, setQuestionIdx] = useState(0);
@@ -100,6 +102,23 @@ export default function TimeBombGame({
         }
     }, [playerClass, questionIdx, question, feedback]);
 
+    /* ─── Time penalty helper ─── */
+    const applyTimePenalty = useCallback(() => {
+        setBombTime(t => {
+            const next = t - TIME_PENALTY;
+            if (next <= 0) {
+                setTimeout(() => {
+                    stopBGM();
+                    onGameComplete?.(score, 0);
+                    setGameState("gameOver");
+                }, 600);
+                return 0;
+            }
+            return next;
+        });
+        setTimeDelta({ value: -TIME_PENALTY, id: Date.now() });
+    }, [score, stopBGM, onGameComplete]);
+
     /* ─── Handle answer ─── */
     const handleAnswer = useCallback((answer: string) => {
         if (feedback) return;
@@ -111,67 +130,61 @@ export default function TimeBombGame({
             playCorrect();
             setFeedback("correct");
             const combo = Math.min(comboCount, COMBO_MULTIPLIERS.length - 1);
-            const xp = Math.round(BASE_XP * COMBO_MULTIPLIERS[combo]);
+            const xp = Math.round(BASE_COSMO * COMBO_MULTIPLIERS[combo]);
             setScore(s => s + xp);
             setComboCount(c => c + 1);
+            if (comboCount + 1 === 3) addAbilityCharges(1); // Combo reward
             setTotalCorrect(c => c + 1);
             setBombTime(t => Math.min(t + TIME_BONUS, 30)); // Cap at 30s
             setTimeDelta({ value: TIME_BONUS, id: Date.now() });
-            onAnswered?.(true, level?.subject ?? "", 2);
+            onAnswered?.(question?.id ?? "", true, level?.subject ?? "", question?.bloomLevel ?? 2);
         } else {
             playWrong();
             setFeedback("wrong");
             setComboCount(0);
             setShakeScreen(true);
-            onAnswered?.(false, level?.subject ?? "", 2);
+            onAnswered?.(question?.id ?? "", false, level?.subject ?? "", question?.bloomLevel ?? 2);
 
-            // Warrior shield
+            // Warrior shield — costs 1 ability charge
             if (playerClass === "warrior" && !shieldUsed) {
-                setShieldUsed(true);
-                setAbilityNotice("🛡️ Bom không mất thời gian!");
-                setTimeDelta({ value: 0, id: Date.now() });
-                setTimeout(() => setAbilityNotice(null), 1500);
-            } else {
-                setBombTime(t => {
-                    const next = t - TIME_PENALTY;
-                    if (next <= 0) {
-                        setTimeout(() => {
-                            stopBGM();
-                            onGameComplete?.(score, 0); // 0 = lose
-                            setGameState("gameOver");
-                        }, 600);
-                        return 0;
-                    }
-                    return next;
-                });
-                setTimeDelta({ value: -TIME_PENALTY, id: Date.now() });
+                const charged = useAbilityCharge();
+                if (charged) {
+                    setShieldUsed(true);
+                    setAbilityNotice("🛡️ Bom không mất thời gian!");
+                    setTimeDelta({ value: 0, id: Date.now() });
+                    setTimeout(() => setAbilityNotice(null), 1500);
+                } else {
+                    applyTimePenalty();
+                }
+            } else if (playerClass !== "warrior") {
+                applyTimePenalty();
             }
             setTimeout(() => setShakeScreen(false), 500);
-        }
 
-        // Auto-advance (fast! This is supposed to be frantic)
-        setTimeout(() => {
-            const nextQ = questionIdx + 1;
-            if (nextQ >= totalQuestions) {
-                stopBGM();
-                onGameComplete?.(score + (isCorrect ? BASE_XP : 0), levels.length);
-                setGameState("win");
-            } else {
-                setQuestionIdx(nextQ);
-                setFeedback(null);
-                setHunterEliminated(null);
-                // Figure out which level this question belongs to
-                let cumulative = 0;
-                for (let i = 0; i < levels.length; i++) {
-                    cumulative += levels[i].questions.length;
-                    if (nextQ < cumulative) {
-                        setCurrentLevel(i);
-                        break;
+            // Auto-advance (fast! This is supposed to be frantic)
+            setTimeout(() => {
+                const nextQ = questionIdx + 1;
+                if (nextQ >= totalQuestions) {
+                    stopBGM();
+                    onGameComplete?.(score + (isCorrect ? BASE_COSMO : 0), levels.length);
+                    setGameState("win");
+                } else {
+                    setQuestionIdx(nextQ);
+                    setFeedback(null);
+                    setHunterEliminated(null);
+                    // Figure out which level this question belongs to
+                    let cumulative = 0;
+                    for (let i = 0; i < levels.length; i++) {
+                        cumulative += levels[i].questions.length;
+                        if (nextQ < cumulative) {
+                            setCurrentLevel(i);
+                            break;
+                        }
                     }
                 }
-            }
-        }, 600); // FAST transition!
-    }, [feedback, question, comboCount, questionIdx, totalQuestions, score, levels, playerClass, shieldUsed]);
+            }, 600); // FAST transition!
+        }
+    }, [feedback, question, comboCount, questionIdx, totalQuestions, score, levels, playerClass, shieldUsed, useAbilityCharge, applyTimePenalty]);
 
     /* ─── Start ─── */
     const startGame = () => {
@@ -182,7 +195,11 @@ export default function TimeBombGame({
         setShieldUsed(false);
         setQuestionIdx(0);
         setCurrentLevel(0);
-        setBombTime(START_TIME + (playerClass === "wizard" ? 5 : 0));
+        setBombTime(START_TIME + (playerClass === "wizard" && player.abilityCharges > 0 ? 5 : 0));
+        // Wizard bonus consumes a charge
+        if (playerClass === "wizard" && player.abilityCharges > 0) {
+            useAbilityCharge();
+        }
         setFeedback(null);
         setHunterEliminated(null);
         setGameState("playing");
@@ -263,8 +280,8 @@ export default function TimeBombGame({
                                     </motion.span>
                                 )}
                                 <span className="text-neon-cyan font-bold text-lg">{score}</span>
-                                <span className="text-white/40 text-xs">XP</span>
-                                {playerClass === "warrior" && !shieldUsed && (
+                                <span className="text-white/40 text-xs">✦</span>
+                                {playerClass === "warrior" && !shieldUsed && player.abilityCharges > 0 && (
                                     <span className="text-lg animate-pulse">🛡️</span>
                                 )}
                                 <button onClick={toggleFullscreen}
@@ -440,8 +457,8 @@ export default function TimeBombGame({
                                 <div className="glass-card !p-3 !rounded-xl text-center border border-neon-gold/20">
                                     <p className="text-xs text-white/50 mb-1">Khả năng đặc biệt</p>
                                     <p className="text-sm font-bold text-neon-gold">
-                                        {playerClass === "warrior" && "🛡️ Bom không mất thời gian 1 lần"}
-                                        {playerClass === "wizard" && "⏳ Bắt đầu với thêm 5 giây"}
+                                        {playerClass === "warrior" && `🛡️ Bom không mất thời gian 1 lần (⚡${player.abilityCharges})`}
+                                        {playerClass === "wizard" && `⏳ Bắt đầu với thêm 5 giây (⚡${player.abilityCharges})`}
                                         {playerClass === "hunter" && "🎯 Loại 1 đáp án sai mỗi câu"}
                                     </p>
                                 </div>
@@ -463,7 +480,7 @@ export default function TimeBombGame({
                             <h2 className="text-2xl sm:text-3xl font-bold text-red-400">BOM NỔ!</h2>
                             <div className="text-center space-y-1">
                                 <p className="text-white/60">Đúng: <span className="text-emerald-400 font-bold">{totalCorrect}</span> câu</p>
-                                <p className="text-white/60">Điểm: <span className="text-neon-cyan font-bold">{score} XP</span></p>
+                                <p className="text-white/60">Điểm: <span className="text-neon-cyan font-bold">{score} ✦</span></p>
                                 {comboCount > 2 && <p className="text-orange-400 text-sm">🔥 Combo cao nhất: x{comboCount}</p>}
                             </div>
                             <div className="flex gap-3">

@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Maximize, Minimize } from "lucide-react";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { useGame } from "@/lib/game-context";
+import MascotAbilityButton from "@/components/MascotAbilityButton";
 
 /* ─── Types ─── */
 export interface CraftQuestion {
@@ -27,7 +29,7 @@ interface Props {
     onExit?: () => void;
     playerClass?: "warrior" | "wizard" | "hunter" | null;
     onGameComplete?: (finalScore: number, levelsCompleted: number) => void;
-    onAnswered?: (isCorrect: boolean, subject: string, bloomLevel: number) => void;
+    onAnswered?: (questionId: string, isCorrect: boolean, subject: string, bloomLevel: number) => void;
     calmMode?: boolean;
 }
 
@@ -60,6 +62,7 @@ export default function WordCraftGame({
     levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false,
 }: Props) {
     const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
+    const { player, useAbilityCharge, addAbilityCharges } = useGame();
     const [gameState, setGameState] = useState<"ready" | "playing" | "levelComplete" | "gameOver" | "win">("ready");
     const [currentLevel, setCurrentLevel] = useState(0);
     const [questionIdx, setQuestionIdx] = useState(0);
@@ -128,26 +131,42 @@ export default function WordCraftGame({
             const comboBonus = Math.min(comboCount, 5) * 10;
             setScore(s => s + 100 + comboBonus);
             setComboCount(c => c + 1);
-            onAnswered?.(true, level?.subject ?? "", question?.bloomLevel ?? 5);
+            if (comboCount + 1 === 3) addAbilityCharges(1); // Combo reward
+            onAnswered?.("", true, level?.subject ?? "", question?.bloomLevel ?? 5);
         } else {
             playWrong();
             setFeedback("wrong");
             setComboCount(0);
             setShakeWrong(true);
-            onAnswered?.(false, level?.subject ?? "", question?.bloomLevel ?? 5);
+            onAnswered?.("", false, level?.subject ?? "", question?.bloomLevel ?? 5);
 
-            // Warrior shield
+            // Warrior shield — costs 1 ability charge
             if (playerClass === "warrior" && !shieldUsed) {
-                setShieldUsed(true);
-                setAbilityNotice("🛡️ Lá chắn thép đã bảo vệ bạn!");
-                setTimeout(() => setAbilityNotice(null), 2000);
-            } else {
+                const charged = useAbilityCharge();
+                if (charged) {
+                    setShieldUsed(true);
+                    setAbilityNotice("🛡️ Lá chắn thép đã bảo vệ bạn!");
+                    setTimeout(() => setAbilityNotice(null), 2000);
+                } else {
+                    setHp(prev => {
+                        const newHp = prev - 1;
+                        if (newHp <= 0) {
+                            setTimeout(() => {
+                                stopBGM();
+                                onGameComplete?.(score, 0);
+                                setGameState("gameOver");
+                            }, 800);
+                        }
+                        return newHp;
+                    });
+                }
+            } else if (playerClass !== "warrior") {
                 setHp(prev => {
                     const newHp = prev - 1;
                     if (newHp <= 0) {
                         setTimeout(() => {
                             stopBGM();
-                            onGameComplete?.(score, currentLevel);
+                            onGameComplete?.(score, 0);
                             setGameState("gameOver");
                         }, 800);
                     }
@@ -203,6 +222,7 @@ export default function WordCraftGame({
     /* ─── Hunter ability: show hint ─── */
     const showHint = () => {
         if (playerClass !== "hunter" || hintVisible || feedback) return;
+        if (!useAbilityCharge()) return; // No charges
         setHintVisible(true);
         setAbilityNotice("🎯 Mắt Đại Bàng — gợi ý đáp án!");
         setTimeout(() => setAbilityNotice(null), 2000);
@@ -255,7 +275,7 @@ export default function WordCraftGame({
                             ❤️
                         </span>
                     ))}
-                    {playerClass === "warrior" && !shieldUsed && (
+                    {playerClass === "warrior" && !shieldUsed && player.abilityCharges > 0 && (
                         <span className="text-xl ml-1 animate-pulse" title="Lá chắn thép – miễn 1 lần sai">🛡️</span>
                     )}
                 </div>
@@ -291,7 +311,7 @@ export default function WordCraftGame({
                             </motion.span>
                         )}
                         <span className="text-neon-cyan font-bold text-lg">{score}</span>
-                        <span className="text-white/40 text-xs">XP</span>
+                        <span className="text-white/40 text-xs">✦</span>
                     </div>
                     {gameState === "playing" && (
                         <button onClick={toggleFullscreen}
@@ -416,13 +436,16 @@ export default function WordCraftGame({
                                         Gửi đáp án ✨
                                     </button>
                                 )}
-                                {playerClass === "hunter" && !hintVisible && !feedback && (
-                                    <button
+                                {playerClass === "hunter" && !hintVisible && !feedback && player.abilityCharges > 0 && (
+                                    <MascotAbilityButton
                                         onClick={showHint}
-                                        className="px-4 py-3 rounded-full border border-neon-gold/30 text-neon-gold text-sm font-bold hover:bg-neon-gold/10 transition-colors"
-                                    >
-                                        🎯 Gợi ý
-                                    </button>
+                                        disabled={hintVisible}
+                                        charges={player.abilityCharges}
+                                        label="Mắt Đại Bàng"
+                                        description="Gợi ý chữ đầu"
+                                        position="inline"
+                                        size="sm"
+                                    />
                                 )}
                             </div>
                         </div>
@@ -437,7 +460,7 @@ export default function WordCraftGame({
                             <div className="text-center">
                                 <div className="text-5xl mb-2">✨</div>
                                 <p className="text-green-400 font-bold text-xl">Đúng rồi!</p>
-                                <p className="text-neon-gold text-sm font-bold">+100 XP</p>
+                                <p className="text-neon-gold text-sm font-bold">+100 ✦</p>
                             </div>
                         </motion.div>
                     )}
@@ -470,9 +493,9 @@ export default function WordCraftGame({
                                 <div className="glass-card !p-3 !rounded-xl text-center border border-neon-gold/20">
                                     <p className="text-xs text-white/50 mb-1">Khả năng đặc biệt của bạn</p>
                                     <p className="text-sm font-bold text-neon-gold">
-                                        {playerClass === "warrior" && "🛡️ Lá Chắn Thép — Miễn 1 lần sai mỗi level"}
+                                        {playerClass === "warrior" && `🛡️ Lá Chắn Thép — Miễn 1 lần sai (⚡${player.abilityCharges})`}
                                         {playerClass === "wizard" && "⏳ Ngưng Đọng Thời Gian — +10 giây mỗi câu"}
-                                        {playerClass === "hunter" && "🎯 Mắt Đại Bàng — Bấm gợi ý để thấy chữ đầu"}
+                                        {playerClass === "hunter" && `🎯 Mắt Đại Bàng — Gợi ý (⚡${player.abilityCharges})`}
                                     </p>
                                 </div>
                             )}
@@ -496,7 +519,7 @@ export default function WordCraftGame({
                             <h2 className="text-2xl sm:text-3xl font-bold neon-text">
                                 Level {levels[currentLevel]?.level} Hoàn thành!
                             </h2>
-                            <p className="text-neon-gold text-lg font-bold">+{score} XP</p>
+                            <p className="text-neon-gold text-lg font-bold">+{score} ✦</p>
                             <button onClick={() => startLevel(currentLevel + 1)}
                                 className="px-8 py-3 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold text-lg hover:scale-105 transition-transform shadow-[0_0_25px_rgba(52,211,153,0.4)]">
                                 Level tiếp theo →
@@ -509,7 +532,7 @@ export default function WordCraftGame({
                             className="absolute inset-0 bg-space-deep/95 flex flex-col items-center justify-center gap-5 z-20">
                             <div className="text-6xl">💥</div>
                             <h2 className="text-2xl sm:text-3xl font-bold text-red-400">Xưởng chữ quá tải!</h2>
-                            <p className="text-white/60">Điểm: <span className="text-neon-cyan font-bold">{score} XP</span></p>
+                            <p className="text-white/60">Điểm: <span className="text-neon-cyan font-bold">{score} ✦</span></p>
                             <div className="flex gap-3">
                                 <button onClick={startGame}
                                     className="px-6 py-3 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold hover:scale-105 transition-transform">

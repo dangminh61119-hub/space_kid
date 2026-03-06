@@ -15,12 +15,12 @@ export interface PdfReportData {
     playerName: string;
     grade: number;
     level: number;
-    xp: number;
+    cosmo: number;
     streak: number;
     mascotEmoji: string;
     className: string;
     masteryByTopic: Record<string, number>;
-    planetsProgress: Record<string, { completedLevels: number; totalLevels: number }>;
+    journeysCompleted: number;
 }
 
 function generateReportHtml(data: PdfReportData): string {
@@ -47,15 +47,7 @@ function generateReportHtml(data: PdfReportData): string {
         }).join("")
         : '<tr><td colspan="3" style="padding:20px;text-align:center;color:#999;">Chưa có dữ liệu học tập</td></tr>';
 
-    // Build planet progress rows
-    const planets = Object.entries(data.planetsProgress);
-    const planetRows = planets.length > 0
-        ? planets.map(([name, p]) => `
-            <tr>
-                <td style="padding:6px 12px;border-bottom:1px solid #eee;">${name}</td>
-                <td style="padding:6px 12px;border-bottom:1px solid #eee;text-align:center;">${p.completedLevels}/${p.totalLevels}</td>
-            </tr>`).join("")
-        : '<tr><td colspan="2" style="padding:20px;text-align:center;color:#999;">Chưa khám phá hành tinh nào</td></tr>';
+
 
     return `
     <!DOCTYPE html>
@@ -103,10 +95,10 @@ function generateReportHtml(data: PdfReportData): string {
 
             <!-- Stats -->
             <div class="stats-grid">
-                <div class="stat-card"><div class="value">${data.xp.toLocaleString()}</div><div class="label">Tổng XP</div></div>
+                <div class="stat-card"><div class="value">${data.cosmo.toLocaleString()}</div><div class="label">Tổng ✦</div></div>
                 <div class="stat-card"><div class="value">${data.streak}</div><div class="label">Chuỗi ngày</div></div>
                 <div class="stat-card"><div class="value">${data.level}</div><div class="label">Level</div></div>
-                <div class="stat-card"><div class="value">${Object.keys(data.masteryByTopic).length}</div><div class="label">Môn học</div></div>
+                <div class="stat-card"><div class="value">${data.journeysCompleted}/10</div><div class="label">Hành trình</div></div>
             </div>
 
             <!-- Subject Mastery -->
@@ -118,14 +110,7 @@ function generateReportHtml(data: PdfReportData): string {
                 </table>
             </div>
 
-            <!-- Planet Progress -->
-            <div class="section">
-                <h3>🪐 Tiến độ Hành tinh</h3>
-                <table>
-                    <thead><tr><th>Hành tinh</th><th style="text-align:center;">Levels hoàn thành</th></tr></thead>
-                    <tbody>${planetRows}</tbody>
-                </table>
-            </div>
+
 
             <div class="footer">
                 <p>CosmoMosaic – Ghép tri thức, thắp sáng vũ trụ! 🌟</p>
@@ -149,12 +134,12 @@ export function usePdfExport() {
             playerName: player.name,
             grade: player.grade,
             level: player.level,
-            xp: player.xp,
+            cosmo: player.cosmo,
             streak: player.streak,
             mascotEmoji,
             className,
             masteryByTopic: player.masteryByTopic,
-            planetsProgress: player.planetsProgress,
+            journeysCompleted: player.journeysCompleted,
         };
 
         const html = generateReportHtml(data);
