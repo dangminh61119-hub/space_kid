@@ -173,6 +173,8 @@ export default function GameModeController({
     const [gameKey, setGameKey] = useState(0);
     // Track if we already handled this game's completion (prevent double-fire)
     const handledRef = useRef(false);
+    // Track which question index is currently active in the game
+    const [activeQuestionIdx, setActiveQuestionIdx] = useState(0);
 
     // Sync currentLevelIdx when completedLevels or levels change (e.g. after async load)
     const prevCompletedRef = useRef(completedLevels);
@@ -237,7 +239,7 @@ export default function GameModeController({
         setTotalScore(prev => prev + score);
 
         const passedLevels = 1;
-        const isWin = levelsInGame >= passedLevels && score > 0;
+        const isWin = levelsInGame >= passedLevels;
 
         if (isWin) {
             // Calculate stars based on accuracy tracking
@@ -262,11 +264,13 @@ export default function GameModeController({
             }
             setCurrentLevelIdx(nextIdx);
             setGameKey(k => k + 1); // Force remount
+            setActiveQuestionIdx(0); // Reset question index for new level
             setState("levelIntro");
         } else if (state === "levelLose") {
             // Re-fetch questions from server for smart selection on retry
             onRefreshLevels?.();
             setGameKey(k => k + 1); // Force remount for retry
+            setActiveQuestionIdx(0); // Reset question index for retry
             setState("levelIntro");
         }
     };
@@ -355,6 +359,8 @@ export default function GameModeController({
         const trackingOnAnswered = (questionId: string, isCorrect: boolean, subject: string, bloomLevel: number) => {
             totalAnsweredRef.current += 1;
             if (isCorrect) correctCountRef.current += 1;
+            // Advance active question index so SummonOverlay shows correct context
+            setActiveQuestionIdx(prev => prev + 1);
             onAnswered?.(questionId, isCorrect, subject, bloomLevel);
         };
 
@@ -371,7 +377,13 @@ export default function GameModeController({
         // Determine bloom level for summon eligibility
         // Higher levels = harder questions = higher Bloom (proxy: level ≥ 3 ≈ Bloom 3+)
         const currentBloom = Math.min(5, Math.ceil(currentLevel.level / 2));
-        const currentQ = currentLevel.questions?.[0]?.question ?? "";
+        const allQs = currentLevel.questions ?? [];
+        // Use activeQuestionIdx to show the question currently on screen (not always Q0)
+        const activeQ = allQs[Math.min(activeQuestionIdx, allQs.length - 1)];
+        const currentQ = activeQ?.question ?? "";
+        const currentAnswers = activeQ
+            ? [activeQ.correctWord, ...(activeQ.wrongWords || [])].filter(Boolean)
+            : [];
 
         let gameComponent;
         switch (activeMode) {
@@ -414,6 +426,7 @@ export default function GameModeController({
                     bloomLevel={currentBloom}
                     currentQuestion={currentQ}
                     currentSubject={currentLevel.subject}
+                    currentAnswers={currentAnswers}
                     onPause={() => setGamePaused(true)}
                     onResume={() => setGamePaused(false)}
                 >

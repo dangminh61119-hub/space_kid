@@ -187,17 +187,9 @@ export async function getJourneys(grade: number, playerId?: string, planetId: st
         };
     });
 
-    // Recalculate unlock state
+    // All journeys unlocked from the start (no sequential lock)
     for (let i = 0; i < journeys.length; i++) {
-        if (planetId === 'helios') {
-            // Helios: all race tracks unlocked
-            journeys[i].isUnlocked = true;
-        } else if (i === 0) {
-            journeys[i].isUnlocked = true;
-        } else {
-            const prev = journeys[i - 1];
-            journeys[i].isUnlocked = prev.completedLevels >= prev.totalLevels && prev.totalLevels > 0;
-        }
+        journeys[i].isUnlocked = true;
     }
 
     return journeys;
@@ -898,4 +890,34 @@ export async function exchangeStarsForBadge(playerId: string): Promise<DBPlayerB
 
     console.log(`[db] Stars exchanged for badge: ${exchangeSlug}`);
     return inserted as DBPlayerBadge;
+}
+
+/** Full reset — wipes all player progress from DB (journey_progress, answered_questions, badges, ships, player stats) */
+export async function resetPlayerData(playerId: string): Promise<void> {
+    if (isMockMode || !supabase || !playerId) return;
+
+    // Delete progress tables in parallel
+    await Promise.all([
+        supabase.from("journey_progress").delete().eq("player_id", playerId),
+        supabase.from("answered_questions").delete().eq("player_id", playerId),
+        supabase.from("player_badges").delete().eq("player_id", playerId),
+        supabase.from("player_ships").delete().eq("player_id", playerId),
+        supabase.from("mastery").delete().eq("player_id", playerId),
+    ]);
+
+    // Reset player stats to defaults
+    const { error } = await supabase
+        .from("players")
+        .update({
+            xp: 0,
+            streak: 0,
+            lucky_stars: 0,
+            coins: 0,
+            crystals: 3,
+            ability_charges: 1,
+        })
+        .eq("id", playerId);
+
+    if (error) console.error("[db] resetPlayerData error:", error);
+    else console.log("[db] 🔄 Player data reset for:", playerId);
 }

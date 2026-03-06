@@ -319,7 +319,7 @@ function PlayContent() {
                 </div>
             )}
 
-            <style jsx>{`
+            <style>{`
                 @keyframes starCountdown {
                     from { stroke-dashoffset: 0; }
                     to { stroke-dashoffset: 283; }

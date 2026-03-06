@@ -216,7 +216,8 @@ export default function MeteorShowerGame({
         };
         animRef.current = requestAnimationFrame(loop);
         return () => cancelAnimationFrame(animRef.current);
-    }, [gameState, meteors.length]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [gameState]);
 
     // advanceQuestion is defined above before the animation loop
 
@@ -227,7 +228,8 @@ export default function MeteorShowerGame({
             cancelAnimationFrame(animRef.current);
             onGameComplete?.(score, levelsCompleted);
         }
-    }, [gameState]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [gameState, score, levelsCompleted]);
 
     /* ─── Wizard slow ─── */
     useEffect(() => {

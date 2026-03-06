@@ -25,9 +25,9 @@ export async function POST(request: NextRequest) {
         if (!checkRateLimit(auth.userId!, 20, 60_000)) return rateLimitResponse();
 
         const body = await request.json();
-        const { context, questionText, playerAnswer, correctAnswer, subject, bloomLevel } = body;
+        const { context, questionText, playerAnswer, correctAnswer, subject, bloomLevel, answerOptions } = body;
 
-        const userMessage = buildUserMessage({ context, questionText, playerAnswer, correctAnswer, subject, bloomLevel });
+        const userMessage = buildUserMessage({ context, questionText, playerAnswer, correctAnswer, subject, bloomLevel, answerOptions });
 
         // Try AI API if configured
         const apiKey = process.env.GROK_API_KEY || process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY;
@@ -55,8 +55,9 @@ export async function POST(request: NextRequest) {
                     { role: "system", content: SYSTEM_PROMPT },
                     { role: "user", content: userMessage },
                 ],
-                max_tokens: 150,
-                temperature: 0.7,
+                max_tokens: 1500,  // gemini-2.5-flash uses ~600 hidden thinking tokens internally;
+                // 1500 = ~600 thinking + ~200 Vietnamese output + buffer
+                temperature: 0.5,
             }),
         });
 

@@ -29,8 +29,9 @@ export function buildUserMessage(params: {
     correctAnswer?: string;
     subject?: string;
     bloomLevel?: number;
+    answerOptions?: string[];  // Multiple choice options
 }): string {
-    const { context, questionText, playerAnswer, correctAnswer, subject, bloomLevel } = params;
+    const { context, questionText, playerAnswer, correctAnswer, subject, bloomLevel, answerOptions } = params;
     const lvl = bloomLevel ?? 1;
     const subj = subject ?? "chung";
 
@@ -41,8 +42,11 @@ export function buildUserMessage(params: {
         return `Bạn nhỏ vừa trả lời SAI câu hỏi "${questionText}". Bạn nhỏ trả lời "${playerAnswer}" nhưng đáp án đúng là "${correctAnswer}" (môn ${subj}, Bloom level ${lvl}). Hãy động viên và gợi ý nhẹ nhàng!`;
     }
     if (context === "hint_requested") {
-        const playerQ = playerAnswer ? ` Học sinh hỏi thêm: "${playerAnswer}".` : "";
-        return `Bạn nhỏ cần gợi ý cho câu hỏi "${questionText}" (môn ${subj}, Bloom level ${lvl}).${playerQ} Đưa ra gợi ý mà KHÔNG tiết lộ đáp án!`;
+        const optionsText = answerOptions && answerOptions.length > 0
+            ? `\nCác lựa chọn: ${answerOptions.join(" | ")}`
+            : "";
+        const playerQ = playerAnswer ? `\nHọc sinh hỏi: "${playerAnswer}".` : "";
+        return `Câu hỏi: "${questionText}" (môn ${subj}, Bloom ${lvl}).${optionsText}${playerQ}\n\nHãy giải thích và giúp học sinh hiểu câu hỏi này để chọn được đáp án đúng.`;
     }
     return `Hãy động viên bạn nhỏ tiếp tục học tập!`;
 }

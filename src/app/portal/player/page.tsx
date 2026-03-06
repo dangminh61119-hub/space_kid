@@ -112,8 +112,8 @@ export default function PlayerPage() {
     };
 
     /* ── Reset handler ── */
-    const handleReset = () => {
-        resetGame();
+    const handleReset = async () => {
+        await resetGame();
         router.push("/onboarding");
     };
 

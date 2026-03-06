@@ -184,7 +184,8 @@ export default function WordRushGame({
             if (timerRef.current) clearInterval(timerRef.current);
             onGameComplete?.(score, levelsCompleted);
         }
-    }, [gameState]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [gameState, score, levelsCompleted]);
 
     /* ─── Answer click ─── */
     const handleAnswer = useCallback((answer: { text: string; isCorrect: boolean }) => {
