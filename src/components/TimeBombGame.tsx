@@ -77,7 +77,10 @@ export default function TimeBombGame({
 
     /* ─── Bomb countdown ─── */
     useEffect(() => {
-        if (gameState !== "playing" || feedback) return;
+        if (gameState !== "playing" || feedback || paused) {
+            if (timerRef.current) clearInterval(timerRef.current);
+            return;
+        }
 
         timerRef.current = setInterval(() => {
             setBombTime(prev => {
@@ -97,7 +100,7 @@ export default function TimeBombGame({
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
         };
-    }, [gameState, feedback, questionIdx]);
+    }, [gameState, feedback, questionIdx, paused]);
 
     /* ─── Hunter: eliminate one wrong ─── */
     useEffect(() => {

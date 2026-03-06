@@ -76,7 +76,10 @@ export default function BossBattle({
 
     // Timer countdown
     useEffect(() => {
-        if (gameState !== "playing" || feedback) return;
+        if (gameState !== "playing" || feedback || paused) {
+            if (timerRef.current) clearInterval(timerRef.current);
+            return;
+        }
         timerRef.current = setInterval(() => {
             setTimer(prev => {
                 if (prev <= 0.1) {
@@ -89,7 +92,7 @@ export default function BossBattle({
             });
         }, 100);
         return () => { if (timerRef.current) clearInterval(timerRef.current); };
-    }, [gameState, feedback, questionIdx]);
+    }, [gameState, feedback, questionIdx, paused]);
 
     const handleTimeout = useCallback(() => {
         setFeedback("wrong");
