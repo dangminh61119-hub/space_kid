@@ -187,9 +187,12 @@ export async function getJourneys(grade: number, playerId?: string, planetId: st
         };
     });
 
-    // Recalculate unlock state: sequential
+    // Recalculate unlock state
     for (let i = 0; i < journeys.length; i++) {
-        if (i === 0) {
+        if (planetId === 'helios') {
+            // Helios: all race tracks unlocked
+            journeys[i].isUnlocked = true;
+        } else if (i === 0) {
             journeys[i].isUnlocked = true;
         } else {
             const prev = journeys[i - 1];
