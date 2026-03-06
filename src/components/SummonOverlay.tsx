@@ -10,7 +10,7 @@
  * 4. Cú Mèo fades out → game resumes
  */
 
-import { useState, useCallback, useEffect, useRef, type ReactNode } from "react";
+import { useState, useCallback, useEffect, useRef, createContext, useContext, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/game-context";
 import { PLANET_SPELLS, SUMMON_COSTS, matchSpell, type SummonMethod } from "@/lib/data/planet-spells";
@@ -30,6 +30,14 @@ interface SummonOverlayProps {
     onPause?: () => void;
     onResume?: () => void;
 }
+
+/* ─── Context so child components (FloatingMascot) can trigger summon ─── */
+interface SummonContextValue {
+    openSummon: () => void;
+    canSummon: boolean;
+}
+const SummonContext = createContext<SummonContextValue>({ openSummon: () => { }, canSummon: false });
+export function useSummon() { return useContext(SummonContext); }
 
 /* ─── Timer constants ─── */
 const SUMMON_DURATION = 30; // seconds
@@ -58,7 +66,7 @@ export default function SummonOverlay({
     const recognitionRef = useRef<any>(null);
 
     const spell = PLANET_SPELLS[planetId];
-    const showButton = bloomLevel >= 3 && player.crystals >= 1;
+    const showButton = bloomLevel >= 1 && player.crystals >= 1;
 
     // Countdown timer
     useEffect(() => {
@@ -90,10 +98,11 @@ export default function SummonOverlay({
 
     /* ─── Open summon picker ─── */
     const handleOpenSummon = useCallback(() => {
+        if (!showButton) return; // crystals check
         setPhase("choosing");
         setIsActive(true);
         onPause?.();
-    }, [onPause]);
+    }, [onPause, showButton]);
 
     /* ─── Select a summon method ─── */
     const handleSelectMethod = useCallback((method: SummonMethod) => {
@@ -245,214 +254,216 @@ export default function SummonOverlay({
 
     /* ─── RENDER ─── */
     return (
-        <div className="relative w-full h-full flex-1 flex flex-col min-h-0">
-            {children}
+        <SummonContext.Provider value={{ openSummon: handleOpenSummon, canSummon: showButton }}>
+            <div className="relative w-full h-full flex-1 flex flex-col min-h-0">
+                {children}
 
-            {/* 🔮 Summon Button — only shows for Bloom ≥ 3 */}
-            {showButton && phase === "idle" && (
-                <motion.button
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleOpenSummon}
-                    className="absolute top-3 right-14 z-40 flex items-center gap-1.5 px-3 py-1.5 rounded-full
+                {/* 🔮 Summon Button — only shows for Bloom ≥ 3 */}
+                {showButton && phase === "idle" && (
+                    <motion.button
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handleOpenSummon}
+                        className="absolute top-3 right-14 z-40 flex items-center gap-1.5 px-3 py-1.5 rounded-full
                         bg-gradient-to-r from-purple-600/80 to-indigo-600/80 border border-purple-400/30
                         text-white text-xs font-bold shadow-[0_0_15px_rgba(139,92,246,0.4)]
                         hover:shadow-[0_0_25px_rgba(139,92,246,0.6)] transition-shadow"
-                    title="Triệu hồi Cú Mèo"
-                >
-                    <span>🔮</span>
-                    <span>{player.crystals}💎</span>
-                </motion.button>
-            )}
-
-            <AnimatePresence>
-                {/* ─── Choosing Method ─── */}
-                {phase === "choosing" && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="absolute inset-0 z-50 bg-space-deep/90 backdrop-blur-sm flex items-center justify-center"
+                        title="Triệu hồi Cú Mèo"
                     >
-                        <motion.div
-                            initial={{ scale: 0.8, y: 20 }}
-                            animate={{ scale: 1, y: 0 }}
-                            className="max-w-sm w-full mx-4"
-                        >
-                            <div className="glass-card !p-5 border border-purple-500/30">
-                                <h3 className="text-center text-lg font-bold text-white mb-1 font-[var(--font-heading)]">
-                                    🔮 Triệu hồi Cú Mèo
-                                </h3>
-                                <p className="text-center text-white/50 text-xs mb-4">
-                                    Chọn cách triệu hồi · 💎 {player.crystals} pha lê
-                                </p>
-
-                                <div className="grid grid-cols-2 gap-2">
-                                    {/* Spell */}
-                                    <SummonMethodButton
-                                        icon="🪄"
-                                        label="Thần Chú"
-                                        cost={SUMMON_COSTS.spell}
-                                        description={spell?.spellText || "Nói thần chú"}
-                                        disabled={player.crystals < SUMMON_COSTS.spell}
-                                        onClick={() => handleSelectMethod("spell")}
-                                    />
-                                    {/* Rune */}
-                                    <SummonMethodButton
-                                        icon="✍️"
-                                        label="Phù Chú"
-                                        cost={SUMMON_COSTS.rune}
-                                        description="Vẽ ký hiệu"
-                                        disabled={player.crystals < SUMMON_COSTS.rune}
-                                        onClick={() => handleSelectMethod("rune")}
-                                    />
-                                    {/* Constellation */}
-                                    <SummonMethodButton
-                                        icon="🌌"
-                                        label="Chòm Sao"
-                                        cost={SUMMON_COSTS.constellation}
-                                        description="Nối chòm sao"
-                                        disabled={player.crystals < SUMMON_COSTS.constellation}
-                                        onClick={() => handleSelectMethod("constellation")}
-                                    />
-                                    {/* Magic Lens */}
-                                    <SummonMethodButton
-                                        icon="🔮"
-                                        label="Kính Thần"
-                                        cost={SUMMON_COSTS.lens}
-                                        description="Soi câu hỏi"
-                                        disabled={player.crystals < SUMMON_COSTS.lens}
-                                        onClick={() => handleSelectMethod("lens")}
-                                    />
-                                </div>
-
-                                <button
-                                    onClick={handleCancel}
-                                    className="w-full mt-3 py-2 rounded-lg border border-white/10 text-white/40 text-sm hover:bg-white/5 transition"
-                                >
-                                    Hủy
-                                </button>
-                            </div>
-                        </motion.div>
-                    </motion.div>
+                        <span>🔮</span>
+                        <span>{player.crystals}💎</span>
+                    </motion.button>
                 )}
 
-                {/* ─── Activating Animation ─── */}
-                {phase === "activating" && spell && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="absolute inset-0 z-50 bg-space-deep/95 flex flex-col items-center justify-center"
-                    >
+                <AnimatePresence>
+                    {/* ─── Choosing Method ─── */}
+                    {phase === "choosing" && (
                         <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: [0, 1.5, 1] }}
-                            transition={{ duration: 1, times: [0, 0.6, 1] }}
-                            className="text-8xl mb-4"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 z-50 bg-space-deep/90 backdrop-blur-sm flex items-center justify-center"
                         >
-                            {spell.effectEmoji}
-                        </motion.div>
-                        <motion.p
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.5 }}
-                            className="text-xl font-bold text-white font-[var(--font-heading)]"
-                            style={{ textShadow: `0 0 20px ${spell.glowColor}` }}
-                        >
-                            &ldquo;{spell.spellText}!&rdquo;
-                        </motion.p>
-                    </motion.div>
-                )}
+                            <motion.div
+                                initial={{ scale: 0.8, y: 20 }}
+                                animate={{ scale: 1, y: 0 }}
+                                className="max-w-sm w-full mx-4"
+                            >
+                                <div className="glass-card !p-5 border border-purple-500/30">
+                                    <h3 className="text-center text-lg font-bold text-white mb-1 font-[var(--font-heading)]">
+                                        🔮 Triệu hồi Cú Mèo
+                                    </h3>
+                                    <p className="text-center text-white/50 text-xs mb-4">
+                                        Chọn cách triệu hồi · 💎 {player.crystals} pha lê
+                                    </p>
 
-                {/* ─── Chatting with Cú Mèo ─── */}
-                {(phase === "chatting" || phase === "farewell") && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="absolute inset-0 z-50 bg-space-deep/90 backdrop-blur-sm flex items-center justify-center"
-                    >
-                        <motion.div
-                            initial={{ scale: 0.8 }}
-                            animate={{ scale: 1 }}
-                            className="max-w-md w-full mx-4"
-                        >
-                            <div className="glass-card !p-4 border border-cyan-500/30">
-                                {/* Header with timer */}
-                                <div className="flex items-center justify-between mb-3">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-2xl">🦉</span>
-                                        <span className="text-sm font-bold text-white">Cú Mèo</span>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {/* Spell */}
+                                        <SummonMethodButton
+                                            icon="🪄"
+                                            label="Thần Chú"
+                                            cost={SUMMON_COSTS.spell}
+                                            description={spell?.spellText || "Nói thần chú"}
+                                            disabled={player.crystals < SUMMON_COSTS.spell}
+                                            onClick={() => handleSelectMethod("spell")}
+                                        />
+                                        {/* Rune */}
+                                        <SummonMethodButton
+                                            icon="✍️"
+                                            label="Phù Chú"
+                                            cost={SUMMON_COSTS.rune}
+                                            description="Vẽ ký hiệu"
+                                            disabled={player.crystals < SUMMON_COSTS.rune}
+                                            onClick={() => handleSelectMethod("rune")}
+                                        />
+                                        {/* Constellation */}
+                                        <SummonMethodButton
+                                            icon="🌌"
+                                            label="Chòm Sao"
+                                            cost={SUMMON_COSTS.constellation}
+                                            description="Nối chòm sao"
+                                            disabled={player.crystals < SUMMON_COSTS.constellation}
+                                            onClick={() => handleSelectMethod("constellation")}
+                                        />
+                                        {/* Magic Lens */}
+                                        <SummonMethodButton
+                                            icon="🔮"
+                                            label="Kính Thần"
+                                            cost={SUMMON_COSTS.lens}
+                                            description="Soi câu hỏi"
+                                            disabled={player.crystals < SUMMON_COSTS.lens}
+                                            onClick={() => handleSelectMethod("lens")}
+                                        />
                                     </div>
-                                    <div className={`text-sm font-mono font-bold px-2 py-0.5 rounded ${timer <= 10 ? "text-red-400 animate-pulse" : "text-neon-cyan"
-                                        }`}>
-                                        ⏱️ {timer}s
-                                    </div>
+
+                                    <button
+                                        onClick={handleCancel}
+                                        className="w-full mt-3 py-2 rounded-lg border border-white/10 text-white/40 text-sm hover:bg-white/5 transition"
+                                    >
+                                        Hủy
+                                    </button>
                                 </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
 
-                                {/* Chat messages */}
-                                <div className="space-y-2 max-h-[200px] overflow-y-auto mb-3 pr-1">
-                                    {chatMessages.map((msg, i) => (
-                                        <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                                            <div className={`max-w-[85%] px-3 py-2 rounded-xl text-sm ${msg.role === "user"
-                                                ? "bg-neon-cyan/20 text-white border border-neon-cyan/30"
-                                                : "bg-white/10 text-white/80 border border-white/10"
-                                                }`}>
-                                                {msg.role === "owl" && <span className="mr-1">🦉</span>}
-                                                {msg.text}
-                                            </div>
+                    {/* ─── Activating Animation ─── */}
+                    {phase === "activating" && spell && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 z-50 bg-space-deep/95 flex flex-col items-center justify-center"
+                        >
+                            <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: [0, 1.5, 1] }}
+                                transition={{ duration: 1, times: [0, 0.6, 1] }}
+                                className="text-8xl mb-4"
+                            >
+                                {spell.effectEmoji}
+                            </motion.div>
+                            <motion.p
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.5 }}
+                                className="text-xl font-bold text-white font-[var(--font-heading)]"
+                                style={{ textShadow: `0 0 20px ${spell.glowColor}` }}
+                            >
+                                &ldquo;{spell.spellText}!&rdquo;
+                            </motion.p>
+                        </motion.div>
+                    )}
+
+                    {/* ─── Chatting with Cú Mèo ─── */}
+                    {(phase === "chatting" || phase === "farewell") && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 z-50 bg-space-deep/90 backdrop-blur-sm flex items-center justify-center"
+                        >
+                            <motion.div
+                                initial={{ scale: 0.8 }}
+                                animate={{ scale: 1 }}
+                                className="max-w-md w-full mx-4"
+                            >
+                                <div className="glass-card !p-4 border border-cyan-500/30">
+                                    {/* Header with timer */}
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-2xl">🦉</span>
+                                            <span className="text-sm font-bold text-white">Cú Mèo</span>
                                         </div>
-                                    ))}
-                                    {isLoading && (
-                                        <div className="flex justify-start">
-                                            <div className="bg-white/10 px-3 py-2 rounded-xl text-sm text-white/60 border border-white/10">
-                                                🦉 Cú Mèo đang suy nghĩ...
+                                        <div className={`text-sm font-mono font-bold px-2 py-0.5 rounded ${timer <= 10 ? "text-red-400 animate-pulse" : "text-neon-cyan"
+                                            }`}>
+                                            ⏱️ {timer}s
+                                        </div>
+                                    </div>
+
+                                    {/* Chat messages */}
+                                    <div className="space-y-2 max-h-[200px] overflow-y-auto mb-3 pr-1">
+                                        {chatMessages.map((msg, i) => (
+                                            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                                                <div className={`max-w-[85%] px-3 py-2 rounded-xl text-sm ${msg.role === "user"
+                                                    ? "bg-neon-cyan/20 text-white border border-neon-cyan/30"
+                                                    : "bg-white/10 text-white/80 border border-white/10"
+                                                    }`}>
+                                                    {msg.role === "owl" && <span className="mr-1">🦉</span>}
+                                                    {msg.text}
+                                                </div>
                                             </div>
+                                        ))}
+                                        {isLoading && (
+                                            <div className="flex justify-start">
+                                                <div className="bg-white/10 px-3 py-2 rounded-xl text-sm text-white/60 border border-white/10">
+                                                    🦉 Cú Mèo đang suy nghĩ...
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Voice input button */}
+                                    {phase === "chatting" && voiceTurns < MAX_VOICE_TURNS && (
+                                        <div className="flex gap-2">
+                                            <motion.button
+                                                whileTap={{ scale: 0.95 }}
+                                                onClick={startListening}
+                                                disabled={isListening || isLoading}
+                                                className={`flex-1 py-2.5 rounded-full font-bold text-sm transition-all ${isListening
+                                                    ? "bg-red-500/80 text-white animate-pulse"
+                                                    : "bg-gradient-to-r from-neon-cyan to-neon-magenta text-white hover:scale-[1.02]"
+                                                    } disabled:opacity-50`}
+                                            >
+                                                {isListening ? "🎤 Đang nghe..." : `🎤 Hỏi Cú Mèo (${MAX_VOICE_TURNS - voiceTurns} lượt)`}
+                                            </motion.button>
+                                            <button
+                                                onClick={handleDismiss}
+                                                className="px-3 py-2 rounded-full border border-white/20 text-white/40 text-xs hover:bg-white/5"
+                                            >
+                                                ✕
+                                            </button>
                                         </div>
                                     )}
-                                </div>
 
-                                {/* Voice input button */}
-                                {phase === "chatting" && voiceTurns < MAX_VOICE_TURNS && (
-                                    <div className="flex gap-2">
-                                        <motion.button
-                                            whileTap={{ scale: 0.95 }}
-                                            onClick={startListening}
-                                            disabled={isListening || isLoading}
-                                            className={`flex-1 py-2.5 rounded-full font-bold text-sm transition-all ${isListening
-                                                ? "bg-red-500/80 text-white animate-pulse"
-                                                : "bg-gradient-to-r from-neon-cyan to-neon-magenta text-white hover:scale-[1.02]"
-                                                } disabled:opacity-50`}
-                                        >
-                                            {isListening ? "🎤 Đang nghe..." : `🎤 Hỏi Cú Mèo (${MAX_VOICE_TURNS - voiceTurns} lượt)`}
-                                        </motion.button>
+                                    {/* Out of turns */}
+                                    {phase === "chatting" && voiceTurns >= MAX_VOICE_TURNS && (
                                         <button
                                             onClick={handleDismiss}
-                                            className="px-3 py-2 rounded-full border border-white/20 text-white/40 text-xs hover:bg-white/5"
+                                            className="w-full py-2.5 rounded-full bg-white/10 text-white/60 text-sm border border-white/10"
                                         >
-                                            ✕
+                                            Cảm ơn Cú Mèo! 🦉
                                         </button>
-                                    </div>
-                                )}
-
-                                {/* Out of turns */}
-                                {phase === "chatting" && voiceTurns >= MAX_VOICE_TURNS && (
-                                    <button
-                                        onClick={handleDismiss}
-                                        className="w-full py-2.5 rounded-full bg-white/10 text-white/60 text-sm border border-white/10"
-                                    >
-                                        Cảm ơn Cú Mèo! 🦉
-                                    </button>
-                                )}
-                            </div>
+                                    )}
+                                </div>
+                            </motion.div>
                         </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </div>
+                    )}
+                </AnimatePresence>
+            </div>
+        </SummonContext.Provider>
     );
 }
 

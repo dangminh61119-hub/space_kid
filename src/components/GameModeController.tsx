@@ -55,6 +55,7 @@ interface GameModeControllerProps {
 
 /* ─── Floating Mascot Companion (always visible during gameplay) ─── */
 import { motion, AnimatePresence } from "framer-motion";
+import { useSummon } from "@/components/SummonOverlay";
 
 function FloatingMascot() {
     const { player } = useGame();
@@ -68,6 +69,8 @@ function FloatingMascot() {
         hunter: { name: "Thợ Săn", desc: "🎯 Gợi ý / tự động giải" },
     };
     const info = playerClass ? classInfo[playerClass] : null;
+
+    const { openSummon, canSummon } = useSummon();
 
     return (
         <div className="absolute bottom-3 right-3 z-30 flex flex-col items-center gap-1">
@@ -101,9 +104,10 @@ function FloatingMascot() {
                 transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
                 whileHover={{ scale: 1.15 }}
                 whileTap={{ scale: 0.9 }}
+                onClick={() => { if (canSummon) openSummon(); else { setShowTip(true); setTimeout(() => setShowTip(false), 2500); } }}
                 onMouseEnter={() => setShowTip(true)}
                 onMouseLeave={() => setShowTip(false)}
-                onTouchStart={() => { setShowTip(true); setTimeout(() => setShowTip(false), 2500); }}
+                onTouchStart={() => { if (canSummon) { openSummon(); } else { setShowTip(true); setTimeout(() => setShowTip(false), 2500); } }}
             >
                 <div
                     className="absolute inset-0 rounded-full"
