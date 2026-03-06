@@ -38,6 +38,7 @@ const SHIP_OPTIONS = [
 
 const POINTS_BY_RANK = [100, 80, 60, 40, 20];
 const QUESTION_TIME_SECONDS = 10;
+const MAX_PLAYERS = 6;
 
 /* ─── Race Track Visualization ─── */
 function RaceTrack({ players, totalScores, maxScore, currentPlayerId }: {
@@ -185,8 +186,19 @@ export default function StarRaceGame({
 
     /* ─── Realtime Callbacks ─── */
     const handlePlayersUpdate = useCallback((updatedPlayers: RacePlayer[]) => {
+        // Enforce player limit: if I just joined and room is full, disconnect
+        if (updatedPlayers.length > MAX_PLAYERS && !isHost) {
+            const isNewJoiner = !players.some(p => p.playerId === playerDbId) &&
+                updatedPlayers.some(p => p.playerId === playerDbId);
+            if (isNewJoiner || updatedPlayers.length > MAX_PLAYERS) {
+                setError(`Phòng đã đầy! (tối đa ${MAX_PLAYERS} người)`);
+                unsubRef.current?.();
+                setPhase("ship-select");
+                return;
+            }
+        }
         setPlayers(updatedPlayers);
-    }, []);
+    }, [isHost, players, playerDbId]);
 
     const handleRaceStart = useCallback((qs: RaceQuestion[]) => {
         setQuestions(qs);
@@ -316,6 +328,7 @@ export default function StarRaceGame({
             setError("Phòng không tồn tại hoặc đã bắt đầu!");
             return;
         }
+        // Check player limit via presence count
         connectToRoom(roomData, false);
     };
 
@@ -540,7 +553,7 @@ export default function StarRaceGame({
                     {/* Players */}
                     <div className="glass-card !rounded-2xl !p-4 mb-6">
                         <div className="text-xs text-white/40 uppercase tracking-wider mb-3">
-                            Người chơi ({players.length})
+                            Người chơi ({players.length}/{MAX_PLAYERS})
                         </div>
                         <div className="space-y-2">
                             {players.length === 0 && (
