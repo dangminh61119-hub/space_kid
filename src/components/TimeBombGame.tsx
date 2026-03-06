@@ -198,8 +198,9 @@ export default function TimeBombGame({
                 const nextQ = questionIdx + 1;
                 if (nextQ >= totalQuestions) {
                     stopBGM();
-                    onGameComplete?.(score + (isCorrect ? BASE_COSMO : 0), levels.length);
-                    setGameState("win");
+                    // Wrong on last question = game over (no win!)
+                    onGameComplete?.(score, 0);
+                    setGameState("gameOver");
                 } else {
                     setQuestionIdx(nextQ);
                     setFeedback(null);
