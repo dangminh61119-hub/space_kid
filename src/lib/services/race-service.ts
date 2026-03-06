@@ -184,7 +184,16 @@ export type RaceEventType =
     | "question"
     | "answer"
     | "question_results"
-    | "race_finished";
+    | "race_finished"
+    | "join_request"
+    | "join_accepted"
+    | "join_rejected";
+
+export interface JoinRequest {
+    playerId: string;
+    name: string;
+    emoji: string;
+}
 
 export interface RaceChannelCallbacks {
     onPlayersUpdate?: (players: RacePlayer[]) => void;
@@ -193,6 +202,9 @@ export interface RaceChannelCallbacks {
     onAnswer?: (event: AnswerEvent) => void;
     onQuestionResults?: (scores: Record<string, number>) => void;
     onRaceFinished?: (finalScores: RacePlayer[]) => void;
+    onJoinRequest?: (request: JoinRequest) => void;
+    onJoinAccepted?: (playerId: string) => void;
+    onJoinRejected?: (playerId: string) => void;
 }
 
 export function subscribeToRaceRoom(
@@ -237,6 +249,15 @@ export function subscribeToRaceRoom(
         })
         .on("broadcast", { event: "race_finished" }, ({ payload }) => {
             callbacks.onRaceFinished?.(payload.players);
+        })
+        .on("broadcast", { event: "join_request" }, ({ payload }) => {
+            callbacks.onJoinRequest?.(payload);
+        })
+        .on("broadcast", { event: "join_accepted" }, ({ payload }) => {
+            callbacks.onJoinAccepted?.(payload.playerId);
+        })
+        .on("broadcast", { event: "join_rejected" }, ({ payload }) => {
+            callbacks.onJoinRejected?.(payload.playerId);
         })
         .subscribe(async (status) => {
             if (status === "SUBSCRIBED") {
@@ -316,5 +337,38 @@ export function broadcastRaceFinished(
         type: "broadcast",
         event: "race_finished",
         payload: { players },
+    });
+}
+
+export function broadcastJoinRequest(
+    channel: RealtimeChannel,
+    request: JoinRequest,
+) {
+    channel.send({
+        type: "broadcast",
+        event: "join_request",
+        payload: request,
+    });
+}
+
+export function broadcastJoinAccepted(
+    channel: RealtimeChannel,
+    playerId: string,
+) {
+    channel.send({
+        type: "broadcast",
+        event: "join_accepted",
+        payload: { playerId },
+    });
+}
+
+export function broadcastJoinRejected(
+    channel: RealtimeChannel,
+    playerId: string,
+) {
+    channel.send({
+        type: "broadcast",
+        event: "join_rejected",
+        payload: { playerId },
     });
 }
