@@ -39,6 +39,90 @@ const SHIP_OPTIONS = [
 const POINTS_BY_RANK = [100, 80, 60, 40, 20];
 const QUESTION_TIME_SECONDS = 10;
 
+/* ─── Race Track Visualization ─── */
+function RaceTrack({ players, totalScores, maxScore, currentPlayerId }: {
+    players: RacePlayer[];
+    totalScores: Record<string, number>;
+    maxScore: number;
+    currentPlayerId: string | null;
+}) {
+    const sorted = [...players]
+        .map(p => ({ ...p, score: totalScores[p.playerId] || 0 }))
+        .sort((a, b) => b.score - a.score);
+
+    return (
+        <div className="w-full mb-4 glass-card !rounded-2xl !p-3 overflow-hidden"
+            style={{ background: "linear-gradient(180deg, rgba(0,10,30,0.8), rgba(0,20,50,0.6))" }}>
+            {/* Track header */}
+            <div className="flex justify-between text-[10px] text-white/30 uppercase tracking-widest mb-2 px-1">
+                <span>Xuất phát</span>
+                <span>🏁 Đích</span>
+            </div>
+            {/* Lanes */}
+            <div className="space-y-1.5">
+                {sorted.map((p, i) => {
+                    const progress = maxScore > 0 ? (p.score / maxScore) * 100 : 0;
+                    const isMe = p.playerId === currentPlayerId;
+                    const shipInfo = SHIP_OPTIONS.find(s => s.emoji === p.emoji) || SHIP_OPTIONS[0];
+
+                    return (
+                        <div key={p.playerId} className="relative">
+                            {/* Lane background */}
+                            <div className="h-10 rounded-lg relative overflow-hidden"
+                                style={{
+                                    background: isMe
+                                        ? "linear-gradient(90deg, rgba(0,245,255,0.1), rgba(0,245,255,0.03))"
+                                        : "rgba(255,255,255,0.03)",
+                                    border: isMe ? "1px solid rgba(0,245,255,0.3)" : "1px solid rgba(255,255,255,0.05)",
+                                }}>
+                                {/* Progress trail */}
+                                <motion.div
+                                    className="absolute top-0 left-0 h-full rounded-lg"
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${Math.min(progress, 100)}%` }}
+                                    transition={{ type: "spring", stiffness: 50, damping: 15 }}
+                                    style={{
+                                        background: `linear-gradient(90deg, ${shipInfo.color}33, ${shipInfo.color}11)`,
+                                    }}
+                                />
+                                {/* Ship + info */}
+                                <motion.div
+                                    className="absolute top-0 h-full flex items-center"
+                                    initial={{ left: "0%" }}
+                                    animate={{ left: `${Math.min(Math.max(progress - 5, 0), 85)}%` }}
+                                    transition={{ type: "spring", stiffness: 50, damping: 15 }}
+                                >
+                                    <div className="flex items-center gap-1.5 px-2">
+                                        <span className="text-xl" style={{ filter: "drop-shadow(0 0 6px rgba(255,255,255,0.5))" }}>
+                                            {p.emoji}
+                                        </span>
+                                        <div className="flex flex-col">
+                                            <span className={`text-[10px] font-bold leading-none ${isMe ? "text-neon-cyan" : "text-white/70"}`}>
+                                                {p.name.length > 8 ? p.name.slice(0, 8) + ".." : p.name}
+                                            </span>
+                                            <span className="text-[9px] text-neon-gold font-mono">{p.score}đ</span>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                                {/* Rank badge */}
+                                <div className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs">
+                                    {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+            {/* Star particles decoration */}
+            <div className="flex justify-between mt-1 px-2">
+                {[...Array(10)].map((_, i) => (
+                    <div key={i} className="w-[2px] h-[2px] rounded-full bg-white/20" />
+                ))}
+            </div>
+        </div>
+    );
+}
+
 type GamePhase = "ship-select" | "lobby" | "countdown" | "racing" | "question-result" | "podium";
 
 interface StarRaceGameProps {
@@ -560,32 +644,22 @@ export default function StarRaceGame({
 
         return (
             <div className="w-full max-w-2xl mx-auto p-4">
+                {/* Race Track */}
+                <RaceTrack
+                    players={players}
+                    totalScores={totalScores}
+                    maxScore={questions.length * 100}
+                    currentPlayerId={playerDbId}
+                />
+
                 {/* Header: Question counter + Timer */}
                 <div className="flex items-center justify-between mb-4">
                     <div className="text-sm text-white/50">
                         Câu {currentQIdx + 1}/{questions.length}
                     </div>
-                    <div className="flex items-center gap-3">
-                        {/* Race track mini view */}
-                        <div className="flex gap-1">
-                            {players.map((p) => (
-                                <motion.span
-                                    key={p.playerId}
-                                    className="text-lg"
-                                    animate={{
-                                        x: ((totalScores[p.playerId] || 0) / (questions.length * 100)) * 60,
-                                    }}
-                                    title={`${p.name}: ${totalScores[p.playerId] || 0}đ`}
-                                >
-                                    {p.emoji}
-                                </motion.span>
-                            ))}
-                        </div>
-                        {/* Timer */}
-                        <div className={`text-2xl font-bold font-mono ${timeLeft <= 3 ? "text-red-400 animate-pulse" : "text-neon-cyan"
-                            }`}>
-                            {timeLeft}s
-                        </div>
+                    <div className={`text-2xl font-bold font-mono ${timeLeft <= 3 ? "text-red-400 animate-pulse" : "text-neon-cyan"
+                        }`}>
+                        {timeLeft}s
                     </div>
                 </div>
 
@@ -702,6 +776,13 @@ export default function StarRaceGame({
         return (
             <div className="w-full max-w-lg mx-auto p-6 text-center">
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                    {/* Race Track */}
+                    <RaceTrack
+                        players={players}
+                        totalScores={totalScores}
+                        maxScore={questions.length * 100}
+                        currentPlayerId={playerDbId}
+                    />
                     <h3 className="text-xl font-bold text-white mb-4">📊 Bảng xếp hạng</h3>
                     <div className="space-y-2 mb-6">
                         {sortedPlayers.map((p, i) => (
