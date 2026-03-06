@@ -68,6 +68,7 @@ interface Props {
     onGameComplete?: (finalScore: number, levelsCompleted: number) => void;
     onAnswered?: (questionId: string, isCorrect: boolean, subject: string, bloomLevel: number) => void;
     calmMode?: boolean;
+    paused?: boolean;
 }
 
 /* ─── Constants ─── */
@@ -81,7 +82,7 @@ const BOMB_H = 50;
 const MAX_HP = 3;
 
 /* ─── Component ─── */
-export default function SpaceShooterGame({ levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false }: Props) {
+export default function SpaceShooterGame({ levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false, paused = false }: Props) {
     const { playShoot, playHit, playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
     const { player, useAbilityCharge } = useGame();
     const useAbilityChargeRef = useRef(useAbilityCharge);

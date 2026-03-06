@@ -250,7 +250,7 @@ function PlayContent() {
                     onAnswered={handleAnswered}
                     planetName={journeyTitle}
                     planetEmoji={journeyEmoji}
-                    planetId={planetRef.current?.id || journeySlug}
+                    planetId={journeySlug}
                     completedLevels={completedLevels}
                     isFirstVisit={isFirstVisit}
                     onRefreshLevels={refreshLevels}

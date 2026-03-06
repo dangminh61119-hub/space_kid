@@ -15,6 +15,7 @@ interface Props {
     onGameComplete?: (finalScore: number, levelsCompleted: number) => void;
     onAnswered?: (questionId: string, isCorrect: boolean, subject: string, bloomLevel: number) => void;
     calmMode?: boolean;
+    paused?: boolean;
 }
 
 /* ─── Constants ─── */
@@ -32,7 +33,7 @@ const ANSWER_COLORS = [
 
 /* ─── Component ─── */
 export default function WordRushGame({
-    levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false,
+    levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false, paused = false,
 }: Props) {
     const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
     const { player, useAbilityCharge, addAbilityCharges } = useGame();
@@ -57,8 +58,10 @@ export default function WordRushGame({
 
     const timerRef = useRef<NodeJS.Timeout | null>(null);
     const gameStateRef = useRef(gameState);
+    const pausedRef = useRef(paused);
 
     useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+    useEffect(() => { pausedRef.current = paused; }, [paused]);
 
     const currentLevel = levels[levelIdx];
     const currentQ = currentLevel?.questions[qIdx];
@@ -67,12 +70,19 @@ export default function WordRushGame({
     // Dynamic time: decreases as combo grows
     const questionTime = Math.max(MIN_TIME, BASE_TIME - Math.floor(combo / 2));
 
+    // Refs so callbacks always have the latest question data (avoid stale closures)
+    const currentQRef = useRef(currentQ);
+    const currentLevelRef = useRef(currentLevel);
+    useEffect(() => { currentQRef.current = currentQ; }, [currentQ]);
+    useEffect(() => { currentLevelRef.current = currentLevel; }, [currentLevel]);
+
     /* ─── Shuffle answers ─── */
     const shuffleAnswers = useCallback(() => {
-        if (!currentQ) return;
+        const q = currentQRef.current;
+        if (!q) return;
         const pool = [
-            { text: currentQ.correctWord, isCorrect: true },
-            ...currentQ.wrongWords.slice(0, 3).map(w => ({ text: w, isCorrect: false })),
+            { text: q.correctWord, isCorrect: true },
+            ...q.wrongWords.slice(0, 3).map((w: string) => ({ text: w, isCorrect: false })),
         ].sort(() => Math.random() - 0.5);
         setAnswers(pool);
         setHiddenWrong(null);
@@ -81,10 +91,10 @@ export default function WordRushGame({
 
         // Hunter ability: auto-hide one wrong
         if (abilityUsed && playerClass === "hunter") {
-            const wrongItem = pool.find(a => !a.isCorrect);
-            if (wrongItem) setHiddenWrong(wrongItem.text);
+            const wrongItem = pool.find((a: { isCorrect: boolean }) => !a.isCorrect);
+            if (wrongItem) setHiddenWrong((wrongItem as { text: string }).text);
         }
-    }, [currentQ, abilityUsed, playerClass]);
+    }, [abilityUsed, playerClass]);
 
     /* ─── Start ─── */
     const startGame = useCallback(() => {
@@ -103,12 +113,13 @@ export default function WordRushGame({
 
     /* ─── Shuffle on Q change ─── */
     useEffect(() => {
-        if (gameState === "playing" && currentQ) {
+        if (gameState === "playing" && currentQRef.current) {
             // eslint-disable-next-line react-hooks/set-state-in-effect
             shuffleAnswers();
             // eslint-disable-next-line react-hooks/set-state-in-effect
             setTimeLeft(Math.max(MIN_TIME, BASE_TIME - Math.floor(combo / 2)));
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gameState, qIdx, levelIdx]);
 
     /* ─── Advance ─── */
@@ -136,7 +147,7 @@ export default function WordRushGame({
     const advanceQuestionRef = useRef(advanceQuestion);
     useEffect(() => { advanceQuestionRef.current = advanceQuestion; }, [advanceQuestion]);
 
-    /* ─── Timer ─── */
+    /* ─── Timer (pauses when SummonOverlay is open) ─── */
     useEffect(() => {
         if (gameState !== "playing" || locked) {
             if (timerRef.current) clearInterval(timerRef.current);
@@ -144,6 +155,7 @@ export default function WordRushGame({
         }
         if (timerRef.current) clearInterval(timerRef.current);
         timerRef.current = setInterval(() => {
+            if (pausedRef.current) return; // Freeze timer when SummonOverlay is open
             setTimeLeft(prev => {
                 if (prev <= 1) {
                     // Time's up!
@@ -187,12 +199,12 @@ export default function WordRushGame({
             if (newCombo === 3) addAbilityCharges(1); // Combo reward
             setScore(s => s + BASE_COSMO * mult);
             setLastResult("correct");
-            onAnswered?.(currentQ?.id ?? "", true, currentLevel?.subject || "", currentQ?.bloomLevel ?? 1);
-            setTimeout(() => advanceQuestion(), 600);
+            onAnswered?.(currentQRef.current?.id ?? "", true, currentLevelRef.current?.subject || "", currentQRef.current?.bloomLevel ?? 1);
+            setTimeout(() => advanceQuestionRef.current(), 600);
         } else {
             playWrong();
             setLastResult("wrong");
-            onAnswered?.(currentQ?.id ?? "", false, currentLevel?.subject || "", currentQ?.bloomLevel ?? 1);
+            onAnswered?.(currentQRef.current?.id ?? "", false, currentLevelRef.current?.subject || "", currentQRef.current?.bloomLevel ?? 1);
             if (shieldActive && playerClass === "warrior") {
                 setShieldActive(false);
             } else {
@@ -203,9 +215,9 @@ export default function WordRushGame({
                     return Math.max(0, next);
                 });
             }
-            setTimeout(() => advanceQuestion(), 800);
+            setTimeout(() => advanceQuestionRef.current(), 800);
         }
-    }, [gameState, locked, combo, shieldActive, playerClass, currentLevel, advanceQuestion]);
+    }, [gameState, locked, combo, shieldActive, playerClass, addAbilityCharges, onAnswered, playCorrect, playWrong]);
 
     /* ─── Ability ─── */
     const useAbility = useCallback(() => {

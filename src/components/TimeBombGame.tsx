@@ -15,6 +15,7 @@ interface Props {
     onGameComplete?: (finalScore: number, levelsCompleted: number) => void;
     onAnswered?: (questionId: string, isCorrect: boolean, subject: string, bloomLevel: number) => void;
     calmMode?: boolean;
+    paused?: boolean;
 }
 
 /* ─── Constants ─── */
@@ -26,7 +27,7 @@ const COMBO_MULTIPLIERS = [1, 1, 1.5, 2, 3, 5];
 
 /* ─── Component ─── */
 export default function TimeBombGame({
-    levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false,
+    levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false, paused = false,
 }: Props) {
     const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
     const { player, useAbilityCharge, addAbilityCharges } = useGame();

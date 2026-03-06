@@ -27,6 +27,7 @@ interface Props {
     onGameComplete?: (finalScore: number, levelsCompleted: number) => void;
     onAnswered?: (questionId: string, isCorrect: boolean, subject: string, bloomLevel: number) => void;
     calmMode?: boolean;
+    paused?: boolean;
 }
 
 /* ─── Constants ─── */
@@ -47,7 +48,7 @@ function uid() { return `m${++_uid}-${Math.random().toString(36).slice(2, 6)}`; 
 
 /* ─── Component ─── */
 export default function MeteorShowerGame({
-    levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false,
+    levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false, paused = false,
 }: Props) {
     const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
     const { player, useAbilityCharge, addAbilityCharges } = useGame();
@@ -75,21 +76,30 @@ export default function MeteorShowerGame({
     const gameStateRef = useRef(gameState);
     const meteorsRef = useRef<Meteor[]>([]);
     const slowRef = useRef(false);
+    const pausedRef = useRef(paused);
 
     useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+    useEffect(() => { pausedRef.current = paused; }, [paused]);
 
     const currentLevel = levels[levelIdx];
     const currentQ = currentLevel?.questions[qIdx];
     const multiplier = COMBO_THRESHOLDS[Math.min(combo, COMBO_THRESHOLDS.length - 1)];
 
     /* ─── Spawn meteors for current question ─── */
+    // Use a ref so the animation loop & handleMeteorClick always have fresh question data
+    const currentQRef = useRef(currentQ);
+    const levelIdxRef = useRef(levelIdx);
+    useEffect(() => { currentQRef.current = currentQ; }, [currentQ]);
+    useEffect(() => { levelIdxRef.current = levelIdx; }, [levelIdx]);
+
     const spawnMeteors = useCallback(() => {
-        if (!currentQ || !containerRef.current) return;
+        const q = currentQRef.current;
+        if (!q || !containerRef.current) return;
         const { width, height } = containerRef.current.getBoundingClientRect();
 
         const answers = [
-            { text: currentQ.correctWord, isCorrect: true },
-            ...currentQ.wrongWords.slice(0, 3).map(w => ({ text: w, isCorrect: false })),
+            { text: q.correctWord, isCorrect: true },
+            ...q.wrongWords.slice(0, 3).map((w: string) => ({ text: w, isCorrect: false })),
         ].sort(() => Math.random() - 0.5);
 
         const newMeteors: Meteor[] = answers.map((a, i) => {
@@ -104,7 +114,7 @@ export default function MeteorShowerGame({
                 text: a.text,
                 isCorrect: a.isCorrect,
                 x, y,
-                speed: BASE_SPEED + (levelIdx * 0.3) + Math.random() * 0.8,
+                speed: BASE_SPEED + (levelIdxRef.current * 0.3) + Math.random() * 0.8,
                 angle,
                 size: 56 + Math.random() * 16,
                 colorIdx: Math.floor(Math.random() * METEOR_COLORS.length),
@@ -113,7 +123,7 @@ export default function MeteorShowerGame({
         meteorsRef.current = newMeteors;
         setMeteors(newMeteors);
         setMissedCorrect(false);
-    }, [currentQ, levelIdx]);
+    }, []);
 
     /* ─── Start game ─── */
     const startGame = useCallback(() => {
@@ -156,7 +166,8 @@ export default function MeteorShowerGame({
 
     /* ─── Spawn on question change ─── */
     useEffect(() => {
-        if (gameState === "playing" && currentQ) spawnMeteors();
+        if (gameState === "playing" && currentQRef.current) spawnMeteors();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gameState, qIdx, levelIdx]);
 
     /* ─── Animation loop ─── */
@@ -167,6 +178,11 @@ export default function MeteorShowerGame({
 
         const loop = () => {
             if (gameStateRef.current !== "playing") return;
+            // Pause the animation when SummonOverlay is open
+            if (pausedRef.current) {
+                animRef.current = requestAnimationFrame(loop);
+                return;
+            }
             const { width } = container.getBoundingClientRect();
             const speedMult = slowRef.current ? 0.4 : 1;
 
@@ -233,14 +249,14 @@ export default function MeteorShowerGame({
             if (newCombo === 3) addAbilityCharges(1); // Combo reward
             setScore(s => s + BASE_COSMO * mult);
             setExplodedIds(new Set(meteorsRef.current.map(m => m.id)));
-            onAnswered?.(currentQ?.id ?? "", true, currentLevel?.subject || "", currentQ?.bloomLevel ?? 1);
+            onAnswered?.(currentQRef.current?.id ?? "", true, currentLevel?.subject || "", currentQRef.current?.bloomLevel ?? 1);
             setTimeout(() => {
                 setExplodedIds(new Set());
-                advanceQuestion();
+                advanceQuestionRef.current();
             }, 600);
         } else {
             playWrong();
-            onAnswered?.(currentQ?.id ?? "", false, currentLevel?.subject || "", currentQ?.bloomLevel ?? 1);
+            onAnswered?.(currentQRef.current?.id ?? "", false, currentLevel?.subject || "", currentQRef.current?.bloomLevel ?? 1);
             if (shieldActive && playerClass === "warrior") {
                 setShieldActive(false);
                 // Shield consumed passively, charge was spent on game start
@@ -255,7 +271,7 @@ export default function MeteorShowerGame({
             setShakenId(meteor.id);
             setTimeout(() => setShakenId(null), 500);
         }
-    }, [gameState, combo, explodedIds, shieldActive, playerClass, currentLevel, advanceQuestion]);
+    }, [gameState, combo, explodedIds, shieldActive, playerClass, currentLevel]);
 
     /* ─── Ability ─── */
     const useAbility = useCallback(() => {

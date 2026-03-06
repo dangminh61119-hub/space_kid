@@ -187,15 +187,17 @@ export default function SummonOverlay({
                     questionText: currentQuestion || "câu hỏi hiện tại",
                     subject: currentSubject || "chung",
                     bloomLevel: bloomLevel,
-                    playerMessage: userQuestion,
+                    // playerMessage is appended to questionText so buildUserMessage can use it
+                    playerAnswer: userQuestion,
                 }),
             });
 
             if (response.ok) {
                 const data = await response.json();
+                // BUG FIX: API returns `response` not `message`
                 setChatMessages(prev => [...prev, {
                     role: "owl",
-                    text: data.message || getEmotionMessage("happy", "idle"),
+                    text: data.response || getEmotionMessage("happy", "idle"),
                 }]);
             } else {
                 // Fallback

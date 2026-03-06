@@ -27,6 +27,7 @@ interface Props {
     onGameComplete?: (finalScore: number, levelsCompleted: number) => void;
     onAnswered?: (questionId: string, isCorrect: boolean, subject: string, bloomLevel: number) => void;
     calmMode?: boolean;
+    paused?: boolean;
 }
 
 /* ─── Constants ─── */
@@ -101,7 +102,7 @@ function getDefaultRounds(): BridgeRound[] {
 
 /* ─── Component ─── */
 export default function CosmoBridgeGame({
-    levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false,
+    levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false, paused = false,
 }: Props) {
     const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
     const { player, useAbilityCharge, addAbilityCharges } = useGame();
