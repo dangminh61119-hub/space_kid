@@ -113,7 +113,7 @@ export default function WordRushGame({
 
     /* ─── Shuffle on Q change ─── */
     useEffect(() => {
-        if (gameState === "playing" && currentQRef.current) {
+        if (gameState === "playing" && currentQ) {
             // eslint-disable-next-line react-hooks/set-state-in-effect
             shuffleAnswers();
             // eslint-disable-next-line react-hooks/set-state-in-effect
