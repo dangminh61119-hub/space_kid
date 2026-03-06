@@ -12,9 +12,22 @@ interface Props {
 
 const STAR_COUNT = 30;
 
+function generateStars() {
+    return Array.from({ length: STAR_COUNT }, (_, i) => ({
+        id: i,
+        top: Math.random() * 100,
+        left: Math.random() * 100,
+        travelDelay: Math.random() * 0.5,
+        twinkleDuration: 2 + Math.random() * 2,
+    }));
+}
+
 export default function PlanetStoryIntro({ planetName, planetEmoji, videoSrc, onStart }: Props) {
     const [phase, setPhase] = useState<"travel" | "video" | "ready">("travel");
     const videoRef = useRef<HTMLVideoElement>(null);
+
+    // Pre-compute star positions once (lazy useState initializer) — avoids impure Math.random during render
+    const [stars] = useState(generateStars);
 
     // Phase: travel → video (or ready if no video)
     useEffect(() => {
@@ -59,21 +72,21 @@ export default function PlanetStoryIntro({ planetName, planetEmoji, videoSrc, on
         <div className="absolute inset-0 bg-space-deep overflow-hidden flex items-center justify-center z-40">
             {/* Stars background */}
             <div className="absolute inset-0 pointer-events-none">
-                {Array.from({ length: STAR_COUNT }).map((_, i) => (
+                {stars.map((star) => (
                     <motion.div
-                        key={i}
+                        key={star.id}
                         className="absolute w-1 h-1 bg-white rounded-full"
                         style={{
-                            top: `${Math.random() * 100}%`,
-                            left: `${Math.random() * 100}%`,
+                            top: `${star.top}%`,
+                            left: `${star.left}%`,
                         }}
                         animate={phase === "travel"
                             ? { x: [0, -300], opacity: [0.8, 0] }
                             : { opacity: [0.3, 0.8, 0.3] }
                         }
                         transition={phase === "travel"
-                            ? { duration: 1.5, delay: Math.random() * 0.5, repeat: Infinity }
-                            : { duration: 2 + Math.random() * 2, repeat: Infinity }
+                            ? { duration: 1.5, delay: star.travelDelay, repeat: Infinity }
+                            : { duration: star.twinkleDuration, repeat: Infinity }
                         }
                     />
                 ))}

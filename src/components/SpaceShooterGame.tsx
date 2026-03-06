@@ -209,7 +209,7 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
         hpRef.current = MAX_HP;
         setShieldUsed(false);
         startLevel(0);
-    }, [startLevel]);
+    }, [startLevel, playBGM]);
 
     /* ─── Explosion particles & Text ─── */
     const spawnExplosion = useCallback((x: number, y: number, color: string, scale = 1, count = 12) => {

@@ -74,11 +74,10 @@ export async function POST(request: NextRequest) {
     function findLevelId(q: QuestionInput): string | null {
         if (q.level_id) return q.level_id;
         if (!allLevels) return null;
+        // Match by planet_id + subject (levels table has no grade_min/grade_max)
         const match = allLevels.find(l =>
             l.planet_id === q.planet_id &&
-            l.subject === q.subject &&
-            l.grade_min <= q.grade &&
-            l.grade_max >= q.grade
+            l.subject === q.subject
         );
         return match?.id || null;
     }

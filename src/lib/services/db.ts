@@ -153,7 +153,7 @@ export async function getJourneys(grade: number, playerId?: string, planetId: st
     }
 
     // Fetch progress if player is logged in
-    let progressMap: Record<string, DBJourneyProgress> = {};
+    const progressMap: Record<string, DBJourneyProgress> = {};
     if (playerId && supabase) {
         const { data: progressData } = await supabase
             .from("journey_progress")
@@ -258,12 +258,12 @@ async function getSmartQuestions(
     if (!supabase) return [];
 
     // Get approved questions for this level, filtered by grade
+    // NOTE: `reviewed_by_teacher` is the approval gate (no `status` column in schema)
     let query = supabase
         .from("questions")
         .select("*")
         .eq("level_id", levelId)
         .eq("reviewed_by_teacher", true)
-        .eq("status", "approved")
         .order("bloom_level")
         .order("order_index");
 
@@ -281,7 +281,6 @@ async function getSmartQuestions(
             .select("*")
             .eq("level_id", levelId)
             .eq("reviewed_by_teacher", true)
-            .eq("status", "approved")
             .order("bloom_level")
             .order("order_index");
         allQuestions = fallback;
@@ -877,22 +876,17 @@ export async function exchangeStarsForBadge(playerId: string): Promise<DBPlayerB
         return null;
     }
 
-    // Count existing star-exchange badges to create unique slug
-    const { data: existingExchanges } = await supabase
-        .from("player_badges")
-        .select("id")
-        .eq("player_id", playerId)
-        .like("badge_slug", "star-exchange%");
+    // BUG-007 FIX: Use timestamp-based slug to avoid race condition when two requests
+    // arrive simultaneously and both read the same exchange count before either inserts
+    const exchangeSlug = `star-exchange-${Date.now()}`;
 
-    const exchangeCount = (existingExchanges?.length || 0) + 1;
-
-    // Award the badge with unique slug
+    // Award the badge with unique timestamp slug
     const { data: inserted, error } = await supabase
         .from("player_badges")
         .insert({
             player_id: playerId,
-            badge_slug: `star-exchange-${exchangeCount}`,
-            badge_name: `Ngôi sao may mắn #${exchangeCount}`,
+            badge_slug: exchangeSlug,
+            badge_name: `Ngôi sao may mắn`,
         })
         .select()
         .single();
@@ -902,6 +896,6 @@ export async function exchangeStarsForBadge(playerId: string): Promise<DBPlayerB
         return null;
     }
 
-    console.log("[db] ⭐→🏅 Stars exchanged for badge #" + exchangeCount);
+    console.log(`[db] Stars exchanged for badge: ${exchangeSlug}`);
     return inserted as DBPlayerBadge;
 }

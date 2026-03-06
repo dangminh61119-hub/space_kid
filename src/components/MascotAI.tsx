@@ -328,6 +328,7 @@ export default function MascotAI({ hidden = false }: MascotAIProps) {
     useEffect(() => {
         if (isBlinking) return;
         if (loading) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setExpression("thinking");
             return;
         }
@@ -343,6 +344,7 @@ export default function MascotAI({ hidden = false }: MascotAIProps) {
     /* Talking animation when message changes */
     useEffect(() => {
         if (isBlinking || loading) return;
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setExpression("talking");
         const timer = setTimeout(() => {
             switch (msg.type) {
@@ -464,6 +466,7 @@ export default function MascotAI({ hidden = false }: MascotAIProps) {
         if (!voiceOpen || isLoggedIn || guestGreetedRef.current) return;
         guestGreetedRef.current = true;
         const greeting = "Xin chào bạn nhỏ! Mình là Cú Mèo, người bạn đồng hành trên CosmoMosaic! Bạn có thể gọi mình là Cú Mèo nhé! Bạn tên là gì vậy? 🦉";
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setMsg({ text: greeting, type: "idle" });
         speak(greeting, "hd", "vi");
     }, [voiceOpen, isLoggedIn, speak]);

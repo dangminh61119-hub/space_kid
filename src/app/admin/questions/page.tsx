@@ -464,9 +464,30 @@ function CreateQuestionModal({ authHeaders, onClose, onSuccess }: {
         question_text: "", correct_word: "", wrong_words: "",
         equation: "", answer: "", options: "",
         accept_answers: "",
+        level_id: "",
     });
     const [error, setError] = useState("");
     const [submitting, setSubmitting] = useState(false);
+    const [levels, setLevels] = useState<Array<{ id: string; level_number: number; title: string; subject: string }>>([]);
+
+    // Fetch matching levels when planet_id or subject changes
+    useEffect(() => {
+        if (!form.planet_id) return;
+        fetch(`/api/admin/levels?planet=${form.planet_id}`, { headers: authHeaders })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                const filtered = (data?.data || []).filter((l: { subject: string }) =>
+                    !form.subject || l.subject === form.subject
+                );
+                setLevels(filtered);
+                // Auto-select first matching level
+                if (filtered.length > 0 && !form.level_id) {
+                    setForm(f => ({ ...f, level_id: filtered[0].id }));
+                }
+            })
+            .catch(() => setLevels([]));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [form.planet_id, form.subject]);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -475,6 +496,7 @@ function CreateQuestionModal({ authHeaders, onClose, onSuccess }: {
 
         const body: Record<string, unknown> = {
             planet_id: form.planet_id,
+            level_id: form.level_id || undefined,
             subject: form.subject,
             grade: form.grade,
             bloom_level: form.bloom_level,
@@ -545,7 +567,7 @@ function CreateQuestionModal({ authHeaders, onClose, onSuccess }: {
                         <label className="block">
                             <span className="text-xs text-gray-400">Bloom level</span>
                             <select value={form.bloom_level} onChange={e => setForm({ ...form, bloom_level: parseInt(e.target.value) })} className="w-full bg-gray-800 text-white text-sm rounded px-2 py-1.5 border border-gray-700 mt-1">
-                                {[1, 2, 3, 4, 5, 6].map(l => <option key={l} value={l}>L{l}</option>)}
+                                {[1, 2, 3, 4, 5].map(l => <option key={l} value={l}>L{l}</option>)}
                             </select>
                         </label>
                         <label className="block">
@@ -560,6 +582,18 @@ function CreateQuestionModal({ authHeaders, onClose, onSuccess }: {
                     <label className="block">
                         <span className="text-xs text-gray-400">Môn học</span>
                         <input value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} className="w-full bg-gray-800 text-white text-sm rounded px-2 py-1.5 border border-gray-700 mt-1" placeholder="Lịch sử" />
+                    </label>
+                    <label className="block">
+                        <span className="text-xs text-gray-400">Level (bắt buộc) — chọn đúng planet + môn trước</span>
+                        <select value={form.level_id} onChange={e => setForm({ ...form, level_id: e.target.value })} className={`w-full bg-gray-800 text-white text-sm rounded px-2 py-1.5 border mt-1 ${!form.level_id ? 'border-red-600' : 'border-gray-700'}`}>
+                            <option value="">— Chọn level —</option>
+                            {levels.map(l => (
+                                <option key={l.id} value={l.id}>L{l.level_number}: {l.title} ({l.subject})</option>
+                            ))}
+                        </select>
+                        {levels.length === 0 && form.planet_id && (
+                            <p className="text-orange-400 text-[10px] mt-0.5">⚠️ Không có level nào cho {form.planet_id} / {form.subject || 'môn này'}. Hãy tạo level trước.</p>
+                        )}
                     </label>
 
                     {/* Word / Open-ended fields */}
@@ -715,7 +749,7 @@ function EditQuestionModal({ question, authHeaders, onClose, onSuccess }: {
                         <label className="block">
                             <span className="text-xs text-gray-400">Bloom</span>
                             <select value={form.bloom_level} onChange={e => setForm({ ...form, bloom_level: parseInt(e.target.value) })} className="w-full bg-gray-800 text-white text-sm rounded px-2 py-1.5 border border-gray-700 mt-1">
-                                {[1, 2, 3, 4, 5, 6].map(l => <option key={l} value={l}>L{l}</option>)}
+                                {[1, 2, 3, 4, 5].map(l => <option key={l} value={l}>L{l}</option>)}
                             </select>
                         </label>
                         <label className="block">
@@ -883,7 +917,7 @@ function ReviewPanel({ question, onClose, onApprove, onReject, onNext, onEdit, h
 
     const planetName = PLANET_OPTIONS.find(p => p.id === question.planet_id)?.name || question.planet_id;
     const bloomLabels: Record<number, string> = {
-        1: "Remember", 2: "Understand", 3: "Apply", 4: "Analyze", 5: "Higher-order", 6: "Create",
+        1: "Remember", 2: "Understand", 3: "Apply", 4: "Analyze", 5: "Higher-order",
     };
 
     async function handleAction(action: () => void) {
@@ -911,8 +945,8 @@ function ReviewPanel({ question, onClose, onApprove, onReject, onNext, onEdit, h
                     </div>
                     <div className="flex items-center gap-2">
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${question.status === "approved" ? "bg-green-900 text-green-300" :
-                                question.status === "review" ? "bg-blue-900 text-blue-300" :
-                                    "bg-gray-700 text-gray-300"
+                            question.status === "review" ? "bg-blue-900 text-blue-300" :
+                                "bg-gray-700 text-gray-300"
                             }`}>
                             {question.status}
                         </span>
@@ -964,8 +998,8 @@ function ReviewPanel({ question, onClose, onApprove, onReject, onNext, onEdit, h
                             <div className="flex flex-wrap gap-2 mt-1">
                                 {question.options.map((opt, i) => (
                                     <span key={i} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${opt === question.answer
-                                            ? "bg-green-900/50 text-green-300 border border-green-700"
-                                            : "bg-gray-800 text-gray-300 border border-gray-700"
+                                        ? "bg-green-900/50 text-green-300 border border-green-700"
+                                        : "bg-gray-800 text-gray-300 border border-gray-700"
                                         }`}>{opt}</span>
                                 ))}
                             </div>
@@ -1005,7 +1039,7 @@ function ReviewPanel({ question, onClose, onApprove, onReject, onNext, onEdit, h
                                 <div className="text-xs text-gray-500">Độ khó</div>
                                 <div className="text-white font-medium text-sm mt-0.5 flex items-center gap-1.5">
                                     <span className={`w-2 h-2 rounded-full ${question.difficulty === "easy" ? "bg-green-400" :
-                                            question.difficulty === "medium" ? "bg-yellow-400" : "bg-red-400"
+                                        question.difficulty === "medium" ? "bg-yellow-400" : "bg-red-400"
                                         }`} />
                                     {question.difficulty} ({question.difficulty_score})
                                 </div>

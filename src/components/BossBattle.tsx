@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+// useMemo kept for shuffledOptions below
 import { motion, AnimatePresence } from "framer-motion";
 import type { GameLevel } from "@/lib/services/db";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
@@ -38,7 +39,8 @@ export default function BossBattle({
     const allQuestions = useMemo(() => levels.flatMap(l => l.questions), [levels]);
     const totalQuestions = allQuestions.length;
     const bossMaxHP = totalQuestions * BOSS_HP_PER_QUESTION;
-    const boss = useMemo(() => BOSSES[Math.floor(Math.random() * BOSSES.length)], []);
+    const bossRef = useRef(BOSSES[Math.floor(Math.random() * BOSSES.length)]);
+    const boss = bossRef.current;
 
     const [gameState, setGameState] = useState<"ready" | "playing" | "win" | "lose">("ready");
     const [questionIdx, setQuestionIdx] = useState(0);
@@ -67,6 +69,10 @@ export default function BossBattle({
         return Array.from(opts).sort(() => Math.random() - 0.5);
     }, [questionIdx, question?.correctWord]);
 
+    // Use a ref to always call the latest handleTimeout without stale closures
+    const handleTimeoutRef = useRef<() => void>(() => { });
+    const advanceQuestionRef = useRef<() => void>(() => { });
+
     // Timer countdown
     useEffect(() => {
         if (gameState !== "playing" || feedback) return;
@@ -75,7 +81,7 @@ export default function BossBattle({
                 if (prev <= 0.1) {
                     clearInterval(timerRef.current!);
                     // Time out = wrong answer
-                    handleTimeout();
+                    handleTimeoutRef.current();
                     return 0;
                 }
                 return Math.round((prev - 0.1) * 10) / 10;
@@ -102,8 +108,13 @@ export default function BossBattle({
         setTimeout(() => setShakeScreen(false), 500);
         onAnswered?.(question?.id ?? "", false, level?.subject ?? "", question?.bloomLevel ?? 2);
 
-        setTimeout(() => advanceQuestion(), 800);
+        setTimeout(() => advanceQuestionRef.current(), 800);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [question, questionIdx, score, level]);
+
+    // Keep refs in sync with the latest callback version
+    useEffect(() => { handleTimeoutRef.current = handleTimeout; }, [handleTimeout]);
+
 
     /* ─── Handle answer ─── */
     const handleAnswer = useCallback((answer: string) => {
@@ -141,10 +152,11 @@ export default function BossBattle({
             onAnswered?.(question?.id ?? "", false, level?.subject ?? "", question?.bloomLevel ?? 2);
         }
 
-        setTimeout(() => advanceQuestion(), 800);
+        setTimeout(() => advanceQuestionRef.current(), 800);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [feedback, question, combo, questionIdx, score, level, playerHP]);
 
-    const advanceQuestion = () => {
+    const advanceQuestion = useCallback(() => {
         const nextQ = questionIdx + 1;
         if (nextQ >= totalQuestions || bossHP <= BOSS_HP_PER_QUESTION) {
             // Boss defeated or all questions done
@@ -159,7 +171,11 @@ export default function BossBattle({
             const timeScale = Math.max(0.5, bossHP / bossMaxHP);
             setTimer(Math.max(8, Math.round(TIME_PER_QUESTION * timeScale)));
         }
-    };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [questionIdx, totalQuestions, bossHP, bossMaxHP, score, levels.length, stopBGM, onGameComplete]);
+
+    // Keep advanceQuestion ref in sync
+    useEffect(() => { advanceQuestionRef.current = advanceQuestion; }, [advanceQuestion]);
 
     const startGame = () => {
         playBGM();

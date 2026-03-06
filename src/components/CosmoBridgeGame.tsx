@@ -105,6 +105,8 @@ export default function CosmoBridgeGame({
 }: Props) {
     const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
     const { player, useAbilityCharge, addAbilityCharges } = useGame();
+    const useAbilityChargeRef = useRef(useAbilityCharge);
+    useEffect(() => { useAbilityChargeRef.current = useAbilityCharge; }, [useAbilityCharge]);
     const [gameState, setGameState] = useState<"ready" | "playing" | "roundComplete" | "gameOver" | "win">("ready");
     const [rounds, setRounds] = useState<BridgeRound[]>([]);
     const [roundIdx, setRoundIdx] = useState(0);
@@ -181,7 +183,7 @@ export default function CosmoBridgeGame({
             onAnswered?.("", false, levels[0]?.subject ?? "", 2);
 
             if (playerClass === "warrior" && !shieldUsed) {
-                const charged = useAbilityCharge();
+                const charged = useAbilityChargeRef.current();
                 if (charged) {
                     setShieldUsed(true);
                     setAbilityNotice("🛡️ Lá chắn bảo vệ!");
@@ -222,7 +224,7 @@ export default function CosmoBridgeGame({
     /* ─── Hunter: auto-match one pair ─── */
     const handleAutoMatch = () => {
         if (playerClass !== "hunter" || autoMatched || !round) return;
-        if (!useAbilityCharge()) return; // No charges
+        if (!useAbilityChargeRef.current()) return; // No charges
         const unmatched = round.pairs.filter(p => !matches[p.id]);
         if (unmatched.length === 0) return;
 

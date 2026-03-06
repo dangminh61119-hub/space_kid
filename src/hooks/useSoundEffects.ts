@@ -8,7 +8,8 @@ export function useSoundEffects() {
 
     const initAudio = useCallback(() => {
         if (!audioCtxRef.current) {
-            audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            audioCtxRef.current = new (window.AudioContext || (window as Record<string, any>).webkitAudioContext)();
         }
         if (audioCtxRef.current.state === 'suspended') {
             audioCtxRef.current.resume();

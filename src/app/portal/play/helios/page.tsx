@@ -29,10 +29,16 @@ function HeliosContent() {
     // Load Helios journeys
     useEffect(() => {
         async function load() {
-            if (!playerDbId) return;
-            const data = await getJourneys(player.grade, playerDbId, "helios");
-            setJourneys(data);
-            setLoading(false);
+            try {
+                if (!playerDbId) return;
+                const data = await getJourneys(player.grade, playerDbId, "helios");
+                setJourneys(data);
+            } catch (e) {
+                console.error("[helios] load error:", e);
+            } finally {
+                // BUG-4 FIX: Always clear loading, even if playerDbId is null
+                setLoading(false);
+            }
         }
         load();
     }, [playerDbId, player.grade]);

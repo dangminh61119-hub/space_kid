@@ -63,6 +63,8 @@ export default function WordCraftGame({
 }: Props) {
     const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
     const { player, useAbilityCharge, addAbilityCharges } = useGame();
+    const useAbilityChargeRef = useRef(useAbilityCharge);
+    useEffect(() => { useAbilityChargeRef.current = useAbilityCharge; }, [useAbilityCharge]);
     const [gameState, setGameState] = useState<"ready" | "playing" | "levelComplete" | "gameOver" | "win">("ready");
     const [currentLevel, setCurrentLevel] = useState(0);
     const [questionIdx, setQuestionIdx] = useState(0);
@@ -142,7 +144,7 @@ export default function WordCraftGame({
 
             // Warrior shield — costs 1 ability charge
             if (playerClass === "warrior" && !shieldUsed) {
-                const charged = useAbilityCharge();
+                const charged = useAbilityChargeRef.current();
                 if (charged) {
                     setShieldUsed(true);
                     setAbilityNotice("🛡️ Lá chắn thép đã bảo vệ bạn!");
@@ -222,7 +224,7 @@ export default function WordCraftGame({
     /* ─── Hunter ability: show hint ─── */
     const showHint = () => {
         if (playerClass !== "hunter" || hintVisible || feedback) return;
-        if (!useAbilityCharge()) return; // No charges
+        if (!useAbilityChargeRef.current()) return; // No charges
         setHintVisible(true);
         setAbilityNotice("🎯 Mắt Đại Bàng — gợi ý đáp án!");
         setTimeout(() => setAbilityNotice(null), 2000);

@@ -175,6 +175,7 @@ export default function GameModeController({
     useEffect(() => {
         if (levels.length > 0 && completedLevels !== prevCompletedRef.current) {
             const newIdx = Math.min(completedLevels, levels.length - 1);
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setCurrentLevelIdx(newIdx);
             prevCompletedRef.current = completedLevels;
         }

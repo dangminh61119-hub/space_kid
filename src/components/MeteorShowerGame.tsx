@@ -51,6 +51,8 @@ export default function MeteorShowerGame({
 }: Props) {
     const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
     const { player, useAbilityCharge, addAbilityCharges } = useGame();
+    const useAbilityChargeRef = useRef(useAbilityCharge);
+    useEffect(() => { useAbilityChargeRef.current = useAbilityCharge; }, [useAbilityCharge]);
 
     const [hp, setHp] = useState(MAX_HP);
     const [score, setScore] = useState(0);
@@ -127,6 +129,31 @@ export default function MeteorShowerGame({
         setGameState("playing");
     }, [playBGM, playerClass]);
 
+    /* ─── Advance question ─── */
+    const advanceQuestion = useCallback(() => {
+        const nextQ = qIdx + 1;
+        if (nextQ >= (currentLevel?.questions.length ?? 0)) {
+            const nextLevel = levelIdx + 1;
+            setLevelsCompleted(l => l + 1);
+            if (nextLevel >= levels.length) {
+                setGameState("win");
+            } else {
+                setShowLevelBanner(true);
+                setTimeout(() => {
+                    setShowLevelBanner(false);
+                    setLevelIdx(nextLevel);
+                    setQIdx(0);
+                    setShieldActive(playerClass === "warrior");
+                    setAbilityUsed(false);
+                }, 2200);
+            }
+        } else {
+            setQIdx(nextQ);
+        }
+    }, [qIdx, currentLevel, levelIdx, levels.length, playerClass]);
+    const advanceQuestionRef = useRef(advanceQuestion);
+    useEffect(() => { advanceQuestionRef.current = advanceQuestion; }, [advanceQuestion]);
+
     /* ─── Spawn on question change ─── */
     useEffect(() => {
         if (gameState === "playing" && currentQ) spawnMeteors();
@@ -165,7 +192,7 @@ export default function MeteorShowerGame({
                     return Math.max(0, next);
                 });
                 // Advance to next question
-                setTimeout(() => advanceQuestion(), 600);
+                setTimeout(() => advanceQuestionRef.current(), 600);
             }
 
             setMeteors([...meteorsRef.current]);
@@ -175,28 +202,7 @@ export default function MeteorShowerGame({
         return () => cancelAnimationFrame(animRef.current);
     }, [gameState, meteors.length]);
 
-    /* ─── Advance question ─── */
-    const advanceQuestion = useCallback(() => {
-        const nextQ = qIdx + 1;
-        if (nextQ >= (currentLevel?.questions.length ?? 0)) {
-            const nextLevel = levelIdx + 1;
-            setLevelsCompleted(l => l + 1);
-            if (nextLevel >= levels.length) {
-                setGameState("win");
-            } else {
-                setShowLevelBanner(true);
-                setTimeout(() => {
-                    setShowLevelBanner(false);
-                    setLevelIdx(nextLevel);
-                    setQIdx(0);
-                    setShieldActive(playerClass === "warrior");
-                    setAbilityUsed(false);
-                }, 2200);
-            }
-        } else {
-            setQIdx(nextQ);
-        }
-    }, [qIdx, currentLevel, levelIdx, levels.length, playerClass]);
+    // advanceQuestion is defined above before the animation loop
 
     /* ─── Win/GameOver ─── */
     useEffect(() => {
@@ -254,13 +260,13 @@ export default function MeteorShowerGame({
     /* ─── Ability ─── */
     const useAbility = useCallback(() => {
         if (abilityUsed || gameState !== "playing") return;
-        if (!useAbilityCharge()) return; // No charges left
+        if (!useAbilityChargeRef.current()) return; // No charges left
         setAbilityUsed(true);
         if (playerClass === "wizard") setSlowActive(true);
         else if (playerClass === "hunter") {
             // Highlight wrong meteors in red
         }
-    }, [abilityUsed, gameState, playerClass, useAbilityCharge]);
+    }, [abilityUsed, gameState, playerClass]);
 
     const abilityInfo = {
         warrior: { label: "Khiên Thép", icon: "🛡️", desc: `Miễn 1 lần sai (⚡${player.abilityCharges})` },

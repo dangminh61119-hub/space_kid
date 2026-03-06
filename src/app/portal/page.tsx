@@ -7,8 +7,8 @@ import Navbar from "@/components/Navbar";
 import GlassCard from "@/components/GlassCard";
 import NeonButton from "@/components/NeonButton";
 import { mockDailyQuest } from "@/lib/data/mock-data";
-import { useGame, MASCOT_INFO, CLASS_ABILITIES } from "@/lib/game-context";
-import { getPlanetForGrade, getPlanetList, getJourneys, getPlayerBadges, getAllBadges, getShips, getPlayerShips, getUnlockedPlanetIds, exchangeStarsForBadge, checkAndUnlockShips, retroactiveBadgeCheck, exchangeBadgesForShip, type Planet, type Journey, type Ship, type Badge } from "@/lib/services/db";
+import { useGame, MASCOT_INFO } from "@/lib/game-context";
+import { getPlanetForGrade, getPlanetList, getJourneys, getPlayerBadges, getAllBadges, getShips, getPlayerShips, getUnlockedPlanetIds, exchangeStarsForBadge, retroactiveBadgeCheck, exchangeBadgesForShip, type Planet, type Journey, type Ship, type Badge } from "@/lib/services/db";
 import { type DBPlayerBadge } from "@/lib/services/supabase";
 import { useAuth } from "@/lib/services/auth-context";
 import Link from "next/link";
@@ -23,7 +23,7 @@ const fadeUp = {
 };
 
 export default function PortalPage() {
-    const { player, updatePlayer } = useGame();
+    const { player, updatePlayer, spendStars } = useGame();
     const { playerDbId } = useAuth();
     const [planet, setPlanet] = useState<Planet | null>(null);
     const [allPlanets, setAllPlanets] = useState<Planet[]>([]);
@@ -98,7 +98,6 @@ export default function PortalPage() {
     }, [selectedPlanetId, player.grade, playerDbId, allPlanets.length]);
 
     const mascotEmoji = player.mascot ? MASCOT_INFO[player.mascot].emoji : "🚀";
-    const classInfo = player.playerClass ? CLASS_ABILITIES[player.playerClass] : null;
     const completedJourneys = journeys.filter(j => j.completedLevels >= j.totalLevels && j.totalLevels > 0).length;
     const selectedPlanet = allPlanets.find(p => p.id === selectedPlanetId) || planet;
 
@@ -294,7 +293,9 @@ export default function PortalPage() {
                                                 setExchangeAnim(true);
                                                 const badge = await exchangeStarsForBadge(playerDbId);
                                                 if (badge) {
-                                                    updatePlayer({ luckyStars: player.luckyStars - 3 });
+                                                    // BUG-2 FIX: Use spendStars() which correctly deducts from local context
+                                                    // (exchangeStarsForBadge already handled the DB deduction)
+                                                    spendStars(3);
                                                     const newBadges = await getPlayerBadges(playerDbId);
                                                     setPlayerBadges(newBadges);
                                                 }

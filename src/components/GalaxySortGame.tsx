@@ -140,6 +140,8 @@ export default function GalaxySortGame({
 }: Props) {
     const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
     const { player, useAbilityCharge, addAbilityCharges } = useGame();
+    const useAbilityChargeRef = useRef(useAbilityCharge);
+    useEffect(() => { useAbilityChargeRef.current = useAbilityCharge; }, [useAbilityCharge]);
     const [gameState, setGameState] = useState<"ready" | "playing" | "roundComplete" | "gameOver" | "win">("ready");
     const [rounds, setRounds] = useState<SortRound[]>([]);
     const [roundIdx, setRoundIdx] = useState(0);
@@ -161,6 +163,7 @@ export default function GalaxySortGame({
     /* ─── Generate rounds ─── */
     useEffect(() => {
         const generated = generateRoundsFromLevels(levels);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setRounds(generated.length > 0 ? generated : generateDefaultRounds());
     }, [levels]);
 
@@ -218,7 +221,7 @@ export default function GalaxySortGame({
             onAnswered?.("", false, levels[0]?.subject ?? "", 4);
 
             if (playerClass === "warrior" && !shieldUsed) {
-                const charged = useAbilityCharge();
+                const charged = useAbilityChargeRef.current();
                 if (charged) {
                     setShieldUsed(true);
                     setAbilityNotice("🛡️ Lá chắn bảo vệ HP!");
@@ -266,7 +269,7 @@ export default function GalaxySortGame({
     /* ─── Hunter ability: auto-sort one item ─── */
     const handleAutoSort = () => {
         if (playerClass !== "hunter" || autoSorted || unsortedItems.length === 0) return;
-        if (!useAbilityCharge()) return; // No charges
+        if (!useAbilityChargeRef.current()) return; // No charges
         const item = unsortedItems[0];
         setAutoSorted(true);
         setSortedItems(prev => ({ ...prev, [item.id]: item.category }));
@@ -283,6 +286,7 @@ export default function GalaxySortGame({
         if (unsortedItems.length === 0) {
             // Round complete!
             const allCorrect = round.items.every(i => sortedItems[i.id] === i.category);
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             if (allCorrect) setScore(s => s + BONUS_PERFECT);
 
             setTimeout(() => {

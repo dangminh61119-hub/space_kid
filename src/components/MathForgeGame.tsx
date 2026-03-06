@@ -38,6 +38,8 @@ const MAX_HP = 3;
 export default function MathForgeGame({ levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false }: Props) {
     const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
     const { player, useAbilityCharge, addAbilityCharges } = useGame();
+    const useAbilityChargeRef = useRef(useAbilityCharge);
+    useEffect(() => { useAbilityChargeRef.current = useAbilityCharge; }, [useAbilityCharge]);
     const [gameState, setGameState] = useState<"ready" | "playing" | "levelComplete" | "gameOver" | "win">("ready");
     const [currentLevel, setCurrentLevel] = useState(0);
     const [questionIdx, setQuestionIdx] = useState(0);
@@ -124,7 +126,7 @@ export default function MathForgeGame({ levels, onExit, playerClass, onGameCompl
 
             // Warrior shield: absorb first wrong
             if (playerClass === "warrior" && !shieldUsed) {
-                const charged = useAbilityCharge();
+                const charged = useAbilityChargeRef.current();
                 if (charged) {
                     setShieldUsed(true);
                     setAbilityNotice("🛡️ Lá chắn thép đã bảo vệ bạn!");

@@ -30,6 +30,8 @@ export default function TimeBombGame({
 }: Props) {
     const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
     const { player, useAbilityCharge, addAbilityCharges } = useGame();
+    const useAbilityChargeRef = useRef(useAbilityCharge);
+    useEffect(() => { useAbilityChargeRef.current = useAbilityCharge; }, [useAbilityCharge]);
     const [gameState, setGameState] = useState<"ready" | "playing" | "gameOver" | "win">("ready");
     const [currentLevel, setCurrentLevel] = useState(0);
     const [questionIdx, setQuestionIdx] = useState(0);
@@ -54,17 +56,20 @@ export default function TimeBombGame({
     const totalQuestions = allQuestions.length;
     const progressPercent = totalQuestions > 0 ? (questionIdx / totalQuestions) * 100 : 0;
 
-    // Memoize shuffled options — shuffle ONCE per question, not every render
-    const shuffledOptions = useMemo(() => {
-        if (!question) return [];
+    // Shuffle options once per question change — store in ref to avoid impure useMemo
+    const shuffledOptionsRef = useRef<string[]>([]);
+    useEffect(() => {
+        if (!question) { shuffledOptionsRef.current = []; return; }
         const opts = new Set<string>();
         opts.add(question.correctWord);
         for (const w of question.wrongWords) {
             if (opts.size >= 4) break;
             opts.add(w);
         }
-        return Array.from(opts).sort(() => Math.random() - 0.5);
-    }, [questionIdx, question?.correctWord]);
+        shuffledOptionsRef.current = Array.from(opts).sort(() => Math.random() - 0.5);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [questionIdx]);
+    const shuffledOptions = shuffledOptionsRef.current;
 
     // Bomb urgency level
     const urgency = bombTime <= 3 ? "critical" : bombTime <= 7 ? "warning" : "safe";
@@ -147,7 +152,7 @@ export default function TimeBombGame({
 
             // Warrior shield — costs 1 ability charge
             if (playerClass === "warrior" && !shieldUsed) {
-                const charged = useAbilityCharge();
+                const charged = useAbilityChargeRef.current();
                 if (charged) {
                     setShieldUsed(true);
                     setAbilityNotice("🛡️ Bom không mất thời gian!");
@@ -184,7 +189,7 @@ export default function TimeBombGame({
                 }
             }, 600); // FAST transition!
         }
-    }, [feedback, question, comboCount, questionIdx, totalQuestions, score, levels, playerClass, shieldUsed, useAbilityCharge, applyTimePenalty]);
+    }, [feedback, question, comboCount, questionIdx, totalQuestions, score, levels, playerClass, shieldUsed, applyTimePenalty]);
 
     /* ─── Start ─── */
     const startGame = () => {
@@ -198,7 +203,7 @@ export default function TimeBombGame({
         setBombTime(START_TIME + (playerClass === "wizard" && player.abilityCharges > 0 ? 5 : 0));
         // Wizard bonus consumes a charge
         if (playerClass === "wizard" && player.abilityCharges > 0) {
-            useAbilityCharge();
+            useAbilityChargeRef.current();
         }
         setFeedback(null);
         setHunterEliminated(null);

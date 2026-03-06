@@ -36,6 +36,8 @@ export default function WordRushGame({
 }: Props) {
     const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
     const { player, useAbilityCharge, addAbilityCharges } = useGame();
+    const useAbilityChargeRef = useRef(useAbilityCharge);
+    useEffect(() => { useAbilityChargeRef.current = useAbilityCharge; }, [useAbilityCharge]);
 
     const [hp, setHp] = useState(MAX_HP);
     const [score, setScore] = useState(0);
@@ -102,39 +104,12 @@ export default function WordRushGame({
     /* ─── Shuffle on Q change ─── */
     useEffect(() => {
         if (gameState === "playing" && currentQ) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             shuffleAnswers();
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setTimeLeft(Math.max(MIN_TIME, BASE_TIME - Math.floor(combo / 2)));
         }
     }, [gameState, qIdx, levelIdx]);
-
-    /* ─── Timer ─── */
-    useEffect(() => {
-        if (gameState !== "playing" || locked) {
-            if (timerRef.current) clearInterval(timerRef.current);
-            return;
-        }
-        if (timerRef.current) clearInterval(timerRef.current);
-        timerRef.current = setInterval(() => {
-            setTimeLeft(prev => {
-                if (prev <= 1) {
-                    // Time's up!
-                    setCombo(0);
-                    playWrong();
-                    setLastResult("wrong");
-                    setLocked(true);
-                    setHp(h => {
-                        const next = h - 1;
-                        if (next <= 0) setGameState("gameOver");
-                        return Math.max(0, next);
-                    });
-                    setTimeout(() => advanceQuestion(), 800);
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
-        return () => { if (timerRef.current) clearInterval(timerRef.current); };
-    }, [gameState, qIdx, levelIdx, locked]);
 
     /* ─── Advance ─── */
     const advanceQuestion = useCallback(() => {
@@ -158,6 +133,37 @@ export default function WordRushGame({
             setQIdx(nextQ);
         }
     }, [qIdx, currentLevel, levelIdx, levels.length, playerClass]);
+    const advanceQuestionRef = useRef(advanceQuestion);
+    useEffect(() => { advanceQuestionRef.current = advanceQuestion; }, [advanceQuestion]);
+
+    /* ─── Timer ─── */
+    useEffect(() => {
+        if (gameState !== "playing" || locked) {
+            if (timerRef.current) clearInterval(timerRef.current);
+            return;
+        }
+        if (timerRef.current) clearInterval(timerRef.current);
+        timerRef.current = setInterval(() => {
+            setTimeLeft(prev => {
+                if (prev <= 1) {
+                    // Time's up!
+                    setCombo(0);
+                    playWrong();
+                    setLastResult("wrong");
+                    setLocked(true);
+                    setHp(h => {
+                        const next = h - 1;
+                        if (next <= 0) setGameState("gameOver");
+                        return Math.max(0, next);
+                    });
+                    setTimeout(() => advanceQuestionRef.current(), 800);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+        return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    }, [gameState, qIdx, levelIdx, locked]);
 
     /* ─── Win/GameOver ─── */
     useEffect(() => {
@@ -204,7 +210,7 @@ export default function WordRushGame({
     /* ─── Ability ─── */
     const useAbility = useCallback(() => {
         if (abilityUsed || gameState !== "playing") return;
-        if (!useAbilityCharge()) return; // No charges left
+        if (!useAbilityChargeRef.current()) return; // No charges left
         setAbilityUsed(true);
         if (playerClass === "wizard") {
             setTimeLeft(t => t + 5);
@@ -212,7 +218,7 @@ export default function WordRushGame({
             const wrongItem = answers.find(a => !a.isCorrect && a.text !== hiddenWrong);
             if (wrongItem) setHiddenWrong(wrongItem.text);
         }
-    }, [abilityUsed, gameState, playerClass, answers, hiddenWrong, useAbilityCharge]);
+    }, [abilityUsed, gameState, playerClass, answers, hiddenWrong]);
 
     const abilityInfo = {
         warrior: { label: "Khiên Thép", icon: "🛡️", desc: `Miễn 1 lần sai (⚡${player.abilityCharges})` },

@@ -58,56 +58,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [surveyCompleted, setSurveyCompleted] = useState(false);
     const [onboardingComplete, setOnboardingComplete] = useState(false);
 
-    // Initialize auth state
-    useEffect(() => {
-        if (isMockMode || !supabase) {
-            // Mock mode: check localStorage
-            try {
-                const saved = localStorage.getItem(MOCK_AUTH_KEY);
-                if (saved) {
-                    const data = JSON.parse(saved) as MockAuthData;
-                    setUser({ id: "mock-user-id", email: data.email } as User);
-                    setRole(data.role || 'child');
-                    setLinkCode(data.linkCode || null);
-                    setProfileCompleted(data.profileCompleted);
-                    setSurveyCompleted(data.surveyCompleted);
-                    setOnboardingComplete(data.onboardingComplete);
-                    setPlayerDbId("mock-player-id");
-                }
-            } catch { /* ignore */ }
-            setLoading(false);
-            return;
-        }
-
-        // Real Supabase: get initial session
-        supabase.auth.getSession().then(({ data: { session: s } }) => {
-            setSession(s);
-            setUser(s?.user ?? null);
-            if (s?.user) {
-                loadPlayerData(s.user.id, s.user.email ?? "");
-            } else {
-                setLoading(false);
-            }
-        });
-
-        // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
-            setSession(s);
-            setUser(s?.user ?? null);
-            if (s?.user) {
-                loadPlayerData(s.user.id, s.user.email ?? "");
-            } else {
-                setPlayerDbId(null);
-                setSurveyCompleted(false);
-                setOnboardingComplete(false);
-                setProfileCompleted(false);
-            }
-        });
-
-        return () => subscription.unsubscribe();
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-    // Load player data from DB — auto-creates record if missing
     // Load linked children for parent accounts
     const loadLinkedChildren = useCallback(async (parentPlayerId: string) => {
         if (!supabase) return;
@@ -124,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
+    // Load player data from DB — auto-creates record if missing
     const loadPlayerData = useCallback(async (authId: string, email: string) => {
         if (!supabase) return;
         try {
@@ -172,6 +123,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         setLoading(false);
     }, [loadLinkedChildren]);
+
+    // Initialize auth state
+    useEffect(() => {
+        if (isMockMode || !supabase) {
+            // Mock mode: check localStorage
+            try {
+                const saved = localStorage.getItem(MOCK_AUTH_KEY);
+                if (saved) {
+                    const data = JSON.parse(saved) as MockAuthData;
+                    // eslint-disable-next-line react-hooks/set-state-in-effect
+                    setUser({ id: "mock-user-id", email: data.email } as User);
+                    setRole(data.role || 'child');
+                    setLinkCode(data.linkCode || null);
+                    setProfileCompleted(data.profileCompleted);
+                    setSurveyCompleted(data.surveyCompleted);
+                    setOnboardingComplete(data.onboardingComplete);
+                    setPlayerDbId("mock-player-id");
+                }
+            } catch { /* ignore */ }
+            setLoading(false);
+            return;
+        }
+
+        // Real Supabase: get initial session
+        supabase.auth.getSession().then(({ data: { session: s } }) => {
+            setSession(s);
+            setUser(s?.user ?? null);
+            if (s?.user) {
+                loadPlayerData(s.user.id, s.user.email ?? "");
+            } else {
+                setLoading(false);
+            }
+        });
+
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+            setSession(s);
+            setUser(s?.user ?? null);
+            if (s?.user) {
+                loadPlayerData(s.user.id, s.user.email ?? "");
+            } else {
+                setPlayerDbId(null);
+                setSurveyCompleted(false);
+                setOnboardingComplete(false);
+                setProfileCompleted(false);
+            }
+        });
+
+        return () => subscription.unsubscribe();
+    }, [loadPlayerData]); // loadPlayerData is stable (useCallback with stable deps)
 
     // Create player record in DB
     const createPlayerRecord = useCallback(async (authId: string, name: string, grade: number, email: string, playerRole: 'parent' | 'child' = 'child') => {

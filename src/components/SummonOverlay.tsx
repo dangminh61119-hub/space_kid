@@ -122,9 +122,10 @@ export default function SummonOverlay({
     const startListening = useCallback(() => {
         if (voiceTurns >= MAX_VOICE_TURNS) return;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const SpeechRecognitionCtor = (window as any).SpeechRecognition
-            || (window as any).webkitSpeechRecognition;
+        /* eslint-disable @typescript-eslint/no-explicit-any */
+        const SpeechRecognitionCtor = (window as Record<string, any>).SpeechRecognition
+            || (window as Record<string, any>).webkitSpeechRecognition;
+        /* eslint-enable @typescript-eslint/no-explicit-any */
 
         if (!SpeechRecognitionCtor) {
             // Fallback: text input could be added here

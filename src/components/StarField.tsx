@@ -40,6 +40,7 @@ export default function StarField({ count = 80 }: { count?: number }) {
             driftDuration: Math.random() * 10 + 8,
             opacity: Math.random() * 0.5 + 0.5,
         }));
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setStars(generated);
 
         // Generate a few shooting stars
@@ -50,6 +51,7 @@ export default function StarField({ count = 80 }: { count?: number }) {
             duration: Math.random() * 2 + 2,
             delay: Math.random() * 12 + i * 8,
         }));
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setShootingStars(shoots);
     }, [count]);
 

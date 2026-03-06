@@ -72,8 +72,6 @@ export async function POST(request: NextRequest) {
             .select("id")
             .eq("planet_id", body.planet_id)
             .eq("subject", body.subject)
-            .lte("grade_min", body.grade)
-            .gte("grade_max", body.grade)
             .order("level_number")
             .limit(1)
             .single();
@@ -81,6 +79,13 @@ export async function POST(request: NextRequest) {
         if (matchingLevel) {
             resolvedLevelId = matchingLevel.id;
         }
+    }
+
+    if (!resolvedLevelId) {
+        return NextResponse.json(
+            { error: "Không tìm được level phù hợp. Hãy cung cấp level_id trực tiếp, hoặc đảm bảo đã có level với planet_id và subject tương ứng." },
+            { status: 400 }
+        );
     }
 
     const { data, error } = await supabase

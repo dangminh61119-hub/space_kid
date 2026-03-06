@@ -142,6 +142,7 @@ export default function Spaceship({ count = 2 }: { count?: number }) {
             scale: Math.random() * 0.4 + 0.6,
             variant: variants[i % variants.length],
         }));
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setShips(generated);
     }, [count]);
 

@@ -60,6 +60,8 @@ function uid() { return Math.random().toString(36).slice(2, 9); }
 export default function StarHunterGame({ levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false, paused = false }: Props) {
     const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
     const { player, useAbilityCharge, addAbilityCharges } = useGame();
+    const useAbilityChargeRef = useRef(useAbilityCharge);
+    useEffect(() => { useAbilityChargeRef.current = useAbilityCharge; }, [useAbilityCharge]);
 
     // ── Game state ──
     const [hp, setHp] = useState(MAX_HP);
@@ -338,14 +340,14 @@ export default function StarHunterGame({ levels, onExit, playerClass, onGameComp
     // ─── Ability button ───────────────────────────────────
     const useAbility = useCallback(() => {
         if (abilityUsed || gameState !== "playing") return;
-        if (!useAbilityCharge()) return; // No charges left
+        if (!useAbilityChargeRef.current()) return; // No charges left
         setAbilityUsed(true);
         if (playerClass === "wizard") { setFrozenActive(true); }
         else if (playerClass === "hunter") {
             const wrongStar = stars.find(s => !s.isCorrect);
             if (wrongStar) setHintStarId(wrongStar.id);
         }
-    }, [abilityUsed, gameState, playerClass, stars, useAbilityCharge]);
+    }, [abilityUsed, gameState, playerClass, stars]);
 
     const abilityInfo = {
         warrior: { label: "Khiên Bất Bại", icon: "🛡️", desc: `Miễn 1 lần sai (⚡${player.abilityCharges})` },

@@ -201,14 +201,24 @@ export function GameProvider({ children }: { children: ReactNode }) {
                         .eq("id", playerDbId)
                         .single();
 
-                    // Count completed journeys from journey_progress table
+                    // BUG-006 FIX: Count journeys where completed_levels >= actual total (no hardcoded 6)
                     let journeysCompleted = 0;
                     const { data: jpData } = await supabase
                         .from("journey_progress")
-                        .select("completed_levels")
-                        .eq("player_id", playerDbId)
-                        .gte("completed_levels", 6);
-                    if (jpData) journeysCompleted = jpData.length;
+                        .select("journey_id, completed_levels, journeys(levels(id))")
+                        .eq("player_id", playerDbId);
+                    if (jpData) {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        journeysCompleted = jpData.filter((p: any) => {
+                            const journeysRel = p.journeys;
+                            // Supabase returns the relation as an array or object depending on relationship type
+                            const levelsArr = Array.isArray(journeysRel)
+                                ? journeysRel[0]?.levels
+                                : journeysRel?.levels;
+                            const total = levelsArr?.length ?? 0;
+                            return total > 0 && (p.completed_levels as number) >= total;
+                        }).length;
+                    }
 
                     if (isMounted) {
                         setPlayer(prev => {
@@ -257,10 +267,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
                     }
 
                     // ─── Daily Login Streak (GDD §8.4) ───
-                    // BUG-7 FIX: Streak calculation runs AFTER DB merge above (via separate setPlayer),
-                    // so prev.streak already contains the DB-synced value. This is correct because
-                    // React processes setPlayer updaters sequentially within the same execution context.
-                    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+                    // BUG-010 FIX: Use Vietnam timezone (UTC+7) so "today" matches player's local date
+                    const today = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().split("T")[0]; // YYYY-MM-DD VN
                     if (isMounted) {
                         setPlayer(prev => {
                             const LAST_LOGIN_KEY = "cosmomosaic_last_login";
@@ -371,105 +379,100 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     /* ─── 🪙 Coins Economy ─── */
     const addCoins = useCallback((amount: number) => {
-        setPlayer(prev => ({ ...prev, coins: prev.coins + amount }));
-        // Persist to DB
-        if (playerDbId && supabase) {
-            const sb = supabase;
-            sb.from("players").select("coins").eq("id", playerDbId).single().then(({ data }) => {
-                if (data) sb.from("players").update({ coins: (data.coins || 0) + amount }).eq("id", playerDbId).then(() => { });
-            });
-        }
+        setPlayer(prev => {
+            const newCoins = prev.coins + amount;
+            if (playerDbId && supabase) {
+                supabase.from("players").update({ coins: newCoins }).eq("id", playerDbId).then(({ error }) => {
+                    if (error) console.error("[GameContext] addCoins DB error:", error);
+                });
+            }
+            return { ...prev, coins: newCoins };
+        });
     }, [playerDbId]);
 
     /* ─── ⭐ Lucky Stars ─── */
     const addStars = useCallback((amount: number) => {
-        setPlayer(prev => ({ ...prev, luckyStars: prev.luckyStars + amount }));
-        // Persist to DB
-        if (playerDbId && supabase) {
-            const sb = supabase;
-            sb.from("players").select("lucky_stars").eq("id", playerDbId).single().then(({ data }) => {
-                if (data) {
-                    sb.from("players").update({ lucky_stars: (data.lucky_stars || 0) + amount }).eq("id", playerDbId).then(() => { });
-                }
-            });
-        }
+        setPlayer(prev => {
+            const newStars = prev.luckyStars + amount;
+            if (playerDbId && supabase) {
+                supabase.from("players").update({ lucky_stars: newStars }).eq("id", playerDbId).then(({ error }) => {
+                    if (error) console.error("[GameContext] addStars DB error:", error);
+                });
+            }
+            return { ...prev, luckyStars: newStars };
+        });
     }, [playerDbId]);
 
     const spendStars = useCallback((amount: number): boolean => {
-        let success = false;
+        // BUG-001 FIX: Read current value first to return correct boolean synchronously
+        const playerRef = { current: 0 };
+        setPlayer(prev => { playerRef.current = prev.luckyStars; return prev; });
+        if (playerRef.current < amount) return false;
         setPlayer(prev => {
-            if (prev.luckyStars < amount) {
-                success = false;
-                return prev;
+            if (prev.luckyStars < amount) return prev; // double-check inside updater
+            const newStars = prev.luckyStars - amount;
+            if (playerDbId && supabase) {
+                supabase.from("players").update({ lucky_stars: newStars }).eq("id", playerDbId).then(({ error }) => {
+                    if (error) console.error("[GameContext] spendStars DB error:", error);
+                });
             }
-            success = true;
-            return { ...prev, luckyStars: prev.luckyStars - amount };
+            return { ...prev, luckyStars: newStars };
         });
-        // Persist to DB
-        if (success && playerDbId && supabase) {
-            const sb = supabase;
-            sb.from("players").select("lucky_stars").eq("id", playerDbId).single().then(({ data }) => {
-                if (data) sb.from("players").update({ lucky_stars: Math.max(0, (data.lucky_stars || 0) - amount) }).eq("id", playerDbId).then(() => { });
-            });
-        }
-        return success;
+        return true;
     }, [playerDbId]);
 
-    // BUG-2 FIX: Use a ref to capture the synchronous result from the updater
+    // BUG-001 FIX: Same pattern — read synchronously, then update
     const spendCoins = useCallback((amount: number): boolean => {
-        let success = false;
+        const playerRef = { current: 0 };
+        setPlayer(prev => { playerRef.current = prev.coins; return prev; });
+        if (playerRef.current < amount) return false;
         setPlayer(prev => {
-            if (prev.coins < amount) {
-                success = false;
-                return prev;
+            if (prev.coins < amount) return prev;
+            const newCoins = prev.coins - amount;
+            if (playerDbId && supabase) {
+                supabase.from("players").update({ coins: newCoins }).eq("id", playerDbId).then(({ error }) => {
+                    if (error) console.error("[GameContext] spendCoins DB error:", error);
+                });
             }
-            success = true;
-            return { ...prev, coins: prev.coins - amount };
+            return { ...prev, coins: newCoins };
         });
-        // Note: React guarantees setState updater runs synchronously within
-        // the same execution context when called from an event handler.
-        // This pattern works correctly for event-driven spend operations.
-        return success;
-    }, []);
+        return true;
+    }, [playerDbId]);
 
     /* ─── 💎 Crystal Economy ─── */
+    // BUG-002 FIX: compute absolute value inside updater to avoid read-then-write race condition
     const addCrystals = useCallback((amount: number, _reason?: string) => {
-        setPlayer(prev => ({
-            ...prev,
-            crystals: prev.crystals + amount,
-            totalCrystalsEarned: prev.totalCrystalsEarned + amount,
-        }));
-        // Persist to DB
-        if (playerDbId && supabase) {
-            const sb = supabase;
-            sb.from("players").select("crystals, total_crystals_earned").eq("id", playerDbId).single().then(({ data }) => {
-                if (data) sb.from("players").update({
-                    crystals: (data.crystals || 0) + amount,
-                    total_crystals_earned: (data.total_crystals_earned || 0) + amount,
-                }).eq("id", playerDbId).then(() => { });
-            });
-        }
+        setPlayer(prev => {
+            const newCrystals = prev.crystals + amount;
+            const newTotal = prev.totalCrystalsEarned + amount;
+            if (playerDbId && supabase) {
+                supabase.from("players").update({
+                    crystals: newCrystals,
+                    total_crystals_earned: newTotal,
+                }).eq("id", playerDbId).then(({ error }) => {
+                    if (error) console.error("[GameContext] addCrystals DB error:", error);
+                });
+            }
+            return { ...prev, crystals: newCrystals, totalCrystalsEarned: newTotal };
+        });
     }, [playerDbId]);
 
-    // BUG-2 FIX: Same pattern as spendCoins
+    // BUG-001 FIX: read current value first, then spend
     const spendCrystals = useCallback((amount: number): boolean => {
-        let success = false;
+        const playerRef = { current: 0 };
+        setPlayer(prev => { playerRef.current = prev.crystals; return prev; });
+        if (playerRef.current < amount) return false;
         setPlayer(prev => {
-            if (prev.crystals < amount) {
-                success = false;
-                return prev;
+            if (prev.crystals < amount) return prev;
+            const newCrystals = prev.crystals - amount;
+            if (playerDbId && supabase) {
+                supabase.from("players").update({ crystals: newCrystals }).eq("id", playerDbId).then(({ error }) => {
+                    if (error) console.error("[GameContext] spendCrystals DB error:", error);
+                });
             }
-            success = true;
-            return { ...prev, crystals: prev.crystals - amount };
+            return { ...prev, crystals: newCrystals };
         });
-        // Persist to DB
-        if (success && playerDbId && supabase) {
-            const sb = supabase;
-            sb.from("players").select("crystals").eq("id", playerDbId).single().then(({ data }) => {
-                if (data) sb.from("players").update({ crystals: Math.max(0, (data.crystals || 0) - amount) }).eq("id", playerDbId).then(() => { });
-            });
-        }
-        return success;
+        return true;
     }, [playerDbId]);
 
 
@@ -477,40 +480,35 @@ export function GameProvider({ children }: { children: ReactNode }) {
     /* ─── ⚡ Ability Charges Economy ─── */
     const MAX_ABILITY_CHARGES = 5;
 
+    // BUG-001 FIX: read current value first, then decrement
     const useAbilityCharge = useCallback((): boolean => {
-        let success = false;
+        const playerRef = { current: 0 };
+        setPlayer(prev => { playerRef.current = prev.abilityCharges; return prev; });
+        if (playerRef.current < 1) return false;
         setPlayer(prev => {
-            if (prev.abilityCharges < 1) {
-                success = false;
-                return prev;
+            if (prev.abilityCharges < 1) return prev;
+            const newCharges = prev.abilityCharges - 1;
+            if (playerDbId && supabase) {
+                supabase.from("players").update({ ability_charges: newCharges }).eq("id", playerDbId).then(({ error }) => {
+                    if (error) console.error("[GameContext] useAbilityCharge DB error:", error);
+                });
             }
-            success = true;
-            return { ...prev, abilityCharges: prev.abilityCharges - 1 };
+            return { ...prev, abilityCharges: newCharges };
         });
-        // Persist to DB
-        if (success && playerDbId && supabase) {
-            const sb = supabase;
-            sb.from("players").select("ability_charges").eq("id", playerDbId).single().then(({ data }) => {
-                if (data) sb.from("players").update({ ability_charges: Math.max(0, (data.ability_charges || 0) - 1) }).eq("id", playerDbId).then(() => { });
-            });
-        }
-        return success;
+        return true;
     }, [playerDbId]);
 
+    // BUG-002 FIX: compute absolute value inside updater
     const addAbilityCharges = useCallback((amount: number) => {
-        setPlayer(prev => ({
-            ...prev,
-            abilityCharges: Math.min(MAX_ABILITY_CHARGES, prev.abilityCharges + amount),
-        }));
-        // Persist to DB
-        if (playerDbId && supabase) {
-            const sb = supabase;
-            sb.from("players").select("ability_charges").eq("id", playerDbId).single().then(({ data }) => {
-                if (data) sb.from("players").update({
-                    ability_charges: Math.min(MAX_ABILITY_CHARGES, (data.ability_charges || 0) + amount),
-                }).eq("id", playerDbId).then(() => { });
-            });
-        }
+        setPlayer(prev => {
+            const newCharges = Math.min(MAX_ABILITY_CHARGES, prev.abilityCharges + amount);
+            if (playerDbId && supabase) {
+                supabase.from("players").update({ ability_charges: newCharges }).eq("id", playerDbId).then(({ error }) => {
+                    if (error) console.error("[GameContext] addAbilityCharges DB error:", error);
+                });
+            }
+            return { ...prev, abilityCharges: newCharges };
+        });
     }, [playerDbId]);
 
     const resetGame = useCallback(() => {

@@ -14,6 +14,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             if (!user || role !== "admin") {
                 router.replace("/portal");
             } else {
+                // eslint-disable-next-line react-hooks/set-state-in-effect
                 setAuthorized(true);
             }
         }
@@ -43,6 +44,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             </a>
                             <a href="/admin/questions" className="px-3 py-1.5 rounded-lg text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors">
                                 Câu hỏi
+                            </a>
+                            <a href="/admin/race-questions" className="px-3 py-1.5 rounded-lg text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors">
+                                ☀️ Race Questions
                             </a>
                         </nav>
                     </div>

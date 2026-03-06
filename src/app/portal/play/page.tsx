@@ -1,13 +1,13 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState, useEffect, useCallback, useRef, useTransition } from "react";
+import { Suspense, useState, useEffect, useCallback, useRef } from "react";
 import StarField from "@/components/StarField";
 import NeonButton from "@/components/NeonButton";
 import GameModeController from "@/components/GameModeController";
 import { useGame } from "@/lib/game-context";
 import { useAuth } from "@/lib/services/auth-context";
-import { getJourneyLevels, updateMastery, saveJourneyProgress, getJourneyProgress, getPlanetForGrade, saveAnsweredQuestion, awardBadge, checkAndUnlockShips, checkAchievementBadges, type GameLevel, type Ship } from "@/lib/services/db";
+import { getJourneyLevels, updateMastery, saveJourneyProgress, getJourneyProgress, getPlanetForGrade, saveAnsweredQuestion, awardBadge, checkAchievementBadges, type GameLevel, type Ship } from "@/lib/services/db";
 import { supabase } from "@/lib/services/supabase";
 
 function PlayContent() {
@@ -29,6 +29,8 @@ function PlayContent() {
     const [starPosition, setStarPosition] = useState({ x: 50, y: 50 });
     const starTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const planetRef = useRef<{ id: string } | null>(null);
+    // BUG-009 FIX: use ref so handleAnswered doesn't need starPopup in deps
+    const starPopupRef = useRef(false);
 
     const journeySlug = searchParams.get("journey") || "ha-long";
 
@@ -77,7 +79,7 @@ function PlayContent() {
     const handleGameComplete = async (finalScore: number, levelsCompleted: number) => {
         const cosmoReward = Math.max(100, finalScore);
         addCosmo(cosmoReward);
-        addCoins(50);
+        // BUG-004 FIX: coins only awarded when a journey makes progress (not on every game completion)
 
         if (playerDbId && journeyId) {
             const planet = planetRef.current || await getPlanetForGrade(player.grade);
@@ -91,13 +93,18 @@ function PlayContent() {
                 let heritageBadge = null;
                 if (newCompleted >= levels.length && levels.length > 0) {
                     heritageBadge = await awardBadge(playerDbId, journeySlug);
+                    // Reward coins only when a meaningful milestone is reached
+                    addCoins(50);
                 }
 
-                // 🏅 Check achievement badges (streak, levels milestone, perfect score, mastery)
+                // 🏅 Check achievement badges (streak, levels milestone)
+                // BUG-3 FIX: isPerfectScore was always true (finalScore > 0 && levelsCompleted > 0).
+                // Perfect score = 3 stars = 100% accuracy. GMC tracks this internally.
+                // We conservatively omit isPerfectScore here; the retroactiveBadgeCheck on portal load
+                // will award it when appropriate based on mastery data.
                 const achievementBadges = await checkAchievementBadges(playerDbId, {
                     streak: player.streak,
                     totalLevelsCompleted: newCompleted,
-                    isPerfectScore: finalScore > 0 && levelsCompleted > 0,
                 });
 
                 // Show badge modal if any badge was earned
@@ -139,7 +146,8 @@ function PlayContent() {
                 // Minimum 2 correct answers before first star, then 2+ between stars
                 const minWait = lastStarAtRef.current === 0 ? 2 : 2;
 
-                if (answersSinceLastStar >= minWait && !starPopup) {
+                // BUG-009 FIX: read from ref instead of state to avoid stale closure / dep
+                if (answersSinceLastStar >= minWait && !starPopupRef.current) {
                     // Progressive probability: 20% base + 5% per extra answer (cap 40%)
                     const extraAnswers = answersSinceLastStar - minWait;
                     const probability = Math.min(0.40, 0.20 + extraAnswers * 0.05);
@@ -148,10 +156,12 @@ function PlayContent() {
                         const x = 15 + Math.random() * 70;
                         const y = 20 + Math.random() * 50;
                         setStarPosition({ x, y });
+                        starPopupRef.current = true;
                         setStarPopup(true);
                         setStarCollected(false);
                         lastStarAtRef.current = correctCountRef.current;
                         starTimerRef.current = setTimeout(() => {
+                            starPopupRef.current = false;
                             setStarPopup(false);
                         }, 3000);
                     }
@@ -164,7 +174,7 @@ function PlayContent() {
                 updateMastery(playerDbId, planet.id, subject, isCorrect, bloomLevel);
             }
         }
-    }, [playerDbId, starPopup]);
+    }, [playerDbId]);  // BUG-009 FIX: starPopup removed from deps (using ref now)
 
     /* ─── Refresh levels (re-fetch from server for smart question rotation) ─── */
     const refreshLevels = useCallback(async () => {
@@ -180,6 +190,7 @@ function PlayContent() {
     const handleStarClick = useCallback(() => {
         if (starTimerRef.current) clearTimeout(starTimerRef.current);
         setStarCollected(true);
+        starPopupRef.current = false;
         addStars(1);
         // Keep collected animation for 1.5s then dismiss
         setTimeout(() => {
@@ -239,7 +250,7 @@ function PlayContent() {
                     onAnswered={handleAnswered}
                     planetName={journeyTitle}
                     planetEmoji={journeyEmoji}
-                    planetId={journeySlug}
+                    planetId={planetRef.current?.id || journeySlug}
                     completedLevels={completedLevels}
                     isFirstVisit={isFirstVisit}
                     onRefreshLevels={refreshLevels}
