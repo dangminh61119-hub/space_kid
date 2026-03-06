@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { motion } from "framer-motion";
 
 interface NeonButtonProps {
     children: React.ReactNode;
@@ -55,7 +56,7 @@ export default function NeonButton({
     relative group inline-flex items-center justify-center gap-2 rounded-xl font-bold
     ${bgColors[variant]} ${textColors[variant]}
     ${sizes[size]}
-    transition-all duration-300 hover:scale-105
+    transition-all duration-300
     ${hoverShadows[variant]}
     ${className}
   `.trim();
@@ -64,17 +65,31 @@ export default function NeonButton({
 
     if (href) {
         return (
-            <Link href={href} className={baseClasses}>
-                <span className="relative z-10 flex items-center gap-2">{children}</span>
-                {innerGlow}
+            <Link href={href} passHref legacyBehavior>
+                <motion.a
+                    className={baseClasses}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                >
+                    <span className="relative z-10 flex items-center gap-2 tracking-wide">{children}</span>
+                    {innerGlow}
+                </motion.a>
             </Link>
         );
     }
 
     return (
-        <button onClick={onClick} disabled={disabled} className={`${baseClasses} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}>
-            <span className="relative z-10 flex items-center gap-2">{children}</span>
+        <motion.button
+            onClick={onClick}
+            disabled={disabled}
+            className={`${baseClasses} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+            whileHover={disabled ? {} : { scale: 1.05 }}
+            whileTap={disabled ? {} : { scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 400, damping: 10 }}
+        >
+            <span className="relative z-10 flex items-center gap-2 tracking-wide">{children}</span>
             {innerGlow}
-        </button>
+        </motion.button>
     );
 }

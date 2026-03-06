@@ -35,6 +35,7 @@ export function useRequireRole(requiredRole: "parent" | "child") {
     }, [user, loading, role, requiredRole, router]);
 
     const allowed = !loading && !!user && role === requiredRole;
+    const redirecting = !loading && !allowed;
 
-    return { loading: loading || (!allowed && !!user), allowed };
+    return { loading, allowed, redirecting };
 }

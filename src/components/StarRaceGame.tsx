@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/game-context";
 import { useAuth } from "@/lib/services/auth-context";
+import VolumeControl from "./VolumeControl";
 import {
     createRoom,
     joinRoom,
@@ -702,9 +703,11 @@ export default function StarRaceGame({
                     <div className="text-sm text-white/50">
                         Câu {currentQIdx + 1}/{questions.length}
                     </div>
-                    <div className={`text-2xl font-bold font-mono ${timeLeft <= 3 ? "text-red-400 animate-pulse" : "text-neon-cyan"
-                        }`}>
-                        {timeLeft}s
+                    <div className="flex items-center gap-2">
+                        <VolumeControl />
+                        <div className={`text-2xl font-bold font-mono ${timeLeft <= 3 ? "text-red-400 animate-pulse" : "text-neon-cyan"}`}>
+                            {timeLeft}s
+                        </div>
                     </div>
                 </div>
 

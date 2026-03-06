@@ -41,6 +41,7 @@ export interface PlayerData {
     parentPhone?: string;
     favoriteSubjects?: string[];
     calmMode: boolean;                 // Giảm kích thích giác quan cho trẻ nhạy cảm
+    masterVolume: number;              // Mức âm lượng dao động từ 0 đến 1
     coins: number;                     // 🪙 Coins — tiền tệ phổ thông (mua cosmetics)
     crystals: number;                  // 💎 Pha lê Vũ trụ — currency hiếm (Triệu hồi AI)
     luckyStars: number;                // ⭐ Ngôi sao may mắn — 3 sao = 1 huy hiệu
@@ -70,6 +71,7 @@ interface GameContextType {
     addAbilityCharges: (amount: number) => void;             // ⚡ Cộng charges (cap 5)
     resetGame: () => void;
     setCalmMode: (enabled: boolean) => void;  // Toggle Calm Mode
+    setMasterVolume: (volume: number) => void; // Thay đổi âm lượng
     unlockAchievement: (id: string) => void;  // Mở khóa thành tích
     updateParentControls: (controls: Partial<ParentControls>) => void; // Cập nhật cài đặt phụ huynh
 }
@@ -99,6 +101,7 @@ const DEFAULT_PLAYER: PlayerData = {
     parentPhone: "",
     favoriteSubjects: [],
     calmMode: false,                   // Will be auto-enabled for grade ≤ 2
+    masterVolume: 1.0,
     coins: 0,                          // 🪙 Coins for cosmetics
     crystals: 3,                       // 💎 Starter crystals
     luckyStars: 0,                     // ⭐ Lucky Stars
@@ -534,6 +537,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
+    const setMasterVolume = useCallback((volume: number) => {
+        setPlayer(prev => ({ ...prev, masterVolume: volume }));
+    }, []);
+
     const unlockAchievement = useCallback((id: string) => {
         setPlayer(prev => {
             if (prev.achievements.includes(id)) return prev; // Đã có rồi
@@ -570,6 +577,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
                 addAbilityCharges,
                 resetGame,
                 setCalmMode,
+                setMasterVolume,
                 unlockAchievement,
                 updateParentControls,
             }}

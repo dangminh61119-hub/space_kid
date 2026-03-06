@@ -69,7 +69,7 @@ export default function PlanetStoryIntro({ planetName, planetEmoji, videoSrc, on
     };
 
     return (
-        <div className="absolute inset-0 bg-space-deep overflow-hidden flex items-center justify-center z-40">
+        <div className="relative w-full h-full min-h-[500px] bg-space-deep flex items-center justify-center z-40 py-10 px-4 overflow-hidden">
             {/* Stars background */}
             <div className="absolute inset-0 pointer-events-none">
                 {stars.map((star) => (
@@ -128,10 +128,10 @@ export default function PlanetStoryIntro({ planetName, planetEmoji, videoSrc, on
                             <motion.div
                                 initial={{ opacity: 0, y: -10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="text-center mb-4"
+                                className="text-center mb-5"
                             >
-                                <span className="text-4xl mb-1 block">{planetEmoji}</span>
-                                <h1 className="text-xl sm:text-2xl font-bold font-[var(--font-heading)] text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan to-neon-magenta">
+                                <span className="text-5xl mb-2 block">{planetEmoji}</span>
+                                <h1 className="text-2xl sm:text-3xl font-bold font-[var(--font-heading)] text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan to-neon-magenta">
                                     {planetName}
                                 </h1>
                             </motion.div>
@@ -152,7 +152,7 @@ export default function PlanetStoryIntro({ planetName, planetEmoji, videoSrc, on
                                 {/* Skip button on video */}
                                 <button
                                     onClick={() => setPhase("ready")}
-                                    className="absolute bottom-3 right-3 text-xs text-white/50 hover:text-white/80 transition-colors bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm"
+                                    className="absolute bottom-3 right-3 text-sm font-medium text-white/60 hover:text-white/90 transition-colors bg-black/40 px-4 py-2 rounded-full backdrop-blur-sm"
                                 >
                                     Bỏ qua →
                                 </button>
@@ -170,13 +170,13 @@ export default function PlanetStoryIntro({ planetName, planetEmoji, videoSrc, on
                             className="text-center"
                         >
                             <motion.div
-                                className="text-8xl mb-3"
-                                animate={{ y: [0, -8, 0] }}
+                                className="text-9xl mb-4"
+                                animate={{ y: [0, -10, 0] }}
                                 transition={{ repeat: Infinity, duration: 3 }}
                             >
                                 {planetEmoji}
                             </motion.div>
-                            <h1 className="text-2xl sm:text-3xl font-bold font-[var(--font-heading)] text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan to-neon-magenta mb-6">
+                            <h1 className="text-3xl sm:text-4xl font-bold font-[var(--font-heading)] text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan to-neon-magenta mb-8">
                                 {planetName}
                             </h1>
                             <motion.button
@@ -184,7 +184,7 @@ export default function PlanetStoryIntro({ planetName, planetEmoji, videoSrc, on
                                 animate={{ scale: 1 }}
                                 transition={{ type: "spring", delay: 0.2 }}
                                 onClick={onStart}
-                                className="px-8 py-3.5 rounded-full bg-gradient-to-r from-neon-cyan to-neon-magenta text-white font-bold text-lg tracking-wide hover:scale-105 transition-transform shadow-[0_0_30px_rgba(0,245,255,0.4)]"
+                                className="px-10 py-4 rounded-full bg-gradient-to-r from-neon-cyan to-neon-magenta text-white font-bold text-xl tracking-wide hover:scale-105 transition-transform shadow-[0_0_30px_rgba(0,245,255,0.4)]"
                             >
                                 Bắt đầu khám phá! 🌟
                             </motion.button>
@@ -199,7 +199,7 @@ export default function PlanetStoryIntro({ planetName, planetEmoji, videoSrc, on
                         animate={{ opacity: 1 }}
                         transition={{ delay: 1 }}
                         onClick={onStart}
-                        className="text-xs text-white/30 hover:text-white/60 transition-colors"
+                        className="text-sm font-medium text-white/40 hover:text-white/70 transition-colors"
                     >
                         Bỏ qua →
                     </motion.button>

@@ -144,7 +144,10 @@ export default function PortalPage() {
                             // Find which ship unlocks this planet
                             const requiredShip = allShips.find(s => s.id === p.shipRequired);
                             const badgesNeeded = requiredShip?.requiredBadges ?? 0;
-                            const badgesHave = playerBadges.length;
+                            const spentOnShips = allShips
+                                .filter(s => ownedShipIds.includes(s.id))
+                                .reduce((sum, s) => sum + s.requiredBadges, 0);
+                            const availableBadges = Math.max(0, playerBadges.length - spentOnShips);
                             const isSelected = p.id === selectedPlanetId;
                             return (
                                 <div
@@ -168,8 +171,10 @@ export default function PortalPage() {
                                         <div className="text-[9px] text-neon-cyan/60 mt-0.5">Lớp {player.grade}</div>
                                     ) : isUnlocked || isEarth ? (
                                         <div className="text-[9px] text-neon-green/60 mt-0.5">✅ Đã mở khóa</div>
+                                    ) : availableBadges >= badgesNeeded && badgesNeeded > 0 ? (
+                                        <div className="text-[9px] text-neon-gold mt-0.5 animate-pulse">🚀 Đổi phi thuyền ngay!</div>
                                     ) : (
-                                        <div className="text-[9px] text-white/30 mt-0.5">🔒 {badgesHave}/{badgesNeeded} huy hiệu</div>
+                                        <div className="text-[9px] text-white/30 mt-0.5">🔒 {availableBadges}/{badgesNeeded} huy hiệu</div>
                                     )}
                                 </div>
                             );

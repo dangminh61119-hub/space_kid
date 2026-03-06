@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Maximize, Minimize } from "lucide-react";
+import VolumeControl from "./VolumeControl";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { useGame } from "@/lib/game-context";
 
@@ -349,13 +350,16 @@ export default function MathForgeGame({ levels, onExit, playerClass, onGameCompl
                         <span className="text-white/40 text-xs">✦</span>
                     </div>
                     {gameState === "playing" && (
-                        <button
-                            onClick={toggleFullscreen}
-                            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-colors"
-                            title={isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}
-                        >
-                            {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
-                        </button>
+                        <>
+                            <VolumeControl />
+                            <button
+                                onClick={toggleFullscreen}
+                                className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-colors"
+                                title={isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}
+                            >
+                                {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+                            </button>
+                        </>
                     )}
                 </div>
             </div>

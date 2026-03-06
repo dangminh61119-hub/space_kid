@@ -6,6 +6,7 @@ import { Maximize, Minimize } from "lucide-react";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { useGame } from "@/lib/game-context";
 import MascotAbilityButton from "@/components/MascotAbilityButton";
+import VolumeControl from "./VolumeControl";
 
 /* ─── Types ─── */
 export interface CraftQuestion {
@@ -315,6 +316,7 @@ export default function WordCraftGame({
                         <span className="text-neon-cyan font-bold text-lg">{score}</span>
                         <span className="text-white/40 text-xs">✦</span>
                     </div>
+                    {gameState === "playing" && <VolumeControl />}
                     {gameState === "playing" && (
                         <button onClick={toggleFullscreen}
                             className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-colors"

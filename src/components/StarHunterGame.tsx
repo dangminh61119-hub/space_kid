@@ -5,6 +5,7 @@ import type { GameLevel } from "@/lib/services/db";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { useGame } from "@/lib/game-context";
 import MascotAbilityButton from "@/components/MascotAbilityButton";
+import VolumeControl from "./VolumeControl";
 
 // ─── Types ───────────────────────────────────────────────
 interface StarData {
@@ -479,6 +480,7 @@ export default function StarHunterGame({ levels, onExit, playerClass, onGameComp
                         <div className="text-neon-gold font-bold text-sm">{score.toLocaleString()}</div>
                         <div className="text-white/40 text-xs">✦</div>
                     </div>
+                    {gameState === "playing" && <VolumeControl />}
                 </div>
             </div>
 

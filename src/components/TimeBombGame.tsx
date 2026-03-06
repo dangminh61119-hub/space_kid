@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Maximize, Minimize } from "lucide-react";
 import type { GameLevel } from "@/lib/services/db";
+import VolumeControl from "./VolumeControl";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { useGame } from "@/lib/game-context";
 
@@ -317,10 +318,13 @@ export default function TimeBombGame({
                                 {playerClass === "warrior" && !shieldUsed && player.abilityCharges > 0 && (
                                     <span className="text-lg animate-pulse">🛡️</span>
                                 )}
-                                <button onClick={toggleFullscreen}
-                                    className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 transition-colors">
-                                    {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
-                                </button>
+                                <div className="flex items-center gap-1">
+                                    <VolumeControl />
+                                    <button onClick={toggleFullscreen}
+                                        className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 transition-colors">
+                                        {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+                                    </button>
+                                </div>
                             </div>
                         </div>
 

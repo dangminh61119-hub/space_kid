@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { GameLevel } from "@/lib/services/db";
+import VolumeControl from "./VolumeControl";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { useGame } from "@/lib/game-context";
 import MascotAbilityButton from "@/components/MascotAbilityButton";
@@ -348,6 +349,7 @@ export default function WordRushGame({
                         <div className="text-neon-gold font-bold text-sm">{score.toLocaleString()}</div>
                         <div className="text-white/40 text-xs">✦</div>
                     </div>
+                    {gameState === "playing" && <VolumeControl />}
                 </div>
             </div>
 

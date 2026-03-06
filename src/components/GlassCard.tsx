@@ -35,7 +35,7 @@ export default function GlassCard({
     return (
         <div
             className={`
-                relative group rounded-2xl overflow-hidden
+                bg-noise relative group rounded-2xl overflow-hidden
                 bg-white/[0.06] backdrop-blur-xl
                 transition-all duration-400
                 ${hover ? "hover:-translate-y-1.5 hover:scale-[1.02]" : ""}
@@ -43,18 +43,18 @@ export default function GlassCard({
             `}
             style={{
                 border: `1px solid rgba(255,255,255,0.1)`,
-                boxShadow: `inset 0 1px 0 rgba(255,255,255,0.08)`,
+                boxShadow: `inset 0 1px 0 rgba(255,255,255,0.15), inset 1px 0 0 rgba(255,255,255,0.05), inset -1px -1px 20px rgba(0,0,0,0.2)`,
             }}
             onMouseEnter={(e) => {
                 if (hover) {
                     e.currentTarget.style.borderColor = borderGlowColors[glow];
-                    e.currentTarget.style.boxShadow = `0 0 20px ${borderGlowColors[glow]}, inset 0 1px 0 rgba(255,255,255,0.12)`;
+                    e.currentTarget.style.boxShadow = `0 0 24px ${borderGlowColors[glow]}, inset 0 1px 0 rgba(255,255,255,0.2), inset 1px 0 0 rgba(255,255,255,0.1)`;
                 }
             }}
             onMouseLeave={(e) => {
                 if (hover) {
                     e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
-                    e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.08)";
+                    e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.15), inset 1px 0 0 rgba(255,255,255,0.05), inset -1px -1px 20px rgba(0,0,0,0.2)";
                 }
             }}
         >

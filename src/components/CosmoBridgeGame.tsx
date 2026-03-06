@@ -7,6 +7,7 @@ import type { GameLevel } from "@/lib/services/db";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { useGame } from "@/lib/game-context";
 import MascotAbilityButton from "@/components/MascotAbilityButton";
+import VolumeControl from "./VolumeControl";
 
 /* ─── Types ─── */
 interface MatchPair {
@@ -303,6 +304,7 @@ export default function CosmoBridgeGame({
                 <div className="flex items-center gap-3">
                     <span className="text-neon-cyan font-bold text-lg">{score}</span>
                     <span className="text-white/40 text-xs">✦</span>
+                    {gameState === "playing" && <VolumeControl />}
                     <button onClick={toggleFullscreen} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 transition-colors">
                         {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
                     </button>

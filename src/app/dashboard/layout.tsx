@@ -17,14 +17,16 @@ const navItems = [
 export default function DashboardLayout({ children }: { children: ReactNode }) {
     const pathname = usePathname();
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const { loading, allowed } = useRequireRole("parent");
+    const { loading, allowed, redirecting } = useRequireRole("parent");
 
-    if (loading || !allowed) {
+    if (loading || redirecting || !allowed) {
         return (
             <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--dash-bg)" }}>
                 <div className="text-center">
                     <div className="text-4xl animate-pulse mb-3">🌌</div>
-                    <p className="text-gray-500 text-sm">Đang kiểm tra quyền truy cập...</p>
+                    <p className="text-gray-500 text-sm">
+                        {loading ? "Đang kiểm tra quyền truy cập..." : "Đang chuyển hướng..."}
+                    </p>
                 </div>
             </div>
         );

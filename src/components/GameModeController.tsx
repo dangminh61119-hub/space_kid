@@ -17,6 +17,8 @@ import BossBattle from "./BossBattle";
 import type { GameLevel } from "@/lib/services/db";
 import { useGame } from "@/lib/game-context";
 import { MiniOwlSVG } from "./MascotAbilityButton";
+import ComboFlash from "./effects/ComboFlash";
+import { useGameSound } from "@/lib/sound/SoundProvider";
 
 type GameMode = "shooter" | "star-hunter" | "meteor" | "rush" | "timebomb" | "galaxy-sort" | "cosmo-bridge" | "boss" | "star-race";
 type ControllerState = "planetIntro" | "levelIntro" | "playing" | "levelWin" | "levelLose";
@@ -85,14 +87,14 @@ function FloatingMascot() {
                     >
                         {info ? (
                             <>
-                                <p className="text-xs font-bold text-neon-gold">{info.name}</p>
-                                <p className="text-[10px] text-white/60">{info.desc}</p>
-                                <p className="text-[10px] text-cyan-300 mt-0.5">⚡ {charges} lần sử dụng</p>
+                                <p className="text-sm font-bold text-neon-gold">{info.name}</p>
+                                <p className="text-xs text-white/70 mt-0.5">{info.desc}</p>
+                                <p className="text-xs text-cyan-300 mt-1">⚡ {charges} lần sử dụng</p>
                             </>
                         ) : (
                             <>
-                                <p className="text-xs font-bold text-cyan-300">🦉 Cú Mèo</p>
-                                <p className="text-[10px] text-white/50">Đồng hành cùng bạn!</p>
+                                <p className="text-sm font-bold text-cyan-300">🦉 Cú Mèo</p>
+                                <p className="text-xs text-white/60 mt-0.5">Đồng hành cùng bạn!</p>
                             </>
                         )}
                     </motion.div>
@@ -128,11 +130,11 @@ function FloatingMascot() {
                         className="absolute -top-1 -right-1 z-20 min-w-[20px] h-5 rounded-full bg-gradient-to-r from-neon-gold to-amber-500 flex items-center justify-center shadow-lg"
                         style={{ boxShadow: "0 0 8px rgba(255,215,0,0.5)" }}
                     >
-                        <span className="text-[10px] font-black text-slate-900 px-1">⚡{charges}</span>
+                        <span className="text-xs font-black text-slate-900 px-1">⚡{charges}</span>
                     </motion.div>
                 )}
             </motion.div>
-            <span className="text-[9px] text-white/40 font-bold">Cú Mèo</span>
+            <span className="text-[11px] text-white/50 font-bold">Cú Mèo</span>
         </div>
     );
 }
@@ -175,6 +177,10 @@ export default function GameModeController({
     const handledRef = useRef(false);
     // Track which question index is currently active in the game
     const [activeQuestionIdx, setActiveQuestionIdx] = useState(0);
+    // Combo streak — both ref (for sync read) and state (for UI)
+    const [comboStreak, setComboStreak] = useState(0);
+    const comboRef = useRef(0);
+    const { play, stop, stopAll } = useGameSound();
 
     // Sync currentLevelIdx when completedLevels or levels change (e.g. after async load)
     const prevCompletedRef = useRef(completedLevels);
@@ -193,8 +199,26 @@ export default function GameModeController({
             handledRef.current = false;
             correctCountRef.current = 0;
             totalAnsweredRef.current = 0;
+            comboRef.current = 0;
+            setComboStreak(0);
         }
     }, [state, gameKey]);
+
+    // ── Background music: play when game starts, stop when finished ──
+    useEffect(() => {
+        if (state === "playing" && !calmMode) {
+            const isBoss = levels[currentLevelIdx]?.gameMode === "boss";
+            const bgTrack = isBoss ? 'boss_loop' : 'space_loop';
+            play(bgTrack, { loop: true, volume: isBoss ? 0.4 : 0.3 });
+            return () => stop(bgTrack);
+        }
+        if (state === "levelWin" || state === "levelLose") {
+            stop('space_loop');
+            stop('boss_loop');
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [state, currentLevelIdx, calmMode]);
+
 
     if (levels.length === 0) {
         return (
@@ -247,11 +271,14 @@ export default function GameModeController({
             const stars = calculateStars(correctCountRef.current, totalQ);
             setLastLevelStars(stars);
             onGameComplete(score, currentLevelIdx + 1);
+            play('level_win');
             setState("levelWin");
         } else {
             setLastLevelStars(0);
+            play('level_lose');
             setState("levelLose");
         }
+        stopAll();
     };
 
     // Continue to next level or retry
@@ -294,7 +321,7 @@ export default function GameModeController({
     if (state === "planetIntro") {
         const videoSrc = PLANET_VIDEOS[planetName];
         return (
-            <div className="w-full max-w-5xl mx-auto relative min-h-[500px] rounded-2xl overflow-hidden border border-white/10 bg-space-deep">
+            <div className="w-full max-w-6xl mx-auto relative min-h-[500px]">
                 <PlanetStoryIntro
                     planetName={planetName}
                     planetEmoji={planetEmoji}
@@ -308,7 +335,7 @@ export default function GameModeController({
     // Level intro
     if (state === "levelIntro" && currentLevel) {
         return (
-            <div className="w-full max-w-5xl mx-auto relative min-h-[500px] rounded-2xl overflow-hidden border border-white/10 bg-space-deep flex items-center justify-center">
+            <div className="w-full max-w-6xl mx-auto relative min-h-[500px] flex items-center justify-center">
                 <LevelIntro
                     planetName={planetName}
                     planetEmoji={planetEmoji}
@@ -326,7 +353,7 @@ export default function GameModeController({
     // Transition screens
     if ((state === "levelWin" || state === "levelLose")) {
         return (
-            <div className="w-full max-w-5xl mx-auto relative min-h-[500px] rounded-2xl overflow-hidden border border-white/10 bg-space-deep flex items-center justify-center">
+            <div className="w-full max-w-6xl mx-auto relative min-h-[500px] flex items-center justify-center">
                 <LevelTransition
                     type={state === "levelWin" ? "win" : "lose"}
                     score={lastLevelScore}
@@ -355,10 +382,25 @@ export default function GameModeController({
             }
         };
 
-        // Wrap onAnswered to track accuracy for star calculation
+        // Wrap onAnswered to track accuracy for star calculation + sound + combo
         const trackingOnAnswered = (questionId: string, isCorrect: boolean, subject: string, bloomLevel: number) => {
             totalAnsweredRef.current += 1;
-            if (isCorrect) correctCountRef.current += 1;
+            if (isCorrect) {
+                correctCountRef.current += 1;
+                // Combo logic — use ref for sync read, state for UI update
+                const nextCombo = comboRef.current + 1;
+                comboRef.current = nextCombo;
+                setComboStreak(nextCombo);
+                // Play AFTER state update (not inside setter)
+                if (nextCombo >= 5) play('combo_big');
+                else if (nextCombo >= 3) play('combo_3');
+                else if (nextCombo >= 2) play('combo_2');
+                else play('correct');
+            } else {
+                play('wrong');
+                comboRef.current = 0;
+                setComboStreak(0);
+            }
             // Advance active question index so SummonOverlay shows correct context
             setActiveQuestionIdx(prev => prev + 1);
             onAnswered?.(questionId, isCorrect, subject, bloomLevel);
@@ -420,7 +462,7 @@ export default function GameModeController({
 
         // Wrap with SummonOverlay for 🔮 help system
         return (
-            <div className="w-full max-w-5xl mx-auto relative min-h-[500px] rounded-2xl overflow-hidden border border-white/10 bg-space-deep flex flex-col">
+            <div className="w-full max-w-6xl mx-auto relative min-h-[500px] flex flex-col">
                 <SummonOverlay
                     planetId={planetId || "hue"}
                     bloomLevel={currentBloom}
@@ -434,13 +476,15 @@ export default function GameModeController({
                 </SummonOverlay>
                 {/* Persistent floating mascot companion */}
                 <FloatingMascot />
+                {/* Combo flash overlay */}
+                <ComboFlash combo={comboStreak} calmMode={calmMode} />
             </div>
         );
     }
 
     // Fallback: should never reach here, but show a loading indicator instead of blank
     return (
-        <div className="w-full max-w-5xl mx-auto text-center py-16 px-6">
+        <div className="w-full max-w-6xl mx-auto text-center py-16 px-6">
             <div className="text-4xl animate-bounce mb-4">🚀</div>
             <p className="text-white/60 text-sm">Đang chuẩn bị màn chơi...</p>
         </div>

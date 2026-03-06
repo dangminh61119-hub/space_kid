@@ -91,29 +91,33 @@ export default function StarField({ count = 80 }: { count?: number }) {
                 />
             ))}
 
-            {/* Nebula gradients */}
+            {/* Enhanced Nebula gradients */}
             <div
-                className="absolute w-96 h-96 rounded-full opacity-10 blur-3xl"
+                className="absolute w-[500px] h-[500px] rounded-full opacity-20 blur-[100px] mix-blend-screen animate-float-slow"
                 style={{
-                    background: "radial-gradient(circle, var(--neon-magenta), transparent)",
-                    top: "10%",
-                    right: "10%",
+                    background: "radial-gradient(circle, var(--neon-magenta), transparent 70%)",
+                    top: "-5%",
+                    right: "-5%",
+                    animationDuration: "20s"
                 }}
             />
             <div
-                className="absolute w-80 h-80 rounded-full opacity-8 blur-3xl"
+                className="absolute w-[600px] h-[600px] rounded-full opacity-15 blur-[120px] mix-blend-screen animate-float"
                 style={{
-                    background: "radial-gradient(circle, var(--neon-cyan), transparent)",
-                    bottom: "20%",
-                    left: "5%",
+                    background: "radial-gradient(circle, var(--neon-cyan), transparent 70%)",
+                    bottom: "-10%",
+                    left: "-10%",
+                    animationDuration: "25s"
                 }}
             />
             <div
-                className="absolute w-64 h-64 rounded-full opacity-6 blur-3xl"
+                className="absolute w-[800px] h-[800px] rounded-full opacity-10 blur-[150px] mix-blend-screen animate-float-slow"
                 style={{
-                    background: "radial-gradient(circle, var(--neon-orange), transparent)",
-                    top: "50%",
-                    left: "50%",
+                    background: "radial-gradient(circle, var(--neon-purple), transparent 70%)",
+                    top: "20%",
+                    left: "20%",
+                    animationDuration: "35s",
+                    animationDirection: "reverse"
                 }}
             />
         </div>

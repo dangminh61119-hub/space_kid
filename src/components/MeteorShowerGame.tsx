@@ -6,6 +6,7 @@ import type { GameLevel } from "@/lib/services/db";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { useGame } from "@/lib/game-context";
 import MascotAbilityButton from "@/components/MascotAbilityButton";
+import VolumeControl from "./VolumeControl";
 
 /* ─── Types ─── */
 interface Meteor {
@@ -332,6 +333,7 @@ export default function MeteorShowerGame({
                         <div className="text-neon-gold font-bold text-sm">{score.toLocaleString()}</div>
                         <div className="text-white/40 text-xs">✦</div>
                     </div>
+                    {gameState === "playing" && <VolumeControl />}
                 </div>
             </div>
 

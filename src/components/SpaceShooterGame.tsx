@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Maximize, Minimize } from "lucide-react";
+import VolumeControl from "./VolumeControl";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { useGame } from "@/lib/game-context";
 
@@ -784,20 +785,22 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                     </AnimatePresence>
                 </div>
 
-                {/* Score & Fullscreen */}
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                         <span className="text-neon-cyan font-bold text-lg">{score}</span>
                         <span className="text-white/40 text-xs">✦</span>
                     </div>
                     {gameState === "playing" && (
-                        <button
-                            onClick={toggleFullscreen}
-                            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-colors"
-                            title={isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}
-                        >
-                            {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
-                        </button>
+                        <div className="flex items-center gap-1">
+                            <VolumeControl />
+                            <button
+                                onClick={toggleFullscreen}
+                                className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-colors"
+                                title={isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}
+                            >
+                                {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+                            </button>
+                        </div>
                     )}
                 </div>
             </div>

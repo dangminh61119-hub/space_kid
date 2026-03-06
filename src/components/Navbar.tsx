@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import CalmModeToggle from "./CalmModeToggle";
+import VolumeControl from "./VolumeControl";
 import { useGame } from "@/lib/game-context";
 import { useAuth } from "@/lib/services/auth-context";
 import { useRouter } from "next/navigation";
@@ -66,6 +67,7 @@ export default function Navbar() {
                                 <span className="calm-mode-indicator">🌙 Calm</span>
                             )}
                             <CalmModeToggle />
+                            <VolumeControl />
                         </div>
                     )}
 
@@ -79,7 +81,12 @@ export default function Navbar() {
 
                 {/* Mobile: Calm toggle + hamburger */}
                 <div className="md:hidden flex items-center gap-3">
-                    {player.onboardingComplete && <CalmModeToggle />}
+                    {player.onboardingComplete && (
+                        <>
+                            <CalmModeToggle />
+                            <VolumeControl />
+                        </>
+                    )}
                     <button
                         className="text-white/70 hover:text-neon-cyan transition-colors"
                         onClick={() => setMenuOpen(!menuOpen)}

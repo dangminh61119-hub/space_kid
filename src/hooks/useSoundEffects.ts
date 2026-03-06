@@ -1,25 +1,63 @@
 "use client";
 
 import { useCallback, useRef, useEffect } from 'react';
+import { useGame } from "@/lib/game-context";
+
+/* ─── Singleton Audio Engine ─── */
+// Shared across ALL useSoundEffects instances so volume control affects everything
+let _sharedCtx: AudioContext | null = null;
+let _sharedMasterGain: GainNode | null = null;
+
+function getSharedAudio(): { ctx: AudioContext; masterGain: GainNode } {
+    if (!_sharedCtx) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        _sharedCtx = new (window.AudioContext || (window as Record<string, any>).webkitAudioContext)();
+        _sharedMasterGain = _sharedCtx.createGain();
+        _sharedMasterGain.connect(_sharedCtx.destination);
+    }
+    if (_sharedCtx.state === 'suspended') {
+        _sharedCtx.resume();
+    }
+    return { ctx: _sharedCtx, masterGain: _sharedMasterGain! };
+}
+
+/** Safely set master gain volume, clearing any conflicting automation */
+function applyVolume(vol: number) {
+    if (!_sharedMasterGain || !_sharedCtx) return;
+    const param = _sharedMasterGain.gain;
+    // Cancel any previously scheduled automation to prevent conflicts
+    param.cancelScheduledValues(_sharedCtx.currentTime);
+    // Set the value immediately
+    param.setValueAtTime(vol, _sharedCtx.currentTime);
+}
 
 export function useSoundEffects() {
-    const audioCtxRef = useRef<AudioContext | null>(null);
+    const { player } = useGame();
+    const vol = player?.masterVolume ?? 1.0;
+    const volRef = useRef(vol);
+
+    // Keep ref in sync for closures (BGM interval, etc.)
+    useEffect(() => {
+        volRef.current = vol;
+    }, [vol]);
+
     const bgmIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+    // Keep masterGain in sync with volume from context
+    useEffect(() => {
+        applyVolume(vol);
+    }, [vol]);
+
     const initAudio = useCallback(() => {
-        if (!audioCtxRef.current) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            audioCtxRef.current = new (window.AudioContext || (window as Record<string, any>).webkitAudioContext)();
-        }
-        if (audioCtxRef.current.state === 'suspended') {
-            audioCtxRef.current.resume();
-        }
-        return audioCtxRef.current;
+        const { ctx } = getSharedAudio();
+        // Apply current volume every time initAudio is called
+        applyVolume(volRef.current);
+        return ctx;
     }, []);
 
     const playShoot = useCallback(() => {
         const ctx = initAudio();
-        if (!ctx) return;
+        if (!ctx || !_sharedMasterGain) return;
         const osc = ctx.createOscillator();
         const gainNode = ctx.createGain();
         osc.type = 'square';
@@ -28,14 +66,14 @@ export function useSoundEffects() {
         gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
         osc.connect(gainNode);
-        gainNode.connect(ctx.destination);
+        gainNode.connect(_sharedMasterGain);
         osc.start();
         osc.stop(ctx.currentTime + 0.1);
     }, [initAudio]);
 
     const playHit = useCallback(() => {
         const ctx = initAudio();
-        if (!ctx) return;
+        if (!ctx || !_sharedMasterGain) return;
         const osc = ctx.createOscillator();
         const gainNode = ctx.createGain();
         osc.type = 'sawtooth';
@@ -44,14 +82,14 @@ export function useSoundEffects() {
         gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
         osc.connect(gainNode);
-        gainNode.connect(ctx.destination);
+        gainNode.connect(_sharedMasterGain);
         osc.start();
         osc.stop(ctx.currentTime + 0.2);
     }, [initAudio]);
 
     const playWrong = useCallback(() => {
         const ctx = initAudio();
-        if (!ctx) return;
+        if (!ctx || !_sharedMasterGain) return;
         const osc = ctx.createOscillator();
         const gainNode = ctx.createGain();
         osc.type = 'sawtooth';
@@ -60,14 +98,14 @@ export function useSoundEffects() {
         gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
         gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.4);
         osc.connect(gainNode);
-        gainNode.connect(ctx.destination);
+        gainNode.connect(_sharedMasterGain);
         osc.start();
         osc.stop(ctx.currentTime + 0.4);
     }, [initAudio]);
 
     const playCorrect = useCallback(() => {
         const ctx = initAudio();
-        if (!ctx) return;
+        if (!ctx || !_sharedMasterGain) return;
         const osc = ctx.createOscillator();
         const gainNode = ctx.createGain();
         osc.type = 'sine';
@@ -77,14 +115,14 @@ export function useSoundEffects() {
         gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
         gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
         osc.connect(gainNode);
-        gainNode.connect(ctx.destination);
+        gainNode.connect(_sharedMasterGain);
         osc.start();
         osc.stop(ctx.currentTime + 0.3);
     }, [initAudio]);
 
     const playMove = useCallback(() => {
         const ctx = initAudio();
-        if (!ctx) return;
+        if (!ctx || !_sharedMasterGain) return;
         const osc = ctx.createOscillator();
         const gainNode = ctx.createGain();
         osc.type = 'triangle';
@@ -93,7 +131,7 @@ export function useSoundEffects() {
         gainNode.gain.setValueAtTime(0.05, ctx.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
         osc.connect(gainNode);
-        gainNode.connect(ctx.destination);
+        gainNode.connect(_sharedMasterGain);
         osc.start();
         osc.stop(ctx.currentTime + 0.05);
     }, [initAudio]);
@@ -107,7 +145,7 @@ export function useSoundEffects() {
 
     const playBGM = useCallback(() => {
         const ctx = initAudio();
-        if (!ctx) return;
+        if (!ctx || !_sharedMasterGain) return;
 
         stopBGM();
 
@@ -115,7 +153,7 @@ export function useSoundEffects() {
         let noteIndex = 0;
 
         const playNextNote = () => {
-            if (ctx.state === 'suspended') return;
+            if (ctx.state === 'suspended' || !_sharedMasterGain) return;
 
             const osc = ctx.createOscillator();
             const gainNode = ctx.createGain();
@@ -127,7 +165,7 @@ export function useSoundEffects() {
             gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
 
             osc.connect(gainNode);
-            gainNode.connect(ctx.destination);
+            gainNode.connect(_sharedMasterGain);
 
             osc.start();
             osc.stop(ctx.currentTime + 0.2);
