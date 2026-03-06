@@ -144,6 +144,29 @@ export default function TimeBombGame({
             setBombTime(t => Math.min(t + TIME_BONUS, 30)); // Cap at 30s
             setTimeDelta({ value: TIME_BONUS, id: Date.now() });
             onAnswered?.(question?.id ?? "", true, level?.subject ?? "", question?.bloomLevel ?? 2);
+
+            // BUG FIX: advance to next question after showing correct feedback
+            setTimeout(() => {
+                const nextQ = questionIdx + 1;
+                if (nextQ >= totalQuestions) {
+                    stopBGM();
+                    onGameComplete?.(score + xp, levels.length);
+                    setGameState("win");
+                } else {
+                    setQuestionIdx(nextQ);
+                    setFeedback(null);
+                    setHunterEliminated(null);
+                    // Figure out which level this question belongs to
+                    let cumulative = 0;
+                    for (let i = 0; i < levels.length; i++) {
+                        cumulative += levels[i].questions.length;
+                        if (nextQ < cumulative) {
+                            setCurrentLevel(i);
+                            break;
+                        }
+                    }
+                }
+            }, 800);
         } else {
             playWrong();
             setFeedback("wrong");
