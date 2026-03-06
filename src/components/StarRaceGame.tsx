@@ -159,9 +159,6 @@ export default function StarRaceGame({
     const [isHost, setIsHost] = useState(false);
     const [error, setError] = useState("");
 
-    // Host approval state
-    const [pendingRequests, setPendingRequests] = useState<JoinRequest[]>([]);
-    const [approvalStatus, setApprovalStatus] = useState<"pending" | "accepted" | "rejected">("pending");
 
     // Racing state
     const [questions, setQuestions] = useState<RaceQuestion[]>([]);
@@ -208,28 +205,10 @@ export default function StarRaceGame({
         setPlayers(updatedPlayers);
     }, [isHost, players, playerDbId]);
 
-    // Host: receive join request
-    const handleJoinRequestReceived = useCallback((request: JoinRequest) => {
-        if (!isHost) return;
-        setPendingRequests(prev => {
-            if (prev.some(r => r.playerId === request.playerId)) return prev;
-            return [...prev, request];
-        });
-    }, [isHost]);
-
-    // Joiner: accepted by host
-    const handleJoinAcceptedReceived = useCallback((acceptedPlayerId: string) => {
-        if (acceptedPlayerId === playerDbId) {
-            setApprovalStatus("accepted");
-            setPhase("lobby");
-        }
-    }, [playerDbId]);
-
-    // Joiner: rejected by host
+    // Joiner: kicked by host
     const handleJoinRejectedReceived = useCallback((rejectedPlayerId: string) => {
         if (rejectedPlayerId === playerDbId) {
-            setApprovalStatus("rejected");
-            setError("Chủ phòng đã từ chối yêu cầu tham gia.");
+            setError("Chủ phòng đã loại bạn khỏi phòng đua.");
             unsubRef.current?.();
             setPhase("ship-select");
         }
@@ -326,8 +305,6 @@ export default function StarRaceGame({
                     onAnswer: handleAnswerEvent,
                     onQuestionResults: handleQuestionResults,
                     onRaceFinished: handleRaceFinished,
-                    onJoinRequest: handleJoinRequestReceived,
-                    onJoinAccepted: handleJoinAcceptedReceived,
                     onJoinRejected: handleJoinRejectedReceived,
                 },
             );
@@ -337,25 +314,9 @@ export default function StarRaceGame({
                 unsubRef.current = sub.unsubscribe;
             }
 
-            if (hostFlag) {
-                setPhase("lobby");
-            } else {
-                // Non-host: go to waiting-approval phase
-                setPhase("waiting-approval");
-                setApprovalStatus("pending");
-                // Send join request to host after a short delay to ensure channel is ready
-                setTimeout(() => {
-                    if (sub?.channel) {
-                        broadcastJoinRequest(sub.channel, {
-                            playerId: playerDbId,
-                            name: player.name || "Tân Binh",
-                            emoji: selectedShip.emoji,
-                        });
-                    }
-                }, 500);
-            }
+            setPhase("lobby");
         },
-        [playerDbId, player.name, selectedShip.emoji, handlePlayersUpdate, handleRaceStart, handleQuestion, handleAnswerEvent, handleQuestionResults, handleRaceFinished, handleJoinRequestReceived, handleJoinAcceptedReceived, handleJoinRejectedReceived],
+        [playerDbId, player.name, selectedShip.emoji, handlePlayersUpdate, handleRaceStart, handleQuestion, handleAnswerEvent, handleQuestionResults, handleRaceFinished, handleJoinRejectedReceived],
     );
 
     /* ─── Create Room ─── */
@@ -386,18 +347,10 @@ export default function StarRaceGame({
         connectToRoom(roomData, false);
     };
 
-    /* ─── Host: Accept Player ─── */
-    const handleAcceptPlayer = (request: JoinRequest) => {
+    /* ─── Host: Kick Player ─── */
+    const handleKickPlayer = (playerId: string) => {
         if (!channelRef.current) return;
-        broadcastJoinAccepted(channelRef.current, request.playerId);
-        setPendingRequests(prev => prev.filter(r => r.playerId !== request.playerId));
-    };
-
-    /* ─── Host: Reject Player ─── */
-    const handleRejectPlayer = (request: JoinRequest) => {
-        if (!channelRef.current) return;
-        broadcastJoinRejected(channelRef.current, request.playerId);
-        setPendingRequests(prev => prev.filter(r => r.playerId !== request.playerId));
+        broadcastJoinRejected(channelRef.current, playerId);
     };
 
     /* ─── Start Race (host only) ─── */
@@ -597,43 +550,6 @@ export default function StarRaceGame({
         );
     }
 
-    /* ─── Phase 1.5: Waiting for Host Approval ─── */
-    if (phase === "waiting-approval") {
-        return (
-            <div className="w-full max-w-lg mx-auto p-6 text-center">
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                    <div className="text-5xl mb-4">⏳</div>
-                    <h2 className="text-2xl font-bold text-white mb-2 font-[var(--font-heading)]">
-                        Chờ chấp nhận
-                    </h2>
-                    <p className="text-white/50 text-sm mb-6">
-                        Đang chờ chủ phòng phê duyệt yêu cầu tham gia...
-                    </p>
-                    <div className="glass-card-strong !rounded-2xl !p-6 mb-6">
-                        <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                            className="text-4xl inline-block mb-3"
-                        >
-                            {selectedShip.emoji}
-                        </motion.div>
-                        <div className="text-white font-bold">{player.name || "Tân Binh"}</div>
-                        <div className="text-white/30 text-xs mt-1">Phòng: {roomCode}</div>
-                    </div>
-                    <button
-                        onClick={() => {
-                            unsubRef.current?.();
-                            setPhase("ship-select");
-                            setError("");
-                        }}
-                        className="text-white/30 text-sm hover:text-white/60 transition-colors"
-                    >
-                        ← Hủy tham gia
-                    </button>
-                </motion.div>
-            </div>
-        );
-    }
 
     /* ─── Phase 2: Lobby ─── */
     if (phase === "lobby") {
@@ -682,44 +598,20 @@ export default function StarRaceGame({
                                             BẠN
                                         </span>
                                     )}
+                                    {/* Host can kick non-host players */}
+                                    {isHost && !p.isHost && p.playerId !== playerDbId && (
+                                        <button
+                                            onClick={() => handleKickPlayer(p.playerId)}
+                                            className="text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full font-bold hover:bg-red-500/30 transition-colors"
+                                            title={`Loại ${p.name}`}
+                                        >
+                                            ✖ Loại
+                                        </button>
+                                    )}
                                 </div>
                             ))}
                         </div>
                     </div>
-
-                    {/* Pending Join Requests (host only) */}
-                    {isHost && pendingRequests.length > 0 && (
-                        <div className="glass-card !rounded-2xl !p-4 mb-4" style={{ border: "1px solid rgba(250,204,21,0.3)" }}>
-                            <div className="text-xs text-neon-gold uppercase tracking-wider mb-3">
-                                🔔 Yêu cầu tham gia ({pendingRequests.length})
-                            </div>
-                            <div className="space-y-2">
-                                {pendingRequests.map((req) => (
-                                    <motion.div
-                                        key={req.playerId}
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        className="flex items-center gap-3 glass-card !p-3 !rounded-xl"
-                                    >
-                                        <span className="text-2xl">{req.emoji}</span>
-                                        <span className="text-white font-bold flex-1 text-left text-sm">{req.name}</span>
-                                        <button
-                                            onClick={() => handleAcceptPlayer(req)}
-                                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors"
-                                        >
-                                            ✅ Chấp nhận
-                                        </button>
-                                        <button
-                                            onClick={() => handleRejectPlayer(req)}
-                                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
-                                        >
-                                            ❌ Từ chối
-                                        </button>
-                                    </motion.div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
 
                     {/* Start button (host only, needs 2+ players) */}
                     {isHost ? (
