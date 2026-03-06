@@ -139,7 +139,6 @@ export async function getRaceQuestions(
         .from("race_questions")
         .select("id, question_text, correct_answer, wrong_answers, subject, difficulty")
         .eq("journey_slug", journeySlug)
-        .eq("grade", grade)
         .order("order_index");
 
     if (error || !data) {

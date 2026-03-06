@@ -4,10 +4,19 @@ import Link from "next/link";
 import { useState } from "react";
 import CalmModeToggle from "./CalmModeToggle";
 import { useGame } from "@/lib/game-context";
+import { useAuth } from "@/lib/services/auth-context";
+import { useRouter } from "next/navigation";
 
 export default function Navbar() {
     const [menuOpen, setMenuOpen] = useState(false);
     const { player } = useGame();
+    const { user, signOut } = useAuth();
+    const router = useRouter();
+
+    const handleSignOut = async () => {
+        await signOut();
+        router.push("/login");
+    };
 
     return (
         <nav className="fixed top-0 left-0 right-0 z-50 glass-card-strong border-b border-white/10" style={{ borderRadius: 0 }}>
@@ -22,12 +31,21 @@ export default function Navbar() {
 
                 {/* Desktop Nav */}
                 <div className="hidden md:flex items-center gap-4">
-                    <Link
-                        href="/login"
-                        className="text-sm text-white/70 hover:text-neon-cyan transition-colors duration-300"
-                    >
-                        Đăng nhập
-                    </Link>
+                    {user ? (
+                        <button
+                            onClick={handleSignOut}
+                            className="text-sm text-white/70 hover:text-red-400 transition-colors duration-300"
+                        >
+                            Đăng xuất
+                        </button>
+                    ) : (
+                        <Link
+                            href="/login"
+                            className="text-sm text-white/70 hover:text-neon-cyan transition-colors duration-300"
+                        >
+                            Đăng nhập
+                        </Link>
+                    )}
                     <Link
                         href="/portal"
                         className="text-sm text-white/70 hover:text-neon-cyan transition-colors duration-300"
@@ -86,9 +104,15 @@ export default function Navbar() {
             {/* Mobile menu */}
             {menuOpen && (
                 <div className="md:hidden glass-card-strong border-t border-white/10 px-4 py-4 space-y-3" style={{ borderRadius: 0 }}>
-                    <Link href="/login" className="block text-white/70 hover:text-neon-cyan transition-colors">
-                        Đăng nhập
-                    </Link>
+                    {user ? (
+                        <button onClick={handleSignOut} className="block text-white/70 hover:text-red-400 transition-colors">
+                            Đăng xuất
+                        </button>
+                    ) : (
+                        <Link href="/login" className="block text-white/70 hover:text-neon-cyan transition-colors">
+                            Đăng nhập
+                        </Link>
+                    )}
                     <Link href="/portal" className="block text-white/70 hover:text-neon-cyan transition-colors">
                         Bản đồ Vũ trụ
                     </Link>
