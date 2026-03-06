@@ -205,6 +205,7 @@ export function subscribeToRaceRoom(
     const channelName = `race:${roomCode}`;
     const channel = supabase.channel(channelName, {
         config: {
+            broadcast: { self: true },
             presence: { key: player.playerId },
         },
     });
