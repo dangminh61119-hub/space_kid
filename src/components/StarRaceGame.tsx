@@ -219,10 +219,9 @@ export default function StarRaceGame({
 
     const handleRaceStart = useCallback((qs: RaceQuestion[]) => {
         setQuestions(qs);
-        stopBGM();
         setPhase("countdown");
         setCountdownNum(3);
-    }, [stopBGM]);
+    }, []);
 
     const handleQuestion = useCallback((q: RaceQuestion, idx: number) => {
         setCurrentQuestion(q);
