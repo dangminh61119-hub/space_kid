@@ -90,25 +90,66 @@ export default function AdminTextbooksPage() {
         }
     };
 
-    /* ─── Client-side PDF text extraction ─── */
+    /* ─── Client-side PDF text extraction (with OCR fallback) ─── */
     const extractPDFText = async (file: File): Promise<string> => {
         const pdfjs = await import("pdfjs-dist");
         pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
 
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-        const pages: string[] = [];
 
+        // Step 1: Try digital text extraction
+        setSuccess(`📄 Thử trích xuất text (${pdf.numPages} trang)...`);
+        const digitalPages: string[] = [];
         for (let i = 1; i <= pdf.numPages; i++) {
             const page = await pdf.getPage(i);
-            const textContent = await page.getTextContent();
-            const pageText = textContent.items
-                .map((item) => ("str" in item ? item.str : ""))
-                .join(" ");
-            if (pageText.trim()) pages.push(pageText);
+            const tc = await page.getTextContent();
+            const text = tc.items.map((item) => ("str" in item ? item.str : "")).join(" ");
+            if (text.trim()) digitalPages.push(text);
         }
 
-        return pages.join("\n\n");
+        // If digital text found, use it
+        if (digitalPages.length > pdf.numPages * 0.3) {
+            return digitalPages.join("\n\n");
+        }
+
+        // Step 2: Fallback to OCR via Gemini Vision
+        setSuccess(`🔍 PDF scan detected — đang OCR bằng Gemini Vision (0/${pdf.numPages})...`);
+        const ocrPages: string[] = [];
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+            setSuccess(`🔍 OCR trang ${i}/${pdf.numPages}...`);
+
+            const page = await pdf.getPage(i);
+            const viewport = page.getViewport({ scale: 1.5 });
+            const canvas = document.createElement("canvas");
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            const ctx = canvas.getContext("2d")!;
+            await page.render({ canvasContext: ctx, viewport, canvas } as never).promise;
+
+            // Convert to base64 JPEG (smaller than PNG)
+            const base64 = canvas.toDataURL("image/jpeg", 0.85);
+
+            // Send to OCR API
+            const res = await fetch("/api/admin/textbooks/ocr", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ image: base64, pageNum: i }),
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data.text?.trim()) ocrPages.push(data.text);
+            } else {
+                console.warn(`OCR failed for page ${i}`);
+            }
+
+            // Cleanup canvas
+            canvas.remove();
+        }
+
+        return ocrPages.join("\n\n");
     };
 
     /* ─── Upload ─── */
@@ -122,31 +163,30 @@ export default function AdminTextbooksPage() {
         try {
             let content = formContent;
 
-            // Extract text from PDF on the client side (avoids Vercel payload limit)
+            // Extract text from PDF (digital or OCR)
             if (uploadMode === "pdf" && pdfFile) {
-                setSuccess("📄 Đang trích xuất text từ PDF...");
                 content = await extractPDFText(pdfFile);
                 if (!content.trim()) {
-                    setError("❌ Không trích xuất được text từ PDF. File có thể là scan/ảnh. Hãy dùng chế độ Paste Text.");
+                    setError("❌ Không trích xuất được text. Thử chế độ Paste Text.");
                     setSuccess("");
                     return;
                 }
-                setSuccess(`📄 Đã trích xuất ${content.split(/\s+/).length} từ. Đang tạo embedding...`);
+                const wordCount = content.split(/\s+/).length;
+                setSuccess(`✅ Trích xuất ${wordCount} từ. Đang tạo embedding...`);
             }
 
-            // Always send as JSON (text only, no file upload)
+            // Send text to create embedding
             const res = await fetch("/api/admin/textbooks", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                 body: JSON.stringify({ title: formTitle, subject: formSubject, grade: formGrade, publisher: formPublisher, content }),
             });
 
-            // Handle non-JSON responses (e.g., Vercel timeout)
             const ct = res.headers.get("content-type") || "";
             if (!ct.includes("application/json")) {
                 const text = await res.text();
                 if (res.status === 504 || text.includes("FUNCTION_INVOCATION_TIMEOUT")) {
-                    setError(`⏰ Timeout: Nội dung quá dài. Hãy thử chia nhỏ file PDF.`);
+                    setError(`⏰ Timeout: Nội dung quá dài. Thử chia nhỏ file PDF.`);
                 } else {
                     setError(`❌ Server error ${res.status}: ${res.statusText || text.slice(0, 200)}`);
                 }
