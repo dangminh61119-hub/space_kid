@@ -65,13 +65,7 @@ const SUBJECT_COLORS: Record<string, string> = {
     history: "var(--learn-history)",
 };
 
-const GRADE_FILTERS = [
-    { id: 1, label: "Lớp 1" },
-    { id: 2, label: "Lớp 2" },
-    { id: 3, label: "Lớp 3" },
-    { id: 4, label: "Lớp 4" },
-    { id: 5, label: "Lớp 5" },
-];
+/* Grade filters removed — students only see their own grade */
 
 /* ─── Watch history local storage ─── */
 const WATCH_KEY = "cosmomosaic_lesson_watch";
@@ -99,7 +93,6 @@ export default function LearnLessonsPage() {
     const { player } = useGame();
     const { playerDbId } = useAuth();
     const [subjectFilter, setSubjectFilter] = useState("all");
-    const [gradeFilter, setGradeFilter] = useState(player.grade >= 1 && player.grade <= 5 ? player.grade : 1);
     const [activeLesson, setActiveLesson] = useState<LessonData | null>(null);
     const [profile, setProfile] = useState<StudentProfile | null>(null);
     const [watchHistory, setWatchHistory] = useState<Record<string, { seconds: number; lastWatched: string }>>({});
@@ -127,14 +120,14 @@ export default function LearnLessonsPage() {
         return recommended;
     }, [profile, watchHistory]);
 
-    // Filtered lessons — always filter by grade
+    // Filtered lessons — always use player.grade, no user-selectable grade
     const filteredLessons = useMemo(() => {
         return LESSON_CATALOG.filter(l => {
             if (subjectFilter !== "all" && l.subject !== subjectFilter) return false;
-            if (l.grade !== gradeFilter) return false;
+            if (l.grade !== player.grade) return false;
             return true;
         });
-    }, [subjectFilter, gradeFilter]);
+    }, [subjectFilter, player.grade]);
 
     // Watch handler
     const handleWatched = async (lessonId: string, seconds: number) => {
@@ -232,18 +225,6 @@ export default function LearnLessonsPage() {
                         </button>
                     ))}
                 </div>
-                {/* Grade */}
-                <div className="lessons-filter-row">
-                    {GRADE_FILTERS.map(g => (
-                        <button
-                            key={g.id}
-                            onClick={() => setGradeFilter(g.id)}
-                            className={`lessons-filter-btn lessons-grade-btn ${gradeFilter === g.id ? "active" : ""}`}
-                        >
-                            {g.label}
-                        </button>
-                    ))}
-                </div>
             </div>
 
             {/* Results count */}
@@ -317,7 +298,7 @@ export default function LearnLessonsPage() {
                     <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
                     <p style={{ fontWeight: 600, marginBottom: 4 }}>Chưa có bài giảng phù hợp</p>
                     <p style={{ fontSize: 13, color: "var(--learn-text-secondary)" }}>
-                        Thử chọn lớp hoặc môn khác nhé!
+                        Thử chọn môn khác nhé!
                     </p>
                 </div>
             )}
