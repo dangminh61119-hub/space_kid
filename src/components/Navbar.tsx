@@ -54,6 +54,12 @@ export default function Navbar() {
                         Bản đồ Vũ trụ
                     </Link>
                     <Link
+                        href="/learn"
+                        className="text-sm text-white/70 hover:text-neon-cyan transition-colors duration-300"
+                    >
+                        📚 Học Tập
+                    </Link>
+                    <Link
                         href="/dashboard"
                         className="text-sm text-white/70 hover:text-neon-cyan transition-colors duration-300"
                     >
@@ -118,6 +124,9 @@ export default function Navbar() {
                     )}
                     <Link href="/portal" className="block text-white/70 hover:text-neon-cyan transition-colors">
                         Bản đồ Vũ trụ
+                    </Link>
+                    <Link href="/learn" className="block text-white/70 hover:text-neon-cyan transition-colors">
+                        📚 Học Tập
                     </Link>
                     <Link href="/dashboard" className="block text-white/70 hover:text-neon-cyan transition-colors">
                         Phụ huynh

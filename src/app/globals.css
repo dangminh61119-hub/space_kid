@@ -34,6 +34,32 @@
   --dash-eng: #FB923C;
   --dash-hist: #A78BFA;
 
+  /* === LEARN MODULE (Student Learning Hub) === */
+  --learn-bg: #F0F2FF;
+  --learn-bg-alt: #E8ECFF;
+  --learn-card: #FFFFFF;
+  --learn-card-hover: #F8F9FF;
+  --learn-text: #2D3250;
+  --learn-text-secondary: #6B7280;
+  --learn-accent: #6366F1;
+  --learn-accent-light: #A5B4FC;
+  --learn-success: #34D399;
+  --learn-success-bg: #D1FAE5;
+  --learn-warning: #FBBF24;
+  --learn-warning-bg: #FEF3C7;
+  --learn-error: #F87171;
+  --learn-error-bg: #FEE2E2;
+  --learn-streak: #FB923C;
+  --learn-border: #E0E7FF;
+  --learn-sidebar: #6366F1;
+  --learn-sidebar-text: #FFFFFF;
+  --learn-math: #818CF8;
+  --learn-vietnamese: #34D399;
+  --learn-english: #FB923C;
+  --learn-science: #F472B6;
+  --learn-geography: #38BDF8;
+  --learn-history: #A78BFA;
+
   /* === TYPOGRAPHY === */
   --font-heading: 'Baloo 2', cursive, sans-serif;
   --font-body: 'Nunito', sans-serif;
