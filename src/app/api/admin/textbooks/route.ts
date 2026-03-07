@@ -57,6 +57,42 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ textbooks: data || [] });
 }
 
+/* ─── PATCH: Update textbook metadata ─── */
+export async function PATCH(request: NextRequest) {
+    const admin = await requireAdmin(request);
+    if (!admin.isAdmin) return forbiddenResponse(admin.error);
+
+    const supabase = getAdminSupabase(admin.userToken);
+    if (!supabase) {
+        return NextResponse.json({ error: "DB not configured" }, { status: 500 });
+    }
+
+    const { id, title, subject, grade, publisher } = await request.json();
+
+    if (!id) {
+        return NextResponse.json({ error: "Missing textbook id" }, { status: 400 });
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (title !== undefined) updateData.title = title;
+    if (subject !== undefined) updateData.subject = subject;
+    if (grade !== undefined) updateData.grade = parseInt(String(grade));
+    if (publisher !== undefined) updateData.publisher = publisher || null;
+
+    const { data, error } = await supabase
+        .from("textbooks")
+        .update(updateData)
+        .eq("id", id)
+        .select()
+        .single();
+
+    if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ textbook: data });
+}
+
 /* ─── POST: Create + process textbook ─── */
 export async function POST(request: NextRequest) {
     const admin = await requireAdmin(request);

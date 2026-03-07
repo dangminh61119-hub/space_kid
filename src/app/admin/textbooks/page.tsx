@@ -63,6 +63,13 @@ export default function AdminTextbooksPage() {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editContent, setEditContent] = useState("");
 
+    // Textbook metadata edit
+    const [editBookId, setEditBookId] = useState<string | null>(null);
+    const [editBookTitle, setEditBookTitle] = useState("");
+    const [editBookSubject, setEditBookSubject] = useState("");
+    const [editBookGrade, setEditBookGrade] = useState(1);
+    const [editBookPublisher, setEditBookPublisher] = useState("");
+
     const token = session?.access_token;
 
     const fetchTextbooks = useCallback(async () => {
@@ -284,6 +291,32 @@ export default function AdminTextbooksPage() {
         }
     };
 
+    /* ─── Textbook Metadata Edit ─── */
+    const startEditBook = (tb: Textbook) => {
+        setEditBookId(tb.id);
+        setEditBookTitle(tb.title);
+        setEditBookSubject(tb.subject);
+        setEditBookGrade(tb.grade);
+        setEditBookPublisher(tb.publisher || "");
+    };
+
+    const saveBook = async () => {
+        if (!token || !editBookId) return;
+        try {
+            const res = await fetch("/api/admin/textbooks", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ id: editBookId, title: editBookTitle, subject: editBookSubject, grade: editBookGrade, publisher: editBookPublisher }),
+            });
+            if (res.ok) {
+                setEditBookId(null);
+                fetchTextbooks();
+            }
+        } catch (err) {
+            console.error("Save book error:", err);
+        }
+    };
+
     const groupedByGrade = textbooks.reduce<Record<number, Textbook[]>>((acc, tb) => {
         if (!acc[tb.grade]) acc[tb.grade] = [];
         acc[tb.grade].push(tb);
@@ -454,19 +487,43 @@ export default function AdminTextbooksPage() {
                                     const subj = SUBJECTS.find(s => s.id === tb.subject);
                                     return (
                                         <div key={tb.id} className="tb-card">
-                                            <div className="tb-card-header">
-                                                <div className="tb-card-info">
-                                                    <h3>{tb.title}</h3>
-                                                    <div className="tb-card-tags">
-                                                        <span className="tb-tag purple">{subj?.emoji} {subj?.label || tb.subject}</span>
-                                                        <span className="tb-tag amber">Lớp {tb.grade}</span>
-                                                        <span className={`tb-tag ${tb.status === "ready" ? "green" : tb.status === "error" ? "red" : "gray"}`}>
-                                                            {tb.status === "ready" ? "✅" : tb.status === "error" ? "❌" : "⏳"} {tb.status}
-                                                        </span>
+                                            {editBookId === tb.id ? (
+                                                /* Edit mode */
+                                                <div className="tb-edit-form">
+                                                    <div className="tb-edit-row">
+                                                        <input className="tb-edit-input" value={editBookTitle} onChange={e => setEditBookTitle(e.target.value)} placeholder="Tên sách" />
+                                                        <input className="tb-edit-input sm" value={editBookPublisher} onChange={e => setEditBookPublisher(e.target.value)} placeholder="NXB" />
+                                                    </div>
+                                                    <div className="tb-edit-row">
+                                                        <select className="tb-edit-select" value={editBookSubject} onChange={e => setEditBookSubject(e.target.value)}>
+                                                            {SUBJECTS.map(s => <option key={s.id} value={s.id}>{s.emoji} {s.label}</option>)}
+                                                        </select>
+                                                        <select className="tb-edit-select" value={editBookGrade} onChange={e => setEditBookGrade(parseInt(e.target.value))}>
+                                                            {GRADES.map(g => <option key={g} value={g}>Lớp {g}</option>)}
+                                                        </select>
+                                                        <button onClick={saveBook} className="tb-edit-save">💾 Lưu</button>
+                                                        <button onClick={() => setEditBookId(null)} className="tb-edit-cancel">✕ Hủy</button>
                                                     </div>
                                                 </div>
-                                                <button onClick={() => handleDelete(tb.id, tb.title)} className="tb-delete-btn" title="Xóa">🗑️</button>
-                                            </div>
+                                            ) : (
+                                                /* View mode */
+                                                <div className="tb-card-header">
+                                                    <div className="tb-card-info">
+                                                        <h3>{tb.title}</h3>
+                                                        <div className="tb-card-tags">
+                                                            <span className="tb-tag purple">{subj?.emoji} {subj?.label || tb.subject}</span>
+                                                            <span className="tb-tag amber">Lớp {tb.grade}</span>
+                                                            <span className={`tb-tag ${tb.status === "ready" ? "green" : tb.status === "error" ? "red" : "gray"}`}>
+                                                                {tb.status === "ready" ? "✅" : tb.status === "error" ? "❌" : "⏳"} {tb.status}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="tb-card-btns">
+                                                        <button onClick={() => startEditBook(tb)} className="tb-edit-btn" title="Sửa">✏️</button>
+                                                        <button onClick={() => handleDelete(tb.id, tb.title)} className="tb-delete-btn" title="Xóa">🗑️</button>
+                                                    </div>
+                                                </div>
+                                            )}
                                             <div className="tb-card-meta">
                                                 <span>📦 {tb.total_chunks} chunks</span>
                                                 {tb.publisher && <span>🏢 {tb.publisher}</span>}
@@ -711,6 +768,35 @@ export default function AdminTextbooksPage() {
                     padding: 4px;
                 }
                 .tb-delete-btn:hover { opacity: 1; }
+                .tb-card-btns { display: flex; gap: 2px; }
+                .tb-edit-btn {
+                    background: none; border: none; cursor: pointer;
+                    font-size: 16px; opacity: 0.4; transition: opacity 0.15s; padding: 4px;
+                }
+                .tb-edit-btn:hover { opacity: 1; }
+
+                /* Edit form */
+                .tb-edit-form { display: flex; flex-direction: column; gap: 8px; }
+                .tb-edit-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+                .tb-edit-input, .tb-edit-select {
+                    flex: 1; min-width: 100px; padding: 6px 10px; border-radius: 8px;
+                    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+                    color: #e2e8f0; font-size: 13px; font-family: inherit;
+                }
+                .tb-edit-input.sm { max-width: 140px; }
+                .tb-edit-input:focus, .tb-edit-select:focus { outline: none; border-color: #8b5cf6; }
+                .tb-edit-save {
+                    padding: 6px 14px; border-radius: 8px; border: none;
+                    background: rgba(34,197,94,0.15); color: #86efac;
+                    font-size: 12px; font-weight: 600; cursor: pointer;
+                }
+                .tb-edit-save:hover { background: rgba(34,197,94,0.25); }
+                .tb-edit-cancel {
+                    padding: 6px 14px; border-radius: 8px; border: none;
+                    background: rgba(255,255,255,0.05); color: #94a3b8;
+                    font-size: 12px; font-weight: 600; cursor: pointer;
+                }
+                .tb-edit-cancel:hover { background: rgba(255,255,255,0.1); }
                 .tb-card-meta {
                     display: flex; gap: 14px; font-size: 12px; color: #475569;
                     margin-top: 12px; padding-top: 12px;
