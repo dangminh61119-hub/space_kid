@@ -48,6 +48,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             <a href="/admin/race-questions" className="px-3 py-1.5 rounded-lg text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors">
                                 ☀️ Race Questions
                             </a>
+                            <a href="/admin/textbooks" className="px-3 py-1.5 rounded-lg text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors">
+                                📚 Sách Giáo Khoa
+                            </a>
                         </nav>
                     </div>
                     <div className="flex items-center gap-3">
