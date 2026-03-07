@@ -73,7 +73,8 @@ function ProgressWheel({ value, size = 64, stroke = 6, color }: { value: number;
 
 export default function LearnHomePage() {
     const { player } = useGame();
-    const { playerDbId } = useAuth();
+    const { playerDbId, session } = useAuth();
+    const token = session?.access_token;
     const [profile, setProfile] = useState<StudentProfile | null>(null);
     const [stats, setStats] = useState<{
         totalSessions: number;
@@ -102,9 +103,11 @@ export default function LearnHomePage() {
                 setStats(s);
 
                 // Fetch recent study sessions from DB
-                if (playerDbId) {
+                if (playerDbId && token) {
                     try {
-                        const sessRes = await fetch(`/api/study-sessions?player_id=${playerDbId}&mode=recent`);
+                        const sessRes = await fetch(`/api/study-sessions?player_id=${playerDbId}&mode=recent`, {
+                            headers: { Authorization: `Bearer ${token}` },
+                        });
                         const sessData = await sessRes.json();
                         if (sessData.sessions) setRecentStudy(sessData.sessions.slice(0, 3));
                     } catch { /* silent */ }

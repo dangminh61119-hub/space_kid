@@ -126,8 +126,9 @@ function generateQuizQuestions(subject: string, grade: number): QuizQuestion[] {
 /* ─── Practice Page Content ─── */
 function PracticeContent() {
     const { player } = useGame();
-    const { playerDbId } = useAuth();
+    const { playerDbId, session } = useAuth();
     const searchParams = useSearchParams();
+    const token = session?.access_token;
 
     const [mode, setMode] = useState<PracticeMode>("select");
     const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
@@ -181,7 +182,10 @@ function PracticeContent() {
         try {
             const res = await fetch("/api/ai/practice", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
                 body: JSON.stringify({ topic, grade, subject, count: 5 }),
             });
             const data = await res.json();
@@ -348,11 +352,14 @@ function PracticeContent() {
                     onComplete={async (results) => {
                         await handleComplete({ correct: results.correct, incorrect: results.incorrect });
                         // Mark báo bài session as practiced
-                        if (baoBaiSessionId) {
+                        if (baoBaiSessionId && token) {
                             try {
                                 await fetch("/api/study-sessions", {
                                     method: "PATCH",
-                                    headers: { "Content-Type": "application/json" },
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                        Authorization: `Bearer ${token}`,
+                                    },
                                     body: JSON.stringify({ sessionId: baoBaiSessionId, practiced: true }),
                                 });
                             } catch { /* silent */ }
