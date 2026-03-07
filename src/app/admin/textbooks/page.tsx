@@ -76,13 +76,26 @@ export default function AdminTextbooksPage() {
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                 body: JSON.stringify({ title: formTitle, subject: formSubject, grade: formGrade, publisher: formPublisher, content: formContent }),
             });
+
+            // Handle non-JSON responses (e.g., Vercel timeout returns HTML)
+            const contentType = res.headers.get("content-type") || "";
+            if (!contentType.includes("application/json")) {
+                const text = await res.text();
+                if (res.status === 504 || text.includes("FUNCTION_INVOCATION_TIMEOUT")) {
+                    setError(`⏰ Timeout (${res.status}): Nội dung quá dài. Hãy thử paste ít hơn 2000 từ.`);
+                } else {
+                    setError(`❌ Server error ${res.status}: ${res.statusText || text.slice(0, 200)}`);
+                }
+                return;
+            }
+
             const data = await res.json();
-            if (!res.ok) { setError(data.error || "Upload failed"); return; }
+            if (!res.ok) { setError(`❌ ${data.error || "Upload failed"}`); return; }
             setSuccess(`✅ Upload thành công! ${data.chunks} chunks đã được tạo.`);
             setFormTitle(""); setFormContent(""); setFormPublisher(""); setShowForm(false);
             fetchTextbooks();
         } catch (err) {
-            setError("Network error: " + String(err));
+            setError("🔌 Network error: " + String(err));
         } finally {
             setProcessing(false);
         }
