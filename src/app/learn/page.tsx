@@ -124,19 +124,23 @@ export default function LearnHomePage() {
 
     return (
         <motion.div variants={stagger} initial="hidden" animate="visible">
-            {/* Header */}
-            <motion.div variants={fadeUp}>
-                <h1 className="learn-page-title">
-                    {player.mascot === "cat" ? "🐱" : player.mascot === "dog" ? "🐶" : "👋"} Xin chào, {player.name}!
-                </h1>
-                <p className="learn-page-subtitle">Lớp {player.grade} • Level {player.level}</p>
-            </motion.div>
-
-            {/* Cú Mèo Greeting Card */}
-            <motion.div variants={fadeUp} className="learn-card" style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 16 }}>
-                <div style={{ fontSize: 40, flexShrink: 0 }}>🦉</div>
-                <div>
-                    <p style={{ fontWeight: 600, fontSize: 15, lineHeight: 1.5 }}>{greeting}</p>
+            {/* Gamified Hero Banner */}
+            <motion.div variants={fadeUp} className="learn-hero-banner">
+                <div style={{ flex: 1 }}>
+                    <h1 className="learn-hero-title">
+                        {player.mascot === "cat" ? "🐱" : player.mascot === "dog" ? "🐶" : "👋"} Xin chào, {player.name}!
+                    </h1>
+                    <p className="learn-hero-subtitle">
+                        <span className="learn-badge" style={{ background: "rgba(255,255,255,0.2)", color: "white" }}>Lớp {player.grade}</span>
+                        <span className="learn-badge" style={{ background: "rgba(255,255,255,0.2)", color: "white" }}>Level {player.level}</span>
+                    </p>
+                    <div className="learn-hero-speech">
+                        <span style={{ fontSize: 24, marginRight: 8 }}>🦉</span>
+                        <span>{greeting}</span>
+                    </div>
+                </div>
+                <div className="learn-hero-graphic">
+                    🚀
                 </div>
             </motion.div>
 
@@ -292,52 +296,138 @@ export default function LearnHomePage() {
           min-height: 60vh;
         }
 
+        .learn-hero-banner {
+          background: linear-gradient(135deg, var(--learn-accent), #4F46E5);
+          border-radius: 28px;
+          padding: 32px 36px;
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 32px;
+          box-shadow: 0 12px 32px rgba(124, 58, 237, 0.25), inset 0 2px 0 rgba(255,255,255,0.2);
+          position: relative;
+          overflow: hidden;
+        }
+
+        .learn-hero-banner::after {
+          content: '';
+          position: absolute;
+          top: -50%; right: -10%;
+          width: 300px; height: 300px;
+          background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+          border-radius: 50%;
+          pointer-events: none;
+        }
+
+        .learn-hero-title {
+          font-family: var(--font-heading);
+          font-size: 36px;
+          font-weight: 900;
+          margin-bottom: 12px;
+          text-shadow: 0 2px 4px rgba(0,0,0,0.15);
+          letter-spacing: -0.5px;
+        }
+
+        .learn-hero-subtitle {
+          display: flex;
+          gap: 12px;
+          margin-bottom: 24px;
+        }
+
+        .learn-hero-speech {
+          background: rgba(255, 255, 255, 0.15);
+          backdrop-filter: blur(8px);
+          padding: 12px 20px;
+          border-radius: 20px 20px 20px 4px;
+          display: inline-flex;
+          align-items: center;
+          font-weight: 600;
+          font-size: 15px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+          border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .learn-hero-graphic {
+          font-size: 120px;
+          filter: drop-shadow(0 8px 16px rgba(0,0,0,0.2));
+          animation: float-slow 6s ease-in-out infinite;
+          margin-right: 20px;
+        }
+
         .learn-stats-row {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
-          gap: 10px;
-          margin-bottom: 24px;
+          gap: 16px;
+          margin-bottom: 32px;
         }
 
         .learn-stat-card {
           background: var(--learn-card);
-          border: 1px solid var(--learn-border);
-          border-radius: 14px;
-          padding: 14px 10px;
+          padding: 20px;
+          border-radius: 24px;
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 4px;
           text-align: center;
+          border: 2px solid white;
+          box-shadow: 0 8px 24px rgba(124, 58, 237, 0.05), inset 0 0 0 1px var(--learn-border);
+          transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
-        .learn-stat-icon { font-size: 22px; }
-        .learn-stat-value { font-family: var(--font-heading); font-weight: 800; font-size: 22px; color: var(--learn-text); }
-        .learn-stat-label { font-size: 11px; color: var(--learn-text-secondary); font-weight: 600; }
+        .learn-stat-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(124, 58, 237, 0.1); }
+
+        .learn-stat-icon {
+          font-size: 32px;
+          margin-bottom: 8px;
+          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+        }
+
+        .learn-stat-value {
+          font-family: var(--font-heading);
+          font-size: 28px;
+          font-weight: 900;
+          color: var(--learn-text);
+          line-height: 1;
+          margin-bottom: 4px;
+        }
+
+        .learn-stat-label {
+          font-size: 13px;
+          color: var(--learn-text-secondary);
+          font-weight: 700;
+        }
 
         .learn-two-col {
           display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 24px;
+          grid-template-columns: 1.5fr 1fr;
+          gap: 32px;
           align-items: start;
         }
 
         .learn-subjects-grid {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 16px;
         }
 
         .learn-subject-card {
-          padding: 14px 16px;
+          cursor: pointer;
+          border-width: 2px;
+        }
+
+        @media (max-width: 1024px) {
+          .learn-two-col { grid-template-columns: 1fr; }
+          .learn-hero-title { font-size: 28px; }
+          .learn-hero-graphic { font-size: 80px; }
         }
 
         @media (max-width: 768px) {
-          .learn-stats-row {
-            grid-template-columns: repeat(2, 1fr);
-          }
-          .learn-two-col {
-            grid-template-columns: 1fr;
-          }
+          .learn-stats-row { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+          .learn-subjects-grid { grid-template-columns: 1fr; }
+          .learn-hero-banner { flex-direction: column; text-align: center; padding: 24px; gap: 24px; }
+          .learn-hero-subtitle { justify-content: center; }
+          .learn-hero-speech { border-radius: 20px; }
+          .learn-hero-graphic { margin-right: 0; display: none; }
         }
       `}</style>
         </motion.div>

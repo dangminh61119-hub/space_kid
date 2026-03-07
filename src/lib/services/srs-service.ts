@@ -12,6 +12,7 @@ export interface SRSCard {
     back: string;
     subject: string;
     emoji?: string;
+    grade?: number;         // student grade (1-5)
     // SRS metadata
     interval: number;      // days until next review
     ease: number;          // easiness factor (1.3 - 2.5)
@@ -81,10 +82,22 @@ function saveSRSDeck(deck: SRSCard[]) {
 /* ─── Core Functions ─── */
 
 /** Get cards due for review today */
-export function getDueCards(deck?: SRSCard[]): SRSCard[] {
-    const cards = deck || getSRSDeck();
+export function getDueCards(deck?: SRSCard[], grade?: number): SRSCard[] {
+    let cards = deck || getSRSDeck();
+    if (grade && grade >= 1 && grade <= 5) {
+        cards = cards.filter(c => !c.grade || c.grade === grade);
+    }
     const now = new Date().toISOString();
     return cards.filter(card => card.nextReview <= now);
+}
+
+/** Get deck filtered by grade */
+export function getGradeDeck(grade: number): SRSCard[] {
+    const deck = getSRSDeck();
+    if (grade >= 1 && grade <= 5) {
+        return deck.filter(c => !c.grade || c.grade === grade);
+    }
+    return deck;
 }
 
 /** Get cards due today count */
@@ -170,21 +183,28 @@ export function getReviewForecast(deck?: SRSCard[]): Array<{ date: string; count
 function getDefaultDeck(): SRSCard[] {
     const now = new Date().toISOString();
     const cards: SRSCard[] = [
-        // Math
-        { id: "srs_m1", front: "23 + 19 = ?", back: "42", subject: "math", emoji: "🔢", interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
-        { id: "srs_m2", front: "56 - 28 = ?", back: "28", subject: "math", emoji: "➖", interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
-        { id: "srs_m3", front: "7 × 8 = ?", back: "56", subject: "math", emoji: "✖️", interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
-        { id: "srs_m4", front: "1 km = ? m", back: "1000 m", subject: "math", emoji: "📏", interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
-        { id: "srs_m5", front: "CV hình vuông cạnh 5cm?", back: "20 cm", subject: "math", emoji: "⬜", interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
+        // Math - Lớp 1
+        { id: "srs_m1a", front: "5 + 3 = ?", back: "8", subject: "math", emoji: "🔢", grade: 1, interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
+        { id: "srs_m1b", front: "9 - 4 = ?", back: "5", subject: "math", emoji: "➖", grade: 1, interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
+        // Math - Lớp 2
+        { id: "srs_m1", front: "23 + 19 = ?", back: "42", subject: "math", emoji: "🔢", grade: 2, interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
+        { id: "srs_m2", front: "56 - 28 = ?", back: "28", subject: "math", emoji: "➖", grade: 2, interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
+        // Math - Lớp 3
+        { id: "srs_m3", front: "7 × 8 = ?", back: "56", subject: "math", emoji: "✖️", grade: 3, interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
+        { id: "srs_m4", front: "1 km = ? m", back: "1000 m", subject: "math", emoji: "📏", grade: 3, interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
+        { id: "srs_m5", front: "CV hình vuông cạnh 5cm?", back: "20 cm", subject: "math", emoji: "⬜", grade: 3, interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
+        // Math - Lớp 4-5
+        { id: "srs_m4a", front: "2/3 + 1/3 = ?", back: "1", subject: "math", emoji: "🔢", grade: 4, interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
+        { id: "srs_m5a", front: "25% của 200 = ?", back: "50", subject: "math", emoji: "📊", grade: 5, interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
         // Vietnamese
-        { id: "srs_v1", front: "Từ trái nghĩa của \"nóng\"?", back: "Lạnh", subject: "vietnamese", emoji: "📖", interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
-        { id: "srs_v2", front: "\"Biển\" thuộc loại từ gì?", back: "Danh từ", subject: "vietnamese", emoji: "🌊", interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
-        { id: "srs_v3", front: "\"Mẹ\" có thanh gì?", back: "Thanh nặng", subject: "vietnamese", emoji: "📝", interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
+        { id: "srs_v1", front: "Từ trái nghĩa của \"nóng\"?", back: "Lạnh", subject: "vietnamese", emoji: "📖", grade: 2, interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
+        { id: "srs_v2", front: "\"Biển\" thuộc loại từ gì?", back: "Danh từ", subject: "vietnamese", emoji: "🌊", grade: 3, interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
+        { id: "srs_v3", front: "\"Mẹ\" có thanh gì?", back: "Thanh nặng", subject: "vietnamese", emoji: "📝", grade: 1, interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
         // English
-        { id: "srs_e1", front: "Cat = ?", back: "Con mèo 🐱", subject: "english", emoji: "🐱", interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
-        { id: "srs_e2", front: "Apple = ?", back: "Quả táo 🍎", subject: "english", emoji: "🍎", interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
-        { id: "srs_e3", front: "Thank you = ?", back: "Cảm ơn 🙏", subject: "english", emoji: "🙏", interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
-        { id: "srs_e4", front: "She ___ a student", back: "is", subject: "english", emoji: "📐", interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
+        { id: "srs_e1", front: "Cat = ?", back: "Con mèo 🐱", subject: "english", emoji: "🐱", grade: 1, interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
+        { id: "srs_e2", front: "Apple = ?", back: "Quả táo 🍎", subject: "english", emoji: "🍎", grade: 1, interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
+        { id: "srs_e3", front: "Thank you = ?", back: "Cảm ơn 🙏", subject: "english", emoji: "🙏", grade: 2, interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
+        { id: "srs_e4", front: "She ___ a student", back: "is", subject: "english", emoji: "📐", grade: 4, interval: 0, ease: 2.5, repetitions: 0, nextReview: now, lastReview: now },
     ];
     saveSRSDeck(cards);
     return cards;

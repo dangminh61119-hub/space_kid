@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/game-context";
 import {
-    getSRSDeck, getDueCards, reviewCard, getSRSStats, getReviewForecast,
+    getSRSDeck, getDueCards, reviewCard, getSRSStats, getReviewForecast, getGradeDeck,
     type SRSCard, type RecallQuality,
 } from "@/lib/services/srs-service";
 
@@ -27,10 +27,10 @@ export default function LearnReviewPage() {
     const [sessionComplete, setSessionComplete] = useState(false);
 
     useEffect(() => {
-        const d = getSRSDeck();
+        const d = getGradeDeck(player.grade);
         setDeck(d);
-        setDueCards(getDueCards(d));
-    }, []);
+        setDueCards(getDueCards(d, player.grade));
+    }, [player.grade]);
 
     const stats = useMemo(() => getSRSStats(deck), [deck]);
     const forecast = useMemo(() => getReviewForecast(deck), [deck]);

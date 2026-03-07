@@ -27,81 +27,100 @@ const SUBJECTS = [
 /* ─── Sample Data Generators ─── */
 
 function generateFlashcards(subject: string, grade: number): FlashcardItem[] {
-    const templates: Record<string, FlashcardItem[]> = {
+    const templates: Record<string, (FlashcardItem & { grade?: number })[]> = {
         math: [
-            { id: "m1", front: "23 + 19 = ?", back: "42", subject: "math", emoji: "🔢", hint: "Nhớ cộng hàng đơn vị trước: 3+9=12, nhớ 1" },
-            { id: "m2", front: "56 - 28 = ?", back: "28", subject: "math", emoji: "➖", hint: "6 < 8, cần mượn: 16-8=8, 4-2=2" },
-            { id: "m3", front: "7 × 8 = ?", back: "56", subject: "math", emoji: "✖️", hint: "7×8 = 56 (nhớ: 56=7×8)" },
-            { id: "m4", front: "100 cm = ? m", back: "1 m", subject: "math", emoji: "📏", hint: "100 cm luôn = 1 mét" },
-            { id: "m5", front: "84 ÷ 4 = ?", back: "21", subject: "math", emoji: "➗", hint: "80÷4=20, 4÷4=1, tổng=21" },
-            { id: "m6", front: "1000 g = ? kg", back: "1 kg", subject: "math", emoji: "⚖️" },
-            { id: "m7", front: "Chu vi hình vuông cạnh 5cm?", back: "20 cm", subject: "math", emoji: "⬜", hint: "CV = 4 × cạnh = 4 × 5 = 20" },
-            { id: "m8", front: "1/2 + 1/4 = ?", back: "3/4", subject: "math", emoji: "🔢", hint: "Quy đồng: 2/4 + 1/4 = 3/4" },
+            { id: "m1", front: "23 + 19 = ?", back: "42", subject: "math", emoji: "🔢", hint: "Nhớ cộng hàng đơn vị trước: 3+9=12, nhớ 1", grade: 2 },
+            { id: "m2", front: "56 - 28 = ?", back: "28", subject: "math", emoji: "➖", hint: "6 < 8, cần mượn: 16-8=8, 4-2=2", grade: 2 },
+            { id: "m3", front: "7 × 8 = ?", back: "56", subject: "math", emoji: "✖️", hint: "7×8 = 56 (nhớ: 56=7×8)", grade: 3 },
+            { id: "m4", front: "100 cm = ? m", back: "1 m", subject: "math", emoji: "📏", hint: "100 cm luôn = 1 mét", grade: 3 },
+            { id: "m5", front: "84 ÷ 4 = ?", back: "21", subject: "math", emoji: "➗", hint: "80÷4=20, 4÷4=1, tổng=21", grade: 3 },
+            { id: "m6", front: "1000 g = ? kg", back: "1 kg", subject: "math", emoji: "⚖️", grade: 3 },
+            { id: "m7", front: "Chu vi hình vuông cạnh 5cm?", back: "20 cm", subject: "math", emoji: "⬜", hint: "CV = 4 × cạnh = 4 × 5 = 20", grade: 3 },
+            { id: "m8", front: "1/2 + 1/4 = ?", back: "3/4", subject: "math", emoji: "🔢", hint: "Quy đồng: 2/4 + 1/4 = 3/4", grade: 4 },
+            { id: "m1a", front: "5 + 3 = ?", back: "8", subject: "math", emoji: "🔢", grade: 1 },
+            { id: "m1b", front: "9 - 4 = ?", back: "5", subject: "math", emoji: "➖", grade: 1 },
+            { id: "m1c", front: "2 + 7 = ?", back: "9", subject: "math", emoji: "🔢", grade: 1 },
+            { id: "m5a", front: "3/5 + 1/5 = ?", back: "4/5", subject: "math", emoji: "🔢", grade: 5 },
+            { id: "m5b", front: "25% của 200 = ?", back: "50", subject: "math", emoji: "📊", grade: 5 },
         ],
         english: [
-            { id: "e1", front: "Cat", back: "Con mèo 🐱", subject: "english", emoji: "🐱" },
-            { id: "e2", front: "Dog", back: "Con chó 🐶", subject: "english", emoji: "🐶" },
-            { id: "e3", front: "Bird", back: "Con chim 🐦", subject: "english", emoji: "🐦" },
-            { id: "e4", front: "Fish", back: "Con cá 🐟", subject: "english", emoji: "🐟" },
-            { id: "e5", front: "Apple", back: "Quả táo 🍎", subject: "english", emoji: "🍎" },
-            { id: "e6", front: "Hello!", back: "Xin chào! 👋", subject: "english", emoji: "👋" },
-            { id: "e7", front: "Thank you", back: "Cảm ơn 🙏", subject: "english", emoji: "🙏" },
-            { id: "e8", front: "Goodbye", back: "Tạm biệt 👋", subject: "english", emoji: "✨" },
+            { id: "e1", front: "Cat", back: "Con mèo 🐱", subject: "english", emoji: "🐱", grade: 1 },
+            { id: "e2", front: "Dog", back: "Con chó 🐶", subject: "english", emoji: "🐶", grade: 1 },
+            { id: "e3", front: "Bird", back: "Con chim 🐦", subject: "english", emoji: "🐦", grade: 2 },
+            { id: "e4", front: "Fish", back: "Con cá 🐟", subject: "english", emoji: "🐟", grade: 2 },
+            { id: "e5", front: "Apple", back: "Quả táo 🍎", subject: "english", emoji: "🍎", grade: 1 },
+            { id: "e6", front: "Hello!", back: "Xin chào! 👋", subject: "english", emoji: "👋", grade: 1 },
+            { id: "e7", front: "Thank you", back: "Cảm ơn 🙏", subject: "english", emoji: "🙏", grade: 2 },
+            { id: "e8", front: "Goodbye", back: "Tạm biệt 👋", subject: "english", emoji: "✨", grade: 2 },
+            { id: "e3a", front: "Elephant", back: "Con voi 🐘", subject: "english", emoji: "🐘", grade: 3 },
+            { id: "e4a", front: "Beautiful", back: "Xinh đẹp 🌸", subject: "english", emoji: "🌸", grade: 4 },
         ],
         vietnamese: [
-            { id: "v1", front: "Từ \"sắc\" có dấu gì?", back: "Dấu sắc ( ́ )", subject: "vietnamese", emoji: "📖" },
-            { id: "v2", front: "\"Quê hương\" nghĩa là gì?", back: "Homeland / Nơi sinh ra", subject: "vietnamese", emoji: "🏡" },
-            { id: "v3", front: "Từ trái nghĩa của \"nóng\"?", back: "Lạnh ❄️", subject: "vietnamese", emoji: "🔥" },
-            { id: "v4", front: "\"Biển\" thuộc loại từ gì?", back: "Danh từ", subject: "vietnamese", emoji: "🌊" },
-            { id: "v5", front: "Tìm từ đồng nghĩa: \"xinh đẹp\"", back: "Đẹp, lộng lẫy, kiều diễm", subject: "vietnamese", emoji: "💐" },
+            { id: "v1", front: "Từ \"sắc\" có dấu gì?", back: "Dấu sắc ( ́ )", subject: "vietnamese", emoji: "📖", grade: 1 },
+            { id: "v2", front: "\"Quê hương\" nghĩa là gì?", back: "Homeland / Nơi sinh ra", subject: "vietnamese", emoji: "🏡", grade: 3 },
+            { id: "v3", front: "Từ trái nghĩa của \"nóng\"?", back: "Lạnh ❄️", subject: "vietnamese", emoji: "🔥", grade: 2 },
+            { id: "v4", front: "\"Biển\" thuộc loại từ gì?", back: "Danh từ", subject: "vietnamese", emoji: "🌊", grade: 3 },
+            { id: "v5", front: "Tìm từ đồng nghĩa: \"xinh đẹp\"", back: "Đẹp, lộng lẫy, kiều diễm", subject: "vietnamese", emoji: "💐", grade: 4 },
+            { id: "v1a", front: "Có mấy chữ cái trong bảng chữ cái?", back: "29 chữ cái", subject: "vietnamese", emoji: "📖", grade: 1 },
         ],
         science: [
-            { id: "s1", front: "Cây cần gì để quang hợp?", back: "Ánh sáng + Nước + CO₂", subject: "science", emoji: "🌱" },
-            { id: "s2", front: "Trái Đất quay quanh gì?", back: "Mặt Trời ☀️", subject: "science", emoji: "🌍" },
-            { id: "s3", front: "Nước sôi ở bao nhiêu °C?", back: "100°C", subject: "science", emoji: "🌡️" },
-            { id: "s4", front: "Động vật nào đẻ trứng?", back: "Gà, vịt, chim, rắn...", subject: "science", emoji: "🥚" },
+            { id: "s1", front: "Cây cần gì để quang hợp?", back: "Ánh sáng + Nước + CO₂", subject: "science", emoji: "🌱", grade: 4 },
+            { id: "s2", front: "Trái Đất quay quanh gì?", back: "Mặt Trời ☀️", subject: "science", emoji: "🌍", grade: 3 },
+            { id: "s3", front: "Nước sôi ở bao nhiêu °C?", back: "100°C", subject: "science", emoji: "🌡️", grade: 3 },
+            { id: "s4", front: "Động vật nào đẻ trứng?", back: "Gà, vịt, chim, rắn...", subject: "science", emoji: "🥚", grade: 2 },
         ],
         geography: [
-            { id: "g1", front: "Thủ đô của Việt Nam?", back: "Hà Nội 🏙️", subject: "geography", emoji: "🇻🇳" },
-            { id: "g2", front: "Sông dài nhất Việt Nam?", back: "Sông Mê Kông", subject: "geography", emoji: "🏞️" },
-            { id: "g3", front: "Đà Nẵng thuộc miền nào?", back: "Miền Trung", subject: "geography", emoji: "🗺️" },
-            { id: "g4", front: "Núi cao nhất Việt Nam?", back: "Fansipan (3143m)", subject: "geography", emoji: "⛰️" },
+            { id: "g1", front: "Thủ đô của Việt Nam?", back: "Hà Nội 🏙️", subject: "geography", emoji: "🇻🇳", grade: 3 },
+            { id: "g2", front: "Sông dài nhất Việt Nam?", back: "Sông Mê Kông", subject: "geography", emoji: "🏞️", grade: 4 },
+            { id: "g3", front: "Đà Nẵng thuộc miền nào?", back: "Miền Trung", subject: "geography", emoji: "🗺️", grade: 3 },
+            { id: "g4", front: "Núi cao nhất Việt Nam?", back: "Fansipan (3143m)", subject: "geography", emoji: "⛰️", grade: 4 },
         ],
     };
-    return templates[subject] || templates.math;
+    const all = templates[subject] || templates.math;
+    const filtered = all.filter(c => !c.grade || c.grade === grade);
+    return filtered.length > 0 ? filtered : all.slice(0, 4); // fallback if no match
 }
 
 function generateQuizQuestions(subject: string, grade: number): QuizQuestion[] {
-    const templates: Record<string, QuizQuestion[]> = {
+    const templates: Record<string, (QuizQuestion & { grade?: number })[]> = {
         math: [
-            { id: "mq1", question: "35 + 47 = ?", correctAnswer: "82", wrongAnswers: ["72", "81", "92"], subject: "math", bloomLevel: 1, explanation: "5+7=12, nhớ 1. 3+4+1=8. Vậy = 82", skillTag: "addition_carry" },
-            { id: "mq2", question: "63 - 28 = ?", correctAnswer: "35", wrongAnswers: ["45", "25", "33"], subject: "math", bloomLevel: 1, explanation: "3<8, mượn 1: 13-8=5, 5-2=3. Vậy = 35", skillTag: "subtraction_borrow" },
-            { id: "mq3", question: "6 × 7 = ?", correctAnswer: "42", wrongAnswers: ["36", "48", "49"], subject: "math", bloomLevel: 1, explanation: "6×7 = 42 (bảng cửu chương 6)", skillTag: "multiplication_table" },
-            { id: "mq4", question: "3 km = ? m", correctAnswer: "3000", wrongAnswers: ["300", "30", "30000"], subject: "math", bloomLevel: 2, explanation: "1 km = 1000 m, nên 3 km = 3 × 1000 = 3000 m", skillTag: "unit_confusion" },
-            { id: "mq5", question: "Diện tích hình vuông cạnh 6cm?", correctAnswer: "36 cm²", wrongAnswers: ["24 cm²", "12 cm²", "18 cm²"], subject: "math", bloomLevel: 2, explanation: "S = cạnh × cạnh = 6 × 6 = 36 cm²" },
-            { id: "mq6", question: "45 + 38 = ?", correctAnswer: "83", wrongAnswers: ["73", "84", "93"], subject: "math", bloomLevel: 1, explanation: "5+8=13, nhớ 1. 4+3+1=8. Vậy = 83", skillTag: "addition_carry" },
+            { id: "mq1", question: "35 + 47 = ?", correctAnswer: "82", wrongAnswers: ["72", "81", "92"], subject: "math", bloomLevel: 1, explanation: "5+7=12, nhớ 1. 3+4+1=8. Vậy = 82", skillTag: "addition_carry", grade: 2 },
+            { id: "mq2", question: "63 - 28 = ?", correctAnswer: "35", wrongAnswers: ["45", "25", "33"], subject: "math", bloomLevel: 1, explanation: "3<8, mượn 1: 13-8=5, 5-2=3. Vậy = 35", skillTag: "subtraction_borrow", grade: 2 },
+            { id: "mq3", question: "6 × 7 = ?", correctAnswer: "42", wrongAnswers: ["36", "48", "49"], subject: "math", bloomLevel: 1, explanation: "6×7 = 42 (bảng cửu chương 6)", skillTag: "multiplication_table", grade: 3 },
+            { id: "mq4", question: "3 km = ? m", correctAnswer: "3000", wrongAnswers: ["300", "30", "30000"], subject: "math", bloomLevel: 2, explanation: "1 km = 1000 m, nên 3 km = 3 × 1000 = 3000 m", skillTag: "unit_confusion", grade: 3 },
+            { id: "mq5", question: "Diện tích hình vuông cạnh 6cm?", correctAnswer: "36 cm²", wrongAnswers: ["24 cm²", "12 cm²", "18 cm²"], subject: "math", bloomLevel: 2, explanation: "S = cạnh × cạnh = 6 × 6 = 36 cm²", grade: 3 },
+            { id: "mq6", question: "45 + 38 = ?", correctAnswer: "83", wrongAnswers: ["73", "84", "93"], subject: "math", bloomLevel: 1, explanation: "5+8=13, nhớ 1. 4+3+1=8. Vậy = 83", skillTag: "addition_carry", grade: 2 },
+            { id: "mq1a", question: "6 + 3 = ?", correctAnswer: "9", wrongAnswers: ["8", "7", "10"], subject: "math", bloomLevel: 1, explanation: "6 + 3 = 9", grade: 1 },
+            { id: "mq1b", question: "8 - 5 = ?", correctAnswer: "3", wrongAnswers: ["2", "4", "5"], subject: "math", bloomLevel: 1, explanation: "8 - 5 = 3", grade: 1 },
+            { id: "mq4a", question: "2/3 + 1/3 = ?", correctAnswer: "1", wrongAnswers: ["3/3", "2/6", "3/6"], subject: "math", bloomLevel: 2, explanation: "2/3 + 1/3 = 3/3 = 1", grade: 4 },
+            { id: "mq5a", question: "15% của 200 = ?", correctAnswer: "30", wrongAnswers: ["15", "20", "35"], subject: "math", bloomLevel: 2, explanation: "15% × 200 = 0.15 × 200 = 30", grade: 5 },
         ],
         english: [
-            { id: "eq1", question: "\"Elephant\" nghĩa là gì?", correctAnswer: "Con voi", wrongAnswers: ["Con hổ", "Con sư tử", "Con gấu"], subject: "english", bloomLevel: 1, skillTag: "vocabulary" },
-            { id: "eq2", question: "Chọn từ đúng: \"She ___ a student\"", correctAnswer: "is", wrongAnswers: ["am", "are", "be"], subject: "english", bloomLevel: 2 },
-            { id: "eq3", question: "\"Beautiful\" nghĩa là gì?", correctAnswer: "Xinh đẹp", wrongAnswers: ["Xấu xí", "Cao lớn", "Thông minh"], subject: "english", bloomLevel: 1, skillTag: "vocabulary" },
-            { id: "eq4", question: "Đếm bằng tiếng Anh: 1, 2, ___, 4, 5", correctAnswer: "three", wrongAnswers: ["tree", "free", "thr"], subject: "english", bloomLevel: 1 },
+            { id: "eq1", question: "\"Elephant\" nghĩa là gì?", correctAnswer: "Con voi", wrongAnswers: ["Con hổ", "Con sư tử", "Con gấu"], subject: "english", bloomLevel: 1, skillTag: "vocabulary", grade: 3 },
+            { id: "eq2", question: "Chọn từ đúng: \"She ___ a student\"", correctAnswer: "is", wrongAnswers: ["am", "are", "be"], subject: "english", bloomLevel: 2, grade: 4 },
+            { id: "eq3", question: "\"Beautiful\" nghĩa là gì?", correctAnswer: "Xinh đẹp", wrongAnswers: ["Xấu xí", "Cao lớn", "Thông minh"], subject: "english", bloomLevel: 1, skillTag: "vocabulary", grade: 4 },
+            { id: "eq4", question: "Đếm bằng tiếng Anh: 1, 2, ___, 4, 5", correctAnswer: "three", wrongAnswers: ["tree", "free", "thr"], subject: "english", bloomLevel: 1, grade: 2 },
+            { id: "eq1a", question: "\"Cat\" nghĩa là gì?", correctAnswer: "Con mèo", wrongAnswers: ["Con chó", "Con cá", "Con gà"], subject: "english", bloomLevel: 1, grade: 1 },
+            { id: "eq1b", question: "\"Red\" nghĩa là gì?", correctAnswer: "Màu đỏ", wrongAnswers: ["Màu xanh", "Màu vàng", "Màu trắng"], subject: "english", bloomLevel: 1, grade: 1 },
         ],
         vietnamese: [
-            { id: "vq1", question: "\"Hòn ngọc Viễn Đông\" là thành phố nào?", correctAnswer: "TP. Hồ Chí Minh", wrongAnswers: ["Hà Nội", "Đà Nẵng", "Huế"], subject: "vietnamese", bloomLevel: 2 },
-            { id: "vq2", question: "Từ nào là tính từ?", correctAnswer: "Xinh đẹp", wrongAnswers: ["Chạy", "Bàn", "Rất"], subject: "vietnamese", bloomLevel: 2 },
-            { id: "vq3", question: "\"Mẹ\" có thanh gì?", correctAnswer: "Thanh nặng", wrongAnswers: ["Thanh sắc", "Thanh huyền", "Thanh hỏi"], subject: "vietnamese", bloomLevel: 1, skillTag: "dau_thanh" },
+            { id: "vq1", question: "\"Hòn ngọc Viễn Đông\" là thành phố nào?", correctAnswer: "TP. Hồ Chí Minh", wrongAnswers: ["Hà Nội", "Đà Nẵng", "Huế"], subject: "vietnamese", bloomLevel: 2, grade: 4 },
+            { id: "vq2", question: "Từ nào là tính từ?", correctAnswer: "Xinh đẹp", wrongAnswers: ["Chạy", "Bàn", "Rất"], subject: "vietnamese", bloomLevel: 2, grade: 3 },
+            { id: "vq3", question: "\"Mẹ\" có thanh gì?", correctAnswer: "Thanh nặng", wrongAnswers: ["Thanh sắc", "Thanh huyền", "Thanh hỏi"], subject: "vietnamese", bloomLevel: 1, skillTag: "dau_thanh", grade: 1 },
+            { id: "vq1a", question: "Chữ cái đầu tiên trong bảng chữ cái là?", correctAnswer: "A", wrongAnswers: ["B", "Ă", "Â"], subject: "vietnamese", bloomLevel: 1, grade: 1 },
         ],
         science: [
-            { id: "sq1", question: "Bộ phận nào giúp cây hấp thụ nước?", correctAnswer: "Rễ cây", wrongAnswers: ["Lá cây", "Thân cây", "Hoa"], subject: "science", bloomLevel: 1 },
-            { id: "sq2", question: "Vì sao có mưa?", correctAnswer: "Nước bốc hơi, ngưng tụ thành mây, rơi xuống", wrongAnswers: ["Trời buồn nên khóc", "Gió thổi mạnh", "Mặt trăng gần trái đất"], subject: "science", bloomLevel: 3, skillTag: "cause_effect" },
+            { id: "sq1", question: "Bộ phận nào giúp cây hấp thụ nước?", correctAnswer: "Rễ cây", wrongAnswers: ["Lá cây", "Thân cây", "Hoa"], subject: "science", bloomLevel: 1, grade: 2 },
+            { id: "sq2", question: "Vì sao có mưa?", correctAnswer: "Nước bốc hơi, ngưng tụ thành mây, rơi xuống", wrongAnswers: ["Trời buồn nên khóc", "Gió thổi mạnh", "Mặt trăng gần trái đất"], subject: "science", bloomLevel: 3, skillTag: "cause_effect", grade: 4 },
         ],
         geography: [
-            { id: "gq1", question: "Huế thuộc miền nào?", correctAnswer: "Miền Trung", wrongAnswers: ["Miền Bắc", "Miền Nam", "Tây Nguyên"], subject: "geography", bloomLevel: 1, skillTag: "location_confusion" },
-            { id: "gq2", question: "Đồng bằng rộng nhất VN?", correctAnswer: "Đồng bằng sông Cửu Long", wrongAnswers: ["Đồng bằng sông Hồng", "Đồng bằng Duyên hải", "Tây Nguyên"], subject: "geography", bloomLevel: 2 },
+            { id: "gq1", question: "Huế thuộc miền nào?", correctAnswer: "Miền Trung", wrongAnswers: ["Miền Bắc", "Miền Nam", "Tây Nguyên"], subject: "geography", bloomLevel: 1, skillTag: "location_confusion", grade: 3 },
+            { id: "gq2", question: "Đồng bằng rộng nhất VN?", correctAnswer: "Đồng bằng sông Cửu Long", wrongAnswers: ["Đồng bằng sông Hồng", "Đồng bằng Duyên hải", "Tây Nguyên"], subject: "geography", bloomLevel: 2, grade: 4 },
         ],
     };
-    return templates[subject] || templates.math;
+    const all = templates[subject] || templates.math;
+    const filtered = all.filter(q => !q.grade || q.grade === grade);
+    return filtered.length > 0 ? filtered : all.slice(0, 3); // fallback if no match
 }
 
 /* ─── Practice Page Content ─── */

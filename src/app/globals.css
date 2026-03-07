@@ -35,30 +35,43 @@
   --dash-hist: #A78BFA;
 
   /* === LEARN MODULE (Student Learning Hub) === */
-  --learn-bg: #F0F2FF;
-  --learn-bg-alt: #E8ECFF;
+  /* Creative, vibrant, and soft colors for kids */
+  --learn-bg: #F0F4FF;
+  /* Soft pastel blue instead of gray-blue */
+  --learn-bg-alt: #E3E9FE;
   --learn-card: #FFFFFF;
-  --learn-card-hover: #F8F9FF;
-  --learn-text: #2D3250;
-  --learn-text-secondary: #6B7280;
-  --learn-accent: #6366F1;
-  --learn-accent-light: #A5B4FC;
-  --learn-success: #34D399;
+  --learn-card-hover: #FEFBFF;
+  --learn-text: #1E293B;
+  --learn-text-secondary: #64748B;
+  --learn-accent: #7C3AED;
+  /* Vibrant purple */
+  --learn-accent-light: #C4B5FD;
+  --learn-success: #10B981;
+  /* Vibrant green */
   --learn-success-bg: #D1FAE5;
-  --learn-warning: #FBBF24;
+  --learn-warning: #F59E0B;
+  /* Vibrant amber */
   --learn-warning-bg: #FEF3C7;
-  --learn-error: #F87171;
+  --learn-error: #EF4444;
+  /* Vibrant red */
   --learn-error-bg: #FEE2E2;
-  --learn-streak: #FB923C;
-  --learn-border: #E0E7FF;
-  --learn-sidebar: #6366F1;
+  --learn-streak: #F97316;
+  --learn-border: #E2E8F0;
+  --learn-sidebar: #4F46E5;
+  /* Deep vibrant indigo */
   --learn-sidebar-text: #FFFFFF;
-  --learn-math: #818CF8;
-  --learn-vietnamese: #34D399;
-  --learn-english: #FB923C;
-  --learn-science: #F472B6;
-  --learn-geography: #38BDF8;
-  --learn-history: #A78BFA;
+  --learn-math: #3B82F6;
+  /* Bright Blue */
+  --learn-vietnamese: #10B981;
+  /* Emerald Green */
+  --learn-english: #F43F5E;
+  /* Rose Red */
+  --learn-science: #8B5CF6;
+  /* Violet */
+  --learn-geography: #06B6D4;
+  /* Cyan */
+  --learn-history: #D946EF;
+  /* Fuchsia */
 
   /* === TYPOGRAPHY === */
   --font-heading: 'Baloo 2', cursive, sans-serif;

@@ -100,7 +100,7 @@ export default function LearnLessonsPage() {
     const { player } = useGame();
     const { playerDbId } = useAuth();
     const [subjectFilter, setSubjectFilter] = useState("all");
-    const [gradeFilter, setGradeFilter] = useState(0);
+    const [gradeFilter, setGradeFilter] = useState(0); // will set to player.grade in useEffect
     const [activeLesson, setActiveLesson] = useState<LessonData | null>(null);
     const [profile, setProfile] = useState<StudentProfile | null>(null);
     const [watchHistory, setWatchHistory] = useState<Record<string, { seconds: number; lastWatched: string }>>({});
@@ -109,7 +109,10 @@ export default function LearnLessonsPage() {
     useEffect(() => {
         setWatchHistory(getWatchHistory());
         getStudentProfile(playerDbId || "local").then(setProfile);
-    }, [playerDbId]);
+        if (player.grade >= 1 && player.grade <= 5) {
+            setGradeFilter(player.grade);
+        }
+    }, [playerDbId, player.grade]);
 
     // AI recommendations based on error patterns
     const recommendations = useMemo(() => {
