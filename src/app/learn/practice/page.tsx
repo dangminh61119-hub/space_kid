@@ -13,7 +13,7 @@ import { updateProfileAfterSession } from "@/lib/services/student-profile-servic
 import { startSession, endSession } from "@/lib/services/learning-session-service";
 
 /* ─── Practice Modes ─── */
-type PracticeMode = "select" | "flashcard" | "quiz" | "drill" | "ai-quiz";
+type PracticeMode = "select" | "flashcard" | "quiz" | "drill" | "ai-quiz" | "topic-quiz";
 
 /* ─── Subjects ─── */
 const SUBJECTS = [
@@ -145,6 +145,12 @@ function PracticeContent() {
     const [fromBaoBai, setFromBaoBai] = useState(false);
     const [baoBaiSessionId, setBaoBaiSessionId] = useState<string | null>(null);
 
+    // Topic-based quiz state (from question_bank)
+    const [topicQuizQuestions, setTopicQuizQuestions] = useState<QuizQuestion[]>([]);
+    const [topicQuizLoading, setTopicQuizLoading] = useState(false);
+    const [topicQuizId, setTopicQuizId] = useState<string | null>(null);
+    const [topicQuizName, setTopicQuizName] = useState<string | null>(null);
+
     // Load profile & check URL params
     useEffect(() => {
         async function load() {
@@ -154,10 +160,17 @@ function PracticeContent() {
             const focusParam = searchParams.get("focus");
             const subjectParam = searchParams.get("subject");
             const topicParam = searchParams.get("topic");
+            const topicIdParam = searchParams.get("topic_id");
             const fromParam = searchParams.get("from");
             const sessionParam = searchParams.get("session");
 
-            if (topicParam && fromParam === "bao-bai") {
+            if (topicIdParam) {
+                // Coming from SmartRecommendations → load from question_bank
+                setTopicQuizId(topicIdParam);
+                if (topicParam) setTopicQuizName(topicParam);
+                if (subjectParam) setSelectedSubject(subjectParam);
+                loadTopicQuiz(topicIdParam, subjectParam || undefined);
+            } else if (topicParam && fromParam === "bao-bai") {
                 // Coming from Báo bài → auto-start AI quiz
                 setAiQuizTopic(topicParam);
                 setFromBaoBai(true);
@@ -211,6 +224,38 @@ function PracticeContent() {
         }
     }, []);
 
+    // Load topic-based quiz from question_bank
+    const loadTopicQuiz = useCallback(async (topicId: string, subject?: string) => {
+        setTopicQuizLoading(true);
+        setMode("topic-quiz");
+        try {
+            const params = new URLSearchParams({ topic_id: topicId, count: "10" });
+            if (subject) params.set("subject", subject);
+            const res = await fetch(`/api/practice/questions?${params}`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+            });
+            const data = await res.json();
+            if (data.questions?.length > 0) {
+                setTopicQuizQuestions(data.questions.map((q: { id: string; question: string; correctAnswer: string; wrongAnswers: string[]; subject: string; bloomLevel: number; explanation: string }) => ({
+                    id: q.id,
+                    question: q.question,
+                    correctAnswer: q.correctAnswer,
+                    wrongAnswers: q.wrongAnswers,
+                    subject: q.subject,
+                    bloomLevel: q.bloomLevel,
+                    explanation: q.explanation,
+                })));
+            } else {
+                setTopicQuizQuestions([]);
+            }
+        } catch (err) {
+            console.error("Topic quiz error:", err);
+            setTopicQuizQuestions([]);
+        } finally {
+            setTopicQuizLoading(false);
+        }
+    }, [token]);
+
     const topErrors = useMemo(() => profile ? getTopErrors(profile, 5) : [], [profile]);
 
     // Start a session when entering a practice mode
@@ -238,16 +283,83 @@ function PracticeContent() {
                 questionsCorrect: results.correct,
             });
         }
-    }, [sessionId, playerId, selectedSubject]);
+
+        // Update topic mastery if doing topic-based practice
+        if (topicQuizId && token) {
+            try {
+                await fetch("/api/mastery", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        player_id: playerId,
+                        topic_id: topicQuizId,
+                        correct: results.correct,
+                        total: results.correct + results.incorrect,
+                    }),
+                });
+            } catch { /* silent */ }
+        }
+    }, [sessionId, playerId, selectedSubject, topicQuizId, token]);
 
     const handleExit = useCallback(() => {
         setMode("select");
         setSelectedSubject(null);
         setDrillErrorType(null);
         setSessionId(null);
+        setTopicQuizId(null);
+        setTopicQuizName(null);
+        setTopicQuizQuestions([]);
     }, []);
 
     // ─── Render based on mode ───
+
+    // Topic-based quiz from question_bank
+    if (mode === "topic-quiz") {
+        if (topicQuizLoading) {
+            return (
+                <div style={{ textAlign: "center", padding: 60 }}>
+                    <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 1.5, repeat: Infinity }} style={{ fontSize: 48, display: "inline-block" }}>📝</motion.div>
+                    <p style={{ fontWeight: 700, marginTop: 12 }}>Đang tải câu hỏi...</p>
+                    {topicQuizName && <p style={{ fontSize: 13, color: "var(--learn-text-secondary)" }}>Chủ đề: <strong>{topicQuizName}</strong></p>}
+                </div>
+            );
+        }
+        if (topicQuizQuestions.length === 0) {
+            return (
+                <div style={{ textAlign: "center", padding: 60 }}>
+                    <div style={{ fontSize: 48, marginBottom: 12 }}>📚</div>
+                    <p style={{ fontWeight: 700 }}>Chưa có câu hỏi cho chủ đề này</p>
+                    <button className="learn-btn learn-btn-secondary" onClick={handleExit} style={{ marginTop: 16 }}>← Quay lại</button>
+                </div>
+            );
+        }
+        return (
+            <div>
+                <button className="learn-btn learn-btn-secondary" onClick={handleExit} style={{ marginBottom: 16 }}>
+                    ← Quay lại
+                </button>
+                {topicQuizName && (
+                    <div className="learn-card" style={{ padding: 12, marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontSize: 24 }}>🎯</span>
+                        <div>
+                            <div style={{ fontWeight: 700, fontSize: 14 }}>Luyện tập theo chủ đề</div>
+                            <div style={{ fontSize: 12, color: "var(--learn-text-secondary)" }}>{topicQuizName}</div>
+                        </div>
+                    </div>
+                )}
+                <SmartQuiz
+                    questions={topicQuizQuestions}
+                    onComplete={async (results) => {
+                        await handleComplete({ correct: results.correct, incorrect: results.incorrect });
+                    }}
+                    onExit={handleExit}
+                />
+            </div>
+        );
+    }
 
     if (mode === "flashcard" && selectedSubject) {
         const cards = generateFlashcards(selectedSubject, player.grade);

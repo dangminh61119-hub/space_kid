@@ -266,6 +266,20 @@ export default function AdminDashboard() {
                             <div className="dash-action-count">Tạo câu hỏi mới</div>
                         </div>
                     </Link>
+                    <Link href="/admin/question-bank" className="dash-action action-indigo">
+                        <span className="dash-action-icon">🧩</span>
+                        <div>
+                            <div className="dash-action-label">Ngân hàng Câu hỏi</div>
+                            <div className="dash-action-count">Curriculum + AI sinh câu hỏi</div>
+                        </div>
+                    </Link>
+                    <Link href="/admin/lessons" className="dash-action action-teal">
+                        <span className="dash-action-icon">🎬</span>
+                        <div>
+                            <div className="dash-action-label">Bài giảng</div>
+                            <div className="dash-action-count">YouTube + tóm tắt nội dung</div>
+                        </div>
+                    </Link>
                 </div>
             </div>
 
@@ -412,6 +426,8 @@ export default function AdminDashboard() {
                 .action-purple { background: linear-gradient(135deg, #3b0764, #581c87); }
                 .action-orange { background: linear-gradient(135deg, #7c2d12, #9a3412); }
                 .action-blue { background: linear-gradient(135deg, #1e3a5f, #1e40af); }
+                .action-indigo { background: linear-gradient(135deg, #312e81, #4338ca); }
+                .action-teal { background: linear-gradient(135deg, #134e4a, #0f766e); }
 
                 @media (max-width: 768px) {
                     .dash-header { flex-direction: column; gap: 12px; }

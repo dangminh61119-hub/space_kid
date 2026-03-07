@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/game-context";
 import { useAuth } from "@/lib/services/auth-context";
+import Link from "next/link";
 
 /* ─── Types ─── */
 interface RAGSource {
@@ -23,6 +24,28 @@ interface HomeworkSession {
     sources: RAGSource[];
     date: string;
     subject?: string;
+}
+
+interface MatchedTopic {
+    topic_id: string;
+    topic_name: string;
+    topic_slug: string;
+    subject: string;
+    chapter: string | null;
+    mastery_score: number;
+    total_attempts: number;
+    reason: string;
+    priority: number;
+    question_count: number;
+    last_practiced_at: string | null;
+}
+
+interface MatchedLesson {
+    id: string;
+    title: string;
+    youtube_id: string | null;
+    summary: string | null;
+    topic_name: string;
 }
 
 const SUBJECTS = [
@@ -54,6 +77,9 @@ export default function BaoBaiPage() {
     const [error, setError] = useState("");
     const [lastSessionId, setLastSessionId] = useState<string | null>(null);
     const [lastQuery, setLastQuery] = useState("");
+    const [matchedTopics, setMatchedTopics] = useState<MatchedTopic[]>([]);
+    const [matchedLessons, setMatchedLessons] = useState<MatchedLesson[]>([]);
+    const [matchLoading, setMatchLoading] = useState(false);
 
     const token = session?.access_token;
 
@@ -136,6 +162,68 @@ export default function BaoBaiPage() {
                     const dbData = await dbRes.json();
                     if (dbData.session?.id) setLastSessionId(dbData.session.id);
                 } catch { /* silent — localStorage backup exists */ }
+            }
+
+            // Auto-match to curriculum topics
+            if (token) {
+                setMatchLoading(true);
+                try {
+                    const matchRes = await fetch("/api/recommendations", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${token}`,
+                        },
+                        body: JSON.stringify({ query: q, grade: player.grade }),
+                    });
+                    const matchData = await matchRes.json();
+                    const topics: MatchedTopic[] = matchData.data || [];
+
+                    // Enrich with question counts + mastery
+                    if (topics.length > 0 && playerDbId) {
+                        try {
+                            const [qRes, mRes] = await Promise.all([
+                                fetch(`/api/practice/questions?topic_id=${topics[0].topic_id}&count=1`, {
+                                    headers: { Authorization: `Bearer ${token}` },
+                                }),
+                                fetch(`/api/mastery?player_id=${playerDbId}&grade=${player.grade}`, {
+                                    headers: { Authorization: `Bearer ${token}` },
+                                }),
+                            ]);
+                            const qData = await qRes.json();
+                            const mData = await mRes.json();
+
+                            // Update question counts from total
+                            if (qData.total !== undefined) {
+                                topics[0].question_count = qData.total;
+                            }
+
+                            // Update mastery from player data
+                            const masteryList = mData.data || [];
+                            for (const t of topics) {
+                                const m = masteryList.find((x: Record<string, unknown>) => x.topic_id === t.topic_id);
+                                if (m) {
+                                    t.mastery_score = m.mastery_score as number;
+                                    t.total_attempts = m.total_attempts as number;
+                                }
+                            }
+                        } catch { /* enrichment optional */ }
+                    }
+
+                    setMatchedTopics(topics);
+
+                    // Also try to find matching lesson resources
+                    if (topics.length > 0) {
+                        try {
+                            const lessonsRes = await fetch(`/api/admin/lesson-resources?topic_id=${topics[0].topic_id}`, {
+                                headers: { Authorization: `Bearer ${token}` },
+                            });
+                            const lessonsData = await lessonsRes.json();
+                            setMatchedLessons(lessonsData.data || []);
+                        } catch { setMatchedLessons([]); }
+                    }
+                } catch { setMatchedTopics([]); }
+                setMatchLoading(false);
             }
         } catch (err) {
             setError("Lỗi kết nối: " + String(err));
@@ -374,20 +462,117 @@ export default function BaoBaiPage() {
                             >
                                 🦉 Học với Gia sư
                             </motion.button>
-                            <motion.button
-                                className="learn-btn bao-bai-action-btn bao-bai-practice-btn"
-                                onClick={() => router.push(`/learn/practice?topic=${encodeURIComponent(lastQuery)}&subject=${subject || ""}&from=bao-bai${lastSessionId ? `&session=${lastSessionId}` : ""}`)}
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                            >
-                                📝 Luyện tập ngay
-                            </motion.button>
+                            {matchedTopics.length > 0 ? (
+                                <motion.button
+                                    className="learn-btn bao-bai-action-btn bao-bai-practice-btn"
+                                    onClick={() => router.push(`/learn/practice?topic_id=${matchedTopics[0].topic_id}&topic=${encodeURIComponent(matchedTopics[0].topic_name)}&subject=${matchedTopics[0].subject}`)}
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                >
+                                    📝 Luyện tập ({matchedTopics[0].question_count || "?"} câu)
+                                </motion.button>
+                            ) : (
+                                <motion.button
+                                    className="learn-btn bao-bai-action-btn bao-bai-practice-btn"
+                                    onClick={() => router.push(`/learn/practice?topic=${encodeURIComponent(lastQuery)}&subject=${subject || ""}&from=bao-bai${lastSessionId ? `&session=${lastSessionId}` : ""}`)}
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                >
+                                    📝 Luyện tập ngay
+                                </motion.button>
+                            )}
                         </div>
+
+                        {/* Matched Curriculum Topics */}
+                        {matchLoading && (
+                            <div className="learn-card" style={{ padding: 16, marginBottom: 12, textAlign: "center" }}>
+                                <motion.span animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity }} style={{ fontSize: 13, color: "var(--learn-text-secondary)" }}>
+                                    🔍 Đang tìm chủ đề phù hợp...
+                                </motion.span>
+                            </div>
+                        )}
+
+                        {matchedTopics.length > 0 && (
+                            <div className="learn-card" style={{ padding: 16, marginBottom: 12 }}>
+                                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: "var(--learn-text-secondary)" }}>
+                                    🎯 Chủ đề liên quan trong chương trình
+                                </div>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                    {matchedTopics.map(t => {
+                                        const masteryPct = Math.round(t.mastery_score * 100);
+                                        return (
+                                            <Link
+                                                key={t.topic_id}
+                                                href={`/learn/practice?topic_id=${t.topic_id}&topic=${encodeURIComponent(t.topic_name)}&subject=${t.subject}`}
+                                                style={{ textDecoration: "none" }}
+                                            >
+                                                <motion.div
+                                                    className="bao-bai-topic-card"
+                                                    whileHover={{ scale: 1.01 }}
+                                                    whileTap={{ scale: 0.98 }}
+                                                >
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontWeight: 700, fontSize: 14, color: "var(--learn-text)", marginBottom: 4 }}>
+                                                            {t.subject === "math" ? "🔢" : "📖"} {t.topic_name}
+                                                        </div>
+                                                        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                                                            {t.question_count > 0 && (
+                                                                <span style={{ fontSize: 11, color: "var(--learn-text-secondary)" }}>{t.question_count} câu hỏi</span>
+                                                            )}
+                                                            {t.total_attempts > 0 && (
+                                                                <span style={{ fontSize: 11, fontWeight: 700, color: masteryPct >= 70 ? "#22c55e" : masteryPct >= 40 ? "#f59e0b" : "#ef4444" }}>
+                                                                    {masteryPct}% mastery
+                                                                </span>
+                                                            )}
+                                                            {t.chapter && (
+                                                                <span style={{ fontSize: 11, color: "var(--learn-text-secondary)" }}>{t.chapter}</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <span style={{ fontSize: 14, color: "var(--learn-accent)", fontWeight: 700 }}>Luyện →</span>
+                                                </motion.div>
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Matched Lesson Videos */}
+                        {matchedLessons.length > 0 && (
+                            <div className="learn-card" style={{ padding: 16, marginBottom: 12 }}>
+                                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: "var(--learn-text-secondary)" }}>
+                                    🎬 Bài giảng liên quan
+                                </div>
+                                <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 4 }}>
+                                    {matchedLessons.map(l => (
+                                        <a
+                                            key={l.id}
+                                            href={l.youtube_id ? `https://youtube.com/watch?v=${l.youtube_id}` : "#"}
+                                            target="_blank" rel="noreferrer"
+                                            className="bao-bai-lesson-link"
+                                        >
+                                            {l.youtube_id && (
+                                                <div style={{ position: "relative", borderRadius: 10, overflow: "hidden", width: 180, aspectRatio: "16/9" }}>
+                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                    <img src={`https://img.youtube.com/vi/${l.youtube_id}/mqdefault.jpg`} alt={l.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                                    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.25)", fontSize: 24, color: "white" }}>▶</div>
+                                                </div>
+                                            )}
+                                            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--learn-text)", marginTop: 6, maxWidth: 180 }}>{l.title}</div>
+                                            {l.summary && (
+                                                <div style={{ fontSize: 11, color: "var(--learn-text-secondary)", marginTop: 2, maxWidth: 180, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>{l.summary}</div>
+                                            )}
+                                        </a>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* New query button */}
                         <motion.button
                             className="learn-btn learn-btn-secondary"
-                            onClick={() => { setResult(null); setQuery(""); setLastSessionId(null); }}
+                            onClick={() => { setResult(null); setQuery(""); setLastSessionId(null); setMatchedTopics([]); setMatchedLessons([]); }}
                             style={{ width: "100%", padding: 14, marginTop: 8 }}
                             whileHover={{ scale: 1.01 }}
                         >
@@ -562,6 +747,23 @@ export default function BaoBaiPage() {
                     filter: brightness(1.05);
                     box-shadow: 0 6px 20px rgba(16,185,129,0.4);
                 }
+
+                .bao-bai-topic-card {
+                    display: flex; align-items: center; justify-content: space-between;
+                    padding: 10px 14px; border-radius: 12px;
+                    border: 1.5px solid var(--learn-border); background: var(--learn-bg-alt);
+                    cursor: pointer; transition: all 0.15s;
+                }
+                .bao-bai-topic-card:hover {
+                    border-color: var(--learn-accent);
+                    box-shadow: 0 2px 8px rgba(124,58,237,0.1);
+                }
+
+                .bao-bai-lesson-link {
+                    text-decoration: none; flex-shrink: 0;
+                    transition: transform 0.15s;
+                }
+                .bao-bai-lesson-link:hover { transform: translateY(-2px); }
 
                 @media (max-width: 768px) {
                     .bao-bai-input-row { flex-direction: column; }

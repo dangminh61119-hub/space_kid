@@ -9,6 +9,7 @@ import { getSessionStats } from "@/lib/services/learning-session-service";
 import { getRemediationAdvice } from "@/lib/services/error-tracking-service";
 import { useAuth } from "@/lib/services/auth-context";
 import StreakWidget from "@/components/learn/StreakWidget";
+import SmartRecommendations from "@/components/learn/SmartRecommendations";
 import { getDueCount } from "@/lib/services/srs-service";
 
 /* ─── Subject config ─── */
@@ -251,6 +252,17 @@ export default function LearnHomePage() {
                             </div>
                         </motion.div>
                     </Link>
+                </motion.div>
+            )}
+
+            {/* Smart Recommendations from Curriculum */}
+            {playerDbId && (
+                <motion.div variants={fadeUp}>
+                    <SmartRecommendations
+                        playerId={playerDbId}
+                        grade={player.grade}
+                        token={token}
+                    />
                 </motion.div>
             )}
 
