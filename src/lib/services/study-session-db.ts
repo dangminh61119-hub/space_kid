@@ -63,8 +63,8 @@ export async function saveStudySession(data: {
         .single();
 
     if (error) {
-        console.error("[study-session] save error:", error);
-        return null;
+        console.error("[study-session] save error:", error.message, error.details, error.hint);
+        throw new Error(`Supabase save failed: ${error.message} | ${error.details || ""} | ${error.hint || ""}`);
     }
     return row as StudySession;
 }
