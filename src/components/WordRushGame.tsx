@@ -7,6 +7,10 @@ import VolumeControl from "./VolumeControl";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { useGame } from "@/lib/game-context";
 import MascotAbilityButton from "@/components/MascotAbilityButton";
+import ParticleBurst from "@/components/effects/ParticleBurst";
+import FloatingText from "@/components/effects/FloatingText";
+import ConfettiShower from "@/components/effects/ConfettiShower";
+import WarpSpeed from "@/components/effects/WarpSpeed";
 
 /* ─── Types ─── */
 interface Props {
@@ -56,6 +60,16 @@ export default function WordRushGame({
     const [lastResult, setLastResult] = useState<"correct" | "wrong" | null>(null);
     const [answers, setAnswers] = useState<Array<{ text: string; isCorrect: boolean }>>([]);
     const [locked, setLocked] = useState(false);
+
+    // Visual Effects
+    const [particleData, setParticleData] = useState<{ x: number; y: number; type: "correct" | "wrong" | "combo" } | null>(null);
+    const [floatingTexts, setFloatingTexts] = useState<{ id: string; text: string; x: number; y: number; color?: string; size?: "sm" | "md" | "lg" | "xl" }[]>([]);
+
+    // Function to add floating text
+    const spawnText = useCallback((text: string, x: number, y: number, color?: string, size?: "sm" | "md" | "lg" | "xl") => {
+        const id = Math.random().toString(36).substring(7);
+        setFloatingTexts(prev => [...prev, { id, text, x, y, color, size }]);
+    }, []);
 
     const timerRef = useRef<NodeJS.Timeout | null>(null);
     const gameStateRef = useRef(gameState);
@@ -133,6 +147,7 @@ export default function WordRushGame({
                 setGameState("win");
             } else {
                 setShowLevelBanner(true);
+                playCorrect(); // Fanfare
                 setTimeout(() => {
                     setShowLevelBanner(false);
                     setLevelIdx(nextLevel);
@@ -189,22 +204,39 @@ export default function WordRushGame({
     }, [gameState, score, levelsCompleted]);
 
     /* ─── Answer click ─── */
-    const handleAnswer = useCallback((answer: { text: string; isCorrect: boolean }) => {
+    const handleAnswer = useCallback((answer: { text: string; isCorrect: boolean }, ev: React.MouseEvent) => {
         if (gameState !== "playing" || locked) return;
         setLocked(true);
+
+        // Center coordinates for effects
+        const rect = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top;
 
         if (answer.isCorrect) {
             playCorrect();
             const newCombo = combo + 1;
             const mult = COMBO_MULTIPLIERS[Math.min(newCombo, COMBO_MULTIPLIERS.length - 1)];
             setCombo(newCombo);
+
+            // Visuals
+            setParticleData({ x, y, type: newCombo >= 3 ? "combo" : "correct" });
+            const points = BASE_COSMO * mult;
+            spawnText(`+${points}`, x, y, newCombo >= 3 ? "#FF6BFF" : "#00F5FF", newCombo >= 3 ? "lg" : "md");
+            if (newCombo >= 3) {
+                setTimeout(() => spawnText(`Combo x${newCombo}!`, x, y - 40, "#FFD700", "lg"), 200);
+            }
+
             if (newCombo === 3) addAbilityCharges(1); // Combo reward
-            setScore(s => s + BASE_COSMO * mult);
+            setScore(s => s + points);
             setLastResult("correct");
             onAnswered?.(currentQRef.current?.id ?? "", true, currentLevelRef.current?.subject || "", currentQRef.current?.bloomLevel ?? 1);
             setTimeout(() => advanceQuestionRef.current(), 600);
         } else {
             playWrong();
+            setParticleData({ x, y, type: "wrong" });
+            spawnText("Sai rồi!", x, y, "#FF4444", "md");
+
             setLastResult("wrong");
             onAnswered?.(currentQRef.current?.id ?? "", false, currentLevelRef.current?.subject || "", currentQRef.current?.bloomLevel ?? 1);
             if (shieldActive && playerClass === "warrior") {
@@ -219,7 +251,7 @@ export default function WordRushGame({
             }
             setTimeout(() => advanceQuestionRef.current(), 800);
         }
-    }, [gameState, locked, combo, shieldActive, playerClass, addAbilityCharges, onAnswered, playCorrect, playWrong]);
+    }, [gameState, locked, combo, shieldActive, playerClass, addAbilityCharges, onAnswered, playCorrect, playWrong, spawnText]);
 
     /* ─── Ability ─── */
     const useAbility = useCallback(() => {
@@ -281,6 +313,7 @@ export default function WordRushGame({
         const stars = hp >= 3 ? 3 : hp >= 2 ? 2 : 1;
         return (
             <div className="flex-1 flex items-center justify-center">
+                {isWin && <ConfettiShower />}
                 <div className="glass-card text-center space-y-6 max-w-md mx-auto !p-10">
                     <div className="text-6xl">{isWin ? "🏆" : "⚡"}</div>
                     <h2 className="text-3xl font-bold text-white font-[var(--font-heading)]">
@@ -326,6 +359,12 @@ export default function WordRushGame({
 
             {/* HUD */}
             <div className="z-10 px-4 pt-3 pb-2 flex items-center justify-between gap-4">
+                {/* Global Overlays */}
+                {particleData && <ParticleBurst x={particleData.x} y={particleData.y} type={particleData.type} onDone={() => setParticleData(null)} />}
+                {floatingTexts.map(t => (
+                    <FloatingText key={t.id} id={t.id} text={t.text} x={t.x} y={t.y} color={t.color} size={t.size} onComplete={(id) => setFloatingTexts(p => p.filter(x => x.id !== id))} />
+                ))}
+
                 <div className="flex items-center gap-1">
                     {Array.from({ length: MAX_HP }).map((_, i) => (
                         <span key={i} className="text-xl transition-all duration-300"
@@ -413,7 +452,7 @@ export default function WordRushGame({
                                 key={i}
                                 whileHover={{ scale: locked ? 1 : 1.03 }}
                                 whileTap={{ scale: locked ? 1 : 0.97 }}
-                                onClick={() => handleAnswer(answer)}
+                                onClick={(ev) => handleAnswer(answer, ev as any)}
                                 disabled={locked}
                                 className="py-4 px-3 rounded-xl font-bold text-white text-sm sm:text-base transition-all relative overflow-hidden"
                                 style={{
@@ -463,10 +502,13 @@ export default function WordRushGame({
                         exit={{ opacity: 0 }}
                         className="absolute inset-0 z-30 flex items-center justify-center bg-space-deep/80 pointer-events-none"
                     >
+                        {/* Warp speed effect during transition */}
+                        <WarpSpeed active={true} color="#FFD700" />
+
                         <motion.div
                             initial={{ scale: 0.8 }}
                             animate={{ scale: 1 }}
-                            className="glass-card !p-6 !px-12 text-center"
+                            className="glass-card !p-6 !px-12 text-center z-10"
                         >
                             <div className="text-4xl mb-2">⚡</div>
                             <div className="text-2xl font-black text-neon-gold">Level {levelIdx + 1} hoàn thành!</div>

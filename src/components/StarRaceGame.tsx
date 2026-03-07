@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/game-context";
 import { useAuth } from "@/lib/services/auth-context";
 import VolumeControl from "./VolumeControl";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 import {
     createRoom,
     joinRoom,
@@ -149,6 +150,7 @@ export default function StarRaceGame({
 }: StarRaceGameProps) {
     const { player, addStars } = useGame();
     const { playerDbId } = useAuth();
+    const { playCorrect, playWrong, playMove, playBGM, stopBGM, playHit } = useSoundEffects();
 
     // Game state
     const [phase, setPhase] = useState<GamePhase>("ship-select");
@@ -217,9 +219,10 @@ export default function StarRaceGame({
 
     const handleRaceStart = useCallback((qs: RaceQuestion[]) => {
         setQuestions(qs);
+        stopBGM();
         setPhase("countdown");
         setCountdownNum(3);
-    }, []);
+    }, [stopBGM]);
 
     const handleQuestion = useCallback((q: RaceQuestion, idx: number) => {
         setCurrentQuestion(q);
@@ -260,6 +263,7 @@ export default function StarRaceGame({
     const handleRaceFinished = useCallback((finalPlayers: RacePlayer[]) => {
         setFinalRanking(finalPlayers);
         setPhase("podium");
+        stopBGM();
 
         // Save own result + award stars if won
         if (room && playerDbId) {
@@ -278,10 +282,11 @@ export default function StarRaceGame({
                 // ⭐ Rank 1 wins 3 stars!
                 if (myRank === 1) {
                     addStars(3);
+                    playCorrect(); // fanfare khi thắng
                 }
             }
         }
-    }, [room, playerDbId, questions.length, selectedShip.emoji, addStars]);
+    }, [room, playerDbId, questions.length, selectedShip.emoji, addStars, stopBGM, playCorrect]);
 
     /* ─── Connect to Room ─── */
     const connectToRoom = useCallback(
@@ -316,8 +321,9 @@ export default function StarRaceGame({
             }
 
             setPhase("lobby");
+            playBGM(); // BGM khi vào lobby phòng đua
         },
-        [playerDbId, player.name, selectedShip.emoji, handlePlayersUpdate, handleRaceStart, handleQuestion, handleAnswerEvent, handleQuestionResults, handleRaceFinished, handleJoinRejectedReceived],
+        [playerDbId, player.name, selectedShip.emoji, handlePlayersUpdate, handleRaceStart, handleQuestion, handleAnswerEvent, handleQuestionResults, handleRaceFinished, handleJoinRejectedReceived, playBGM],
     );
 
     /* ─── Create Room ─── */
@@ -373,14 +379,16 @@ export default function StarRaceGame({
         if (phase !== "countdown") return;
         if (countdownNum <= 0) {
             // Start first question
+            playCorrect(); // GO! sound
             if (isHost && questions.length > 0) {
                 broadcastQuestion(channelRef.current!, questions[0], 0, questions.length);
             }
             return;
         }
+        playMove(); // tick sound
         const t = setTimeout(() => setCountdownNum((n) => n - 1), 1000);
         return () => clearTimeout(t);
-    }, [phase, countdownNum, isHost, questions]);
+    }, [phase, countdownNum, isHost, questions, playMove, playCorrect]);
 
     /* ─── Handle Answer Submission ─── */
     const handleSelectAnswer = (answer: string) => {
@@ -392,6 +400,15 @@ export default function StarRaceGame({
 
         const timeMs = Date.now() - questionStartRef.current;
         const isCorrect = answer === currentQuestion.correct_answer;
+
+        // Play sound feedback
+        if (answer === "__timeout__") {
+            playHit();
+        } else if (isCorrect) {
+            playCorrect();
+        } else {
+            playWrong();
+        }
 
         // Calculate rank-based points
         const correctBefore = answerOrder.filter((a) => a.isCorrect).length;
@@ -488,7 +505,7 @@ export default function StarRaceGame({
                         {SHIP_OPTIONS.map((ship) => (
                             <button
                                 key={ship.emoji}
-                                onClick={() => setSelectedShip(ship)}
+                                onClick={() => { setSelectedShip(ship); playMove(); }}
                                 className={`p-3 rounded-2xl transition-all duration-300 ${selectedShip.emoji === ship.emoji
                                     ? "glass-card-strong scale-110 ring-2"
                                     : "glass-card hover:scale-105"

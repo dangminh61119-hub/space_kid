@@ -8,6 +8,10 @@ import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { useGame } from "@/lib/game-context";
 import MascotAbilityButton from "@/components/MascotAbilityButton";
 import VolumeControl from "./VolumeControl";
+import ParticleBurst from "@/components/effects/ParticleBurst";
+import FloatingText from "@/components/effects/FloatingText";
+import ConfettiShower from "@/components/effects/ConfettiShower";
+import WarpSpeed from "@/components/effects/WarpSpeed";
 
 /* ─── Types ─── */
 interface MatchPair {
@@ -125,6 +129,14 @@ export default function CosmoBridgeGame({
     const [shuffledRight, setShuffledRight] = useState<MatchPair[]>([]);
     const [nextColorIdx, setNextColorIdx] = useState(0);
 
+    // Visual Effects
+    const [particleData, setParticleData] = useState<{ x: number; y: number; type: "correct" | "wrong" | "combo" } | null>(null);
+    const [floatingTexts, setFloatingTexts] = useState<{ id: string; text: string; x: number; y: number; color?: string; size?: "sm" | "md" | "lg" | "xl" }[]>([]);
+    const spawnText = useCallback((text: string, x: number, y: number, color?: string, size?: "sm" | "md" | "lg" | "xl") => {
+        const id = Math.random().toString(36).substring(7);
+        setFloatingTexts(prev => [...prev, { id, text, x, y, color, size }]);
+    }, []);
+
     const containerRef = useRef<HTMLDivElement>(null);
     const round = rounds[roundIdx];
 
@@ -164,12 +176,17 @@ export default function CosmoBridgeGame({
     };
 
     /* ─── Select right (attempt match) ─── */
-    const handleSelectRight = useCallback((rightPairId: string) => {
+    const handleSelectRight = useCallback((rightPairId: string, ev: React.MouseEvent) => {
         if (!selectedLeft || !round) return;
         // Check: is rightPairId already matched?
         if (Object.values(matches).includes(rightPairId)) return;
 
         const isCorrect = selectedLeft === rightPairId;
+
+        // Position for effects
+        const rect = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top;
 
         if (isCorrect) {
             playCorrect();
@@ -177,11 +194,20 @@ export default function CosmoBridgeGame({
             setNextColorIdx(c => (c + 1) % PAIR_COLORS.length);
             setMatches(prev => ({ ...prev, [selectedLeft]: rightPairId }));
             setMatchColors(prev => ({ ...prev, [selectedLeft]: colorIdx }));
+
+            // Visuals
+            setParticleData({ x, y, type: "correct" });
+            const color = PAIR_COLORS[colorIdx];
+            spawnText(`+${BASE_COSMO}`, x, y, color.line, "md");
+
             setScore(s => s + BASE_COSMO);
             onAnswered?.("", true, levels[0]?.subject ?? "", 2);
         } else {
             playWrong();
             setWrongFlash(rightPairId);
+            setParticleData({ x, y, type: "wrong" });
+            spawnText("Trượt!", x, y, "#FF4444", "sm");
+
             onAnswered?.("", false, levels[0]?.subject ?? "", 2);
 
             if (playerClass === "warrior" && !shieldUsed) {
@@ -221,7 +247,7 @@ export default function CosmoBridgeGame({
         }
 
         setSelectedLeft(null);
-    }, [selectedLeft, round, matches, nextColorIdx, playerClass, shieldUsed, score, roundIdx, hp]);
+    }, [selectedLeft, round, matches, nextColorIdx, playerClass, shieldUsed, score, roundIdx, hp, playCorrect, playWrong, spawnText, onGameComplete, levels, onAnswered, stopBGM]);
 
     /* ─── Hunter: auto-match one pair ─── */
     const handleAutoMatch = () => {
@@ -320,6 +346,12 @@ export default function CosmoBridgeGame({
                     <div className="absolute bottom-10 right-10 w-40 h-40 bg-cyan-500/5 rounded-full blur-3xl" />
                 </div>
 
+                {/* Global Overlays */}
+                {particleData && <ParticleBurst x={particleData.x} y={particleData.y} type={particleData.type} count={20} onDone={() => setParticleData(null)} />}
+                {floatingTexts.map(t => (
+                    <FloatingText key={t.id} id={t.id} text={t.text} x={t.x} y={t.y} color={t.color} size={t.size} onComplete={(id) => setFloatingTexts(p => p.filter(x => x.id !== id))} />
+                ))}
+
                 {/* Playing */}
                 {gameState === "playing" && round && (
                     <div className="relative z-10 flex-1 flex flex-col items-center px-6 py-6 gap-4">
@@ -407,7 +439,7 @@ export default function CosmoBridgeGame({
                                     return (
                                         <motion.button
                                             key={`R-${pair.id}`}
-                                            onClick={() => !matched && handleSelectRight(pair.id)}
+                                            onClick={(ev) => !matched && handleSelectRight(pair.id, ev as any)}
                                             disabled={matched || !selectedLeft}
                                             whileHover={!matched && selectedLeft ? { scale: 1.03 } : {}}
                                             whileTap={!matched && selectedLeft ? { scale: 0.97 } : {}}
@@ -488,12 +520,13 @@ export default function CosmoBridgeGame({
 
                     {gameState === "roundComplete" && (
                         <motion.div key="rc" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-                            className="absolute inset-0 bg-space-deep/95 flex flex-col items-center justify-center gap-5 z-20">
-                            <div className="text-5xl">🎉</div>
-                            <h2 className="text-xl font-bold neon-text">Vòng {roundIdx + 1} hoàn thành!</h2>
-                            <p className="text-neon-gold font-bold">{score} ✦</p>
+                            className="absolute inset-0 bg-space-deep/95 flex flex-col items-center justify-center gap-5 z-20 overflow-hidden">
+                            <WarpSpeed active={true} color="#FF6BFF" />
+                            <div className="text-5xl z-10">🎉</div>
+                            <h2 className="text-xl font-bold neon-text z-10">Vòng {roundIdx + 1} hoàn thành!</h2>
+                            <p className="text-neon-gold font-bold z-10">{score} ✦</p>
                             <button onClick={() => startRound(roundIdx + 1)}
-                                className="px-8 py-3 rounded-full bg-gradient-to-r from-pink-500 to-cyan-500 text-white font-bold hover:scale-105 transition-transform">
+                                className="px-8 py-3 rounded-full bg-gradient-to-r from-pink-500 to-cyan-500 text-white font-bold hover:scale-105 transition-transform z-10">
                                 Vòng tiếp →
                             </button>
                         </motion.div>
@@ -515,10 +548,11 @@ export default function CosmoBridgeGame({
                     {gameState === "win" && (
                         <motion.div key="win" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                             className="absolute inset-0 bg-space-deep/95 flex flex-col items-center justify-center gap-5 z-20">
-                            <div className="text-6xl animate-float">🏆</div>
-                            <h2 className="text-2xl font-bold neon-text">Cầu nối hoàn hảo!</h2>
-                            <p className="text-neon-gold text-xl font-bold">{score} XP ⭐</p>
-                            <div className="flex gap-3">
+                            <ConfettiShower />
+                            <div className="text-6xl animate-float z-10">🏆</div>
+                            <h2 className="text-2xl font-bold neon-text z-10">Cầu nối hoàn hảo!</h2>
+                            <p className="text-neon-gold text-xl font-bold z-10">{score} XP ⭐</p>
+                            <div className="flex gap-3 z-10">
                                 <button onClick={startGame} className="px-6 py-3 rounded-full bg-gradient-to-r from-pink-500 to-cyan-500 text-white font-bold hover:scale-105 transition-transform">Chơi lại 🔄</button>
                                 {onExit && <button onClick={onExit} className="px-6 py-3 rounded-full border border-white/20 text-white/60 hover:bg-white/10">Về bản đồ 🗺</button>}
                             </div>
