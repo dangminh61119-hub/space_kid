@@ -27,16 +27,20 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: "Missing player_id" }, { status: 400 });
         }
 
+        // Extract user JWT for RLS-compliant reads
+        const authHeader = request.headers.get("Authorization") || "";
+        const userToken = authHeader.replace("Bearer ", "") || undefined;
+
         let sessions;
         switch (mode) {
             case "today":
-                sessions = await getTodaySessions(playerId);
+                sessions = await getTodaySessions(playerId, userToken);
                 break;
             case "unpracticed":
-                sessions = await getUnpracticedSessions(playerId);
+                sessions = await getUnpracticedSessions(playerId, 5, userToken);
                 break;
             default:
-                sessions = await getRecentSessions(playerId);
+                sessions = await getRecentSessions(playerId, 7, 10, userToken);
         }
 
         return NextResponse.json({ sessions });

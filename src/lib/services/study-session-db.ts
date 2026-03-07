@@ -30,26 +30,20 @@ export interface RAGSourceDB {
     subject: string;
 }
 
-/* ─── Supabase clients ─── */
+/* ─── Supabase client ─── */
 
-/** Service-role client — bypasses RLS, used for admin reads */
-function getServiceClient() {
+/** Create Supabase client with user JWT for RLS compliance */
+function getClient(userToken?: string) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    if (userToken) {
+        const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+        return createClient(url, anonKey, {
+            global: { headers: { Authorization: `Bearer ${userToken}` } },
+        });
+    }
+    // Fallback to service role if available
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     return createClient(url, key);
-}
-
-/** User-context client — respects RLS, has auth.uid() set */
-function getUserClient(userToken: string) {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    return createClient(url, anonKey, {
-        global: {
-            headers: {
-                Authorization: `Bearer ${userToken}`,
-            },
-        },
-    });
 }
 
 /* ─── API ─── */
@@ -63,8 +57,7 @@ export async function saveStudySession(data: {
     lesson: string;
     sources: RAGSourceDB[];
 }, userToken?: string): Promise<StudySession | null> {
-    // Use user JWT if available (RLS requires auth.uid()), otherwise service role
-    const supabase = userToken ? getUserClient(userToken) : getServiceClient();
+    const supabase = getClient(userToken);
 
     const { data: row, error } = await supabase
         .from("study_sessions")
@@ -90,9 +83,10 @@ export async function saveStudySession(data: {
 export async function getRecentSessions(
     playerId: string,
     days: number = 7,
-    limit: number = 10
+    limit: number = 10,
+    userToken?: string
 ): Promise<StudySession[]> {
-    const supabase = getServiceClient();
+    const supabase = getClient(userToken);
     const since = new Date();
     since.setDate(since.getDate() - days);
 
@@ -112,8 +106,8 @@ export async function getRecentSessions(
 }
 
 /** Get today's sessions */
-export async function getTodaySessions(playerId: string): Promise<StudySession[]> {
-    const supabase = getServiceClient();
+export async function getTodaySessions(playerId: string, userToken?: string): Promise<StudySession[]> {
+    const supabase = getClient(userToken);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -132,8 +126,8 @@ export async function getTodaySessions(playerId: string): Promise<StudySession[]
 }
 
 /** Mark session as practiced */
-export async function markPracticed(sessionId: string): Promise<void> {
-    const supabase = getServiceClient();
+export async function markPracticed(sessionId: string, userToken?: string): Promise<void> {
+    const supabase = getClient(userToken);
     await supabase
         .from("study_sessions")
         .update({ practiced: true })
@@ -141,8 +135,8 @@ export async function markPracticed(sessionId: string): Promise<void> {
 }
 
 /** Mark session as reviewed */
-export async function markReviewed(sessionId: string): Promise<void> {
-    const supabase = getServiceClient();
+export async function markReviewed(sessionId: string, userToken?: string): Promise<void> {
+    const supabase = getClient(userToken);
     await supabase
         .from("study_sessions")
         .update({ reviewed: true })
@@ -152,9 +146,10 @@ export async function markReviewed(sessionId: string): Promise<void> {
 /** Get unpracticed sessions (for recommendations) */
 export async function getUnpracticedSessions(
     playerId: string,
-    limit: number = 5
+    limit: number = 5,
+    userToken?: string
 ): Promise<StudySession[]> {
-    const supabase = getServiceClient();
+    const supabase = getClient(userToken);
     const { data, error } = await supabase
         .from("study_sessions")
         .select("*")
@@ -171,8 +166,8 @@ export async function getUnpracticedSessions(
 }
 
 /** Get studied subjects summary */
-export async function getStudiedSubjectsSummary(playerId: string): Promise<Record<string, number>> {
-    const supabase = getServiceClient();
+export async function getStudiedSubjectsSummary(playerId: string, userToken?: string): Promise<Record<string, number>> {
+    const supabase = getClient(userToken);
     const { data, error } = await supabase
         .from("study_sessions")
         .select("subject")
