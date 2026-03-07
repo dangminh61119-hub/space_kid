@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 export default function Navbar() {
     const [menuOpen, setMenuOpen] = useState(false);
     const { player } = useGame();
-    const { user, signOut } = useAuth();
+    const { user, role, signOut } = useAuth();
     const router = useRouter();
 
     const handleSignOut = async () => {
@@ -65,6 +65,15 @@ export default function Navbar() {
                     >
                         Phụ huynh
                     </Link>
+
+                    {role === "admin" && (
+                        <Link
+                            href="/admin"
+                            className="text-sm text-amber-400/80 hover:text-amber-300 transition-colors duration-300 font-semibold"
+                        >
+                            ⚙️ Admin
+                        </Link>
+                    )}
 
                     {/* Calm Mode toggle — luôn hiển thị khi đã onboarding */}
                     {player.onboardingComplete && (
@@ -131,6 +140,11 @@ export default function Navbar() {
                     <Link href="/dashboard" className="block text-white/70 hover:text-neon-cyan transition-colors">
                         Phụ huynh
                     </Link>
+                    {role === "admin" && (
+                        <Link href="/admin" className="block text-amber-400/80 hover:text-amber-300 transition-colors font-semibold">
+                            ⚙️ Admin
+                        </Link>
+                    )}
                     <Link
                         href="/login"
                         className="block text-center px-5 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-neon-cyan to-neon-magenta text-space-deep"
