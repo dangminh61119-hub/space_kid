@@ -90,6 +90,27 @@ export default function AdminTextbooksPage() {
         }
     };
 
+    /* ─── Client-side PDF text extraction ─── */
+    const extractPDFText = async (file: File): Promise<string> => {
+        const pdfjs = await import("pdfjs-dist");
+        pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+        const pages: string[] = [];
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items
+                .map((item) => ("str" in item ? item.str : ""))
+                .join(" ");
+            if (pageText.trim()) pages.push(pageText);
+        }
+
+        return pages.join("\n\n");
+    };
+
     /* ─── Upload ─── */
     const handleUpload = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -99,49 +120,48 @@ export default function AdminTextbooksPage() {
 
         setError(""); setSuccess(""); setProcessing(true);
         try {
-            let res: Response;
+            let content = formContent;
 
+            // Extract text from PDF on the client side (avoids Vercel payload limit)
             if (uploadMode === "pdf" && pdfFile) {
-                // FormData upload for PDF
-                const fd = new FormData();
-                fd.append("file", pdfFile);
-                fd.append("title", formTitle);
-                fd.append("subject", formSubject);
-                fd.append("grade", String(formGrade));
-                fd.append("publisher", formPublisher);
-                res = await fetch("/api/admin/textbooks", {
-                    method: "POST",
-                    headers: { Authorization: `Bearer ${token}` },
-                    body: fd,
-                });
-            } else {
-                // JSON upload for text
-                res = await fetch("/api/admin/textbooks", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                    body: JSON.stringify({ title: formTitle, subject: formSubject, grade: formGrade, publisher: formPublisher, content: formContent }),
-                });
+                setSuccess("📄 Đang trích xuất text từ PDF...");
+                content = await extractPDFText(pdfFile);
+                if (!content.trim()) {
+                    setError("❌ Không trích xuất được text từ PDF. File có thể là scan/ảnh. Hãy dùng chế độ Paste Text.");
+                    setSuccess("");
+                    return;
+                }
+                setSuccess(`📄 Đã trích xuất ${content.split(/\s+/).length} từ. Đang tạo embedding...`);
             }
+
+            // Always send as JSON (text only, no file upload)
+            const res = await fetch("/api/admin/textbooks", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ title: formTitle, subject: formSubject, grade: formGrade, publisher: formPublisher, content }),
+            });
 
             // Handle non-JSON responses (e.g., Vercel timeout)
             const ct = res.headers.get("content-type") || "";
             if (!ct.includes("application/json")) {
                 const text = await res.text();
                 if (res.status === 504 || text.includes("FUNCTION_INVOCATION_TIMEOUT")) {
-                    setError(`⏰ Timeout: Nội dung quá dài cho server. Hãy thử file nhỏ hơn hoặc ít text hơn.`);
+                    setError(`⏰ Timeout: Nội dung quá dài. Hãy thử chia nhỏ file PDF.`);
                 } else {
                     setError(`❌ Server error ${res.status}: ${res.statusText || text.slice(0, 200)}`);
                 }
+                setSuccess("");
                 return;
             }
 
             const data = await res.json();
-            if (!res.ok) { setError(`❌ ${data.error || "Upload failed"}`); return; }
+            if (!res.ok) { setError(`❌ ${data.error || "Upload failed"}`); setSuccess(""); return; }
             setSuccess(`✅ Upload thành công! ${data.chunks} chunks đã được tạo.`);
             setFormTitle(""); setFormContent(""); setFormPublisher(""); setPdfFile(null); setShowForm(false);
             fetchTextbooks();
         } catch (err) {
-            setError("🔌 Network error: " + String(err));
+            setError("🔌 Lỗi: " + (err instanceof Error ? err.message : String(err)));
+            setSuccess("");
         } finally {
             setProcessing(false);
         }
