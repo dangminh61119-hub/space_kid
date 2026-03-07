@@ -209,7 +209,8 @@ export async function searchTextbooks(
     query: string,
     grade: number,
     subject?: string,
-    topK = 5
+    topK = 5,
+    textbookId?: string
 ): Promise<RAGResult[]> {
     const supabase = getSupabase();
 
@@ -221,6 +222,7 @@ export async function searchTextbooks(
         query_embedding: JSON.stringify(queryEmbedding),
         match_grade: grade,
         match_subject: subject || null,
+        match_textbook_id: textbookId || null,
         match_count: topK,
         match_threshold: 0.3,
     });
