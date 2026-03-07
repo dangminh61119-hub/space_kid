@@ -72,6 +72,14 @@ export default function AdminTextbooksPage() {
 
     const token = session?.access_token;
 
+    // Always get a fresh token (auto-refreshes if expired)
+    const getFreshToken = async (): Promise<string | null> => {
+        const { supabase } = await import("@/lib/services/supabase");
+        if (!supabase) return token || null;
+        const { data } = await supabase.auth.getSession();
+        return data.session?.access_token || token || null;
+    };
+
     const fetchTextbooks = useCallback(async () => {
         if (!token) return;
         setLoading(true);
@@ -155,10 +163,11 @@ export default function AdminTextbooksPage() {
             // Convert to base64 JPEG (smaller than PNG)
             const base64 = canvas.toDataURL("image/jpeg", 0.85);
 
-            // Send to OCR API
+            // Send to OCR API (use fresh token in case of long OCR process)
+            const ocrToken = await getFreshToken();
             const res = await fetch("/api/admin/textbooks/ocr", {
                 method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${ocrToken}` },
                 body: JSON.stringify({ image: base64, pageNum: i }),
             });
 
@@ -199,10 +208,14 @@ export default function AdminTextbooksPage() {
                 setSuccess(`✅ Trích xuất ${wordCount} từ. Đang tạo embedding...`);
             }
 
+            // Get a fresh token before sending text to server (token may have expired during OCR)
+            const freshToken = await getFreshToken();
+            if (!freshToken) { setError("❌ Phiên đăng nhập hết hạn. Hãy tải lại trang."); setSuccess(""); return; }
+
             // Send text to create embedding
             const res = await fetch("/api/admin/textbooks", {
                 method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${freshToken}` },
                 body: JSON.stringify({ title: formTitle, subject: formSubject, grade: formGrade, publisher: formPublisher, content }),
             });
 
