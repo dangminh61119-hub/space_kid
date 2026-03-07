@@ -12,7 +12,7 @@ interface DashboardStats {
     players: { total: number; byGrade: Record<number, number> };
 }
 
-const EMPTY_STATS: DashboardStats = {
+const EMPTY: DashboardStats = {
     questions: { total: 0, draft: 0, approved: 0, byGrade: {} },
     raceQuestions: { total: 0, byGrade: {} },
     textbooks: { total: 0, ready: 0, totalChunks: 0, byGrade: {} },
@@ -21,7 +21,7 @@ const EMPTY_STATS: DashboardStats = {
 
 export default function AdminDashboard() {
     const { session } = useAuth();
-    const [stats, setStats] = useState<DashboardStats>(EMPTY_STATS);
+    const [stats, setStats] = useState<DashboardStats>(EMPTY);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -36,19 +36,17 @@ export default function AdminDashboard() {
         if (!token) return;
 
         try {
-            // Fetch all data sources in parallel
-            const [questionsRes, raceRes, textbooksRes, playersRes] = await Promise.allSettled([
+            const [qRes, rRes, tRes, pRes] = await Promise.allSettled([
                 fetch("/api/admin/questions?limit=9999", { headers: { Authorization: `Bearer ${token}` } }),
                 fetch("/api/admin/race-questions", { headers: { Authorization: `Bearer ${token}` } }),
                 fetch("/api/admin/textbooks", { headers: { Authorization: `Bearer ${token}` } }),
                 fetch("/api/admin/players", { headers: { Authorization: `Bearer ${token}` } }),
             ]);
 
-            const result = { ...EMPTY_STATS };
+            const result = { ...EMPTY };
 
-            // Questions
-            if (questionsRes.status === "fulfilled" && questionsRes.value.ok) {
-                const { data } = await questionsRes.value.json();
+            if (qRes.status === "fulfilled" && qRes.value.ok) {
+                const { data } = await qRes.value.json();
                 const byGrade: Record<number, number> = {};
                 let draft = 0, approved = 0;
                 for (const q of data || []) {
@@ -59,20 +57,16 @@ export default function AdminDashboard() {
                 result.questions = { total: data?.length || 0, draft, approved, byGrade };
             }
 
-            // Race questions
-            if (raceRes.status === "fulfilled" && raceRes.value.ok) {
-                const rData = await raceRes.value.json();
-                const questions = rData.data || rData.questions || rData || [];
+            if (rRes.status === "fulfilled" && rRes.value.ok) {
+                const d = await rRes.value.json();
+                const arr = d.data || d.questions || (Array.isArray(d) ? d : []);
                 const byGrade: Record<number, number> = {};
-                for (const q of Array.isArray(questions) ? questions : []) {
-                    byGrade[q.grade] = (byGrade[q.grade] || 0) + 1;
-                }
-                result.raceQuestions = { total: Array.isArray(questions) ? questions.length : 0, byGrade };
+                for (const q of arr) byGrade[q.grade] = (byGrade[q.grade] || 0) + 1;
+                result.raceQuestions = { total: arr.length, byGrade };
             }
 
-            // Textbooks
-            if (textbooksRes.status === "fulfilled" && textbooksRes.value.ok) {
-                const { textbooks } = await textbooksRes.value.json();
+            if (tRes.status === "fulfilled" && tRes.value.ok) {
+                const { textbooks } = await tRes.value.json();
                 const byGrade: Record<number, number> = {};
                 let ready = 0, totalChunks = 0;
                 for (const t of textbooks || []) {
@@ -83,15 +77,12 @@ export default function AdminDashboard() {
                 result.textbooks = { total: textbooks?.length || 0, ready, totalChunks, byGrade };
             }
 
-            // Players
-            if (playersRes.status === "fulfilled" && playersRes.value.ok) {
-                const pData = await playersRes.value.json();
-                const players = pData.data || pData.players || pData || [];
+            if (pRes.status === "fulfilled" && pRes.value.ok) {
+                const d = await pRes.value.json();
+                const arr = d.data || d.players || (Array.isArray(d) ? d : []);
                 const byGrade: Record<number, number> = {};
-                for (const p of Array.isArray(players) ? players : []) {
-                    byGrade[p.grade] = (byGrade[p.grade] || 0) + 1;
-                }
-                result.players = { total: Array.isArray(players) ? players.length : 0, byGrade };
+                for (const p of arr) byGrade[p.grade] = (byGrade[p.grade] || 0) + 1;
+                result.players = { total: arr.length, byGrade };
             }
 
             setStats(result);
@@ -104,169 +95,332 @@ export default function AdminDashboard() {
 
     if (loading) {
         return (
-            <div style={{ textAlign: "center", padding: 60, color: "#9ca3af" }}>
-                <div style={{ fontSize: 40, animation: "spin 1.5s linear infinite", display: "inline-block" }}>📊</div>
-                <p style={{ marginTop: 12 }}>Đang tải thống kê...</p>
+            <div className="dash-loading">
+                <div className="dash-loading-spinner" />
+                <p>Đang tải thống kê...</p>
+                <style jsx>{`
+                    .dash-loading { text-align: center; padding: 80px 0; color: #64748b; }
+                    .dash-loading-spinner {
+                        width: 36px; height: 36px; border-radius: 50%;
+                        border: 3px solid #1e293b; border-top-color: #f59e0b;
+                        animation: spin 0.8s linear infinite;
+                        margin: 0 auto 12px;
+                    }
+                    @keyframes spin { to { transform: rotate(360deg); }}
+                `}</style>
             </div>
         );
     }
 
-    return (
-        <div>
-            <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>📊 Tổng quan hệ thống</h1>
-            <p style={{ color: "#9ca3af", fontSize: 14, marginBottom: 24 }}>
-                Quản lý toàn bộ dữ liệu CosmoMosaic
-            </p>
+    const now = new Date();
+    const hour = now.getHours();
+    const greeting = hour < 12 ? "Chào buổi sáng" : hour < 18 ? "Chào buổi chiều" : "Chào buổi tối";
 
-            {/* Top stat cards */}
-            <div className="dash-stats-grid">
-                <StatCard icon="📋" label="Câu hỏi" value={stats.questions.total} sub={`${stats.questions.approved} đã duyệt`} color="#3b82f6" href="/admin/questions" />
-                <StatCard icon="☀️" label="Race Questions" value={stats.raceQuestions.total} sub="Helios Race" color="#f59e0b" href="/admin/race-questions" />
-                <StatCard icon="📚" label="Sách Giáo Khoa" value={stats.textbooks.total} sub={`${stats.textbooks.totalChunks} chunks`} color="#8b5cf6" href="/admin/textbooks" />
-                <StatCard icon="👤" label="Học sinh" value={stats.players.total} sub="Registered" color="#22c55e" href="#" />
+    return (
+        <div className="dash">
+            {/* Header */}
+            <div className="dash-header">
+                <div>
+                    <h1 className="dash-greeting">{greeting} 👋</h1>
+                    <p className="dash-subtitle">Tổng quan hệ thống CosmoMosaic</p>
+                </div>
+                <div className="dash-date">
+                    {now.toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                </div>
+            </div>
+
+            {/* Stat cards */}
+            <div className="dash-cards">
+                <div className="dash-card card-blue">
+                    <div className="dash-card-bg" />
+                    <div className="dash-card-content">
+                        <div className="dash-card-top">
+                            <div className="dash-card-icon">📋</div>
+                            <Link href="/admin/questions" className="dash-card-link">Xem →</Link>
+                        </div>
+                        <div className="dash-card-value">{stats.questions.total.toLocaleString()}</div>
+                        <div className="dash-card-label">Câu hỏi</div>
+                        <div className="dash-card-sub">{stats.questions.approved} đã duyệt · {stats.questions.draft} chờ duyệt</div>
+                    </div>
+                </div>
+
+                <div className="dash-card card-amber">
+                    <div className="dash-card-bg" />
+                    <div className="dash-card-content">
+                        <div className="dash-card-top">
+                            <div className="dash-card-icon">☀️</div>
+                            <Link href="/admin/race-questions" className="dash-card-link">Xem →</Link>
+                        </div>
+                        <div className="dash-card-value">{stats.raceQuestions.total.toLocaleString()}</div>
+                        <div className="dash-card-label">Race Questions</div>
+                        <div className="dash-card-sub">Helios Race</div>
+                    </div>
+                </div>
+
+                <div className="dash-card card-purple">
+                    <div className="dash-card-bg" />
+                    <div className="dash-card-content">
+                        <div className="dash-card-top">
+                            <div className="dash-card-icon">📚</div>
+                            <Link href="/admin/textbooks" className="dash-card-link">Xem →</Link>
+                        </div>
+                        <div className="dash-card-value">{stats.textbooks.total}</div>
+                        <div className="dash-card-label">Sách Giáo Khoa</div>
+                        <div className="dash-card-sub">{stats.textbooks.totalChunks} chunks · {stats.textbooks.ready} sẵn sàng</div>
+                    </div>
+                </div>
+
+                <div className="dash-card card-green">
+                    <div className="dash-card-bg" />
+                    <div className="dash-card-content">
+                        <div className="dash-card-top">
+                            <div className="dash-card-icon">👤</div>
+                            <span className="dash-card-link" />
+                        </div>
+                        <div className="dash-card-value">{stats.players.total}</div>
+                        <div className="dash-card-label">Học sinh</div>
+                        <div className="dash-card-sub">Tài khoản đăng ký</div>
+                    </div>
+                </div>
             </div>
 
             {/* Grade breakdown */}
-            <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 32, marginBottom: 16 }}>
-                🎓 Phân bổ theo lớp
-            </h2>
-            <div className="dash-grade-table">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Lớp</th>
-                            <th>📋 Câu hỏi</th>
-                            <th>☀️ Race</th>
-                            <th>📚 SGK</th>
-                            <th>👤 Học sinh</th>
-                            <th>Hành động</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {[1, 2, 3, 4, 5].map(g => (
-                            <tr key={g}>
-                                <td style={{ fontWeight: 700 }}>Lớp {g}</td>
-                                <td>{stats.questions.byGrade[g] || 0}</td>
-                                <td>{stats.raceQuestions.byGrade[g] || 0}</td>
-                                <td>{stats.textbooks.byGrade[g] || 0}</td>
-                                <td>{stats.players.byGrade[g] || 0}</td>
-                                <td>
-                                    <Link href={`/admin/questions?grade=${g}`} className="dash-action-link">
-                                        Xem chi tiết →
-                                    </Link>
-                                </td>
+            <div className="dash-section">
+                <h2 className="dash-section-title">🎓 Phân bổ theo lớp</h2>
+                <div className="dash-table-wrap">
+                    <table className="dash-table">
+                        <thead>
+                            <tr>
+                                <th>Lớp</th>
+                                <th>📋 Câu hỏi</th>
+                                <th>☀️ Race</th>
+                                <th>📚 SGK</th>
+                                <th>👤 Học sinh</th>
+                                <th></th>
                             </tr>
-                        ))}
-                        <tr className="dash-total-row">
-                            <td style={{ fontWeight: 800 }}>Tổng</td>
-                            <td style={{ fontWeight: 800 }}>{stats.questions.total}</td>
-                            <td style={{ fontWeight: 800 }}>{stats.raceQuestions.total}</td>
-                            <td style={{ fontWeight: 800 }}>{stats.textbooks.total}</td>
-                            <td style={{ fontWeight: 800 }}>{stats.players.total}</td>
-                            <td></td>
-                        </tr>
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {[1, 2, 3, 4, 5].map(g => {
+                                const qCount = stats.questions.byGrade[g] || 0;
+                                const rCount = stats.raceQuestions.byGrade[g] || 0;
+                                const tCount = stats.textbooks.byGrade[g] || 0;
+                                const pCount = stats.players.byGrade[g] || 0;
+                                return (
+                                    <tr key={g}>
+                                        <td>
+                                            <span className="dash-grade-badge">Lớp {g}</span>
+                                        </td>
+                                        <td>
+                                            <span className="dash-num">{qCount}</span>
+                                            {qCount > 0 && (
+                                                <div className="dash-bar">
+                                                    <div className="dash-bar-fill blue" style={{ width: `${Math.min(100, (qCount / Math.max(1, stats.questions.total)) * 100)}%` }} />
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td><span className="dash-num">{rCount}</span></td>
+                                        <td><span className="dash-num">{tCount}</span></td>
+                                        <td><span className="dash-num">{pCount}</span></td>
+                                        <td>
+                                            <Link href={`/admin/questions?grade=${g}`} className="dash-detail-link">
+                                                Chi tiết →
+                                            </Link>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {/* Quick actions */}
-            <h2 style={{ fontSize: 18, fontWeight: 700, marginTop: 32, marginBottom: 16 }}>
-                ⚡ Thao tác nhanh
-            </h2>
-            <div className="dash-actions-grid">
-                <Link href="/admin/questions?status=draft" className="dash-quick-btn draft">
-                    <span>⏳</span>
-                    <span>Duyệt câu hỏi ({stats.questions.draft})</span>
-                </Link>
-                <Link href="/admin/textbooks" className="dash-quick-btn sgk">
-                    <span>📥</span>
-                    <span>Upload SGK mới</span>
-                </Link>
-                <Link href="/admin/race-questions" className="dash-quick-btn race">
-                    <span>☀️</span>
-                    <span>Thêm Race Question</span>
-                </Link>
-                <Link href="/admin/questions" className="dash-quick-btn questions">
-                    <span>➕</span>
-                    <span>Thêm câu hỏi</span>
-                </Link>
+            <div className="dash-section">
+                <h2 className="dash-section-title">⚡ Thao tác nhanh</h2>
+                <div className="dash-actions">
+                    <Link href="/admin/questions?status=draft" className="dash-action action-amber">
+                        <span className="dash-action-icon">⏳</span>
+                        <div>
+                            <div className="dash-action-label">Duyệt câu hỏi</div>
+                            <div className="dash-action-count">{stats.questions.draft} chờ duyệt</div>
+                        </div>
+                    </Link>
+                    <Link href="/admin/textbooks" className="dash-action action-purple">
+                        <span className="dash-action-icon">📥</span>
+                        <div>
+                            <div className="dash-action-label">Upload SGK</div>
+                            <div className="dash-action-count">Thêm nội dung mới</div>
+                        </div>
+                    </Link>
+                    <Link href="/admin/race-questions" className="dash-action action-orange">
+                        <span className="dash-action-icon">☀️</span>
+                        <div>
+                            <div className="dash-action-label">Race Questions</div>
+                            <div className="dash-action-count">Quản lý Helios</div>
+                        </div>
+                    </Link>
+                    <Link href="/admin/questions" className="dash-action action-blue">
+                        <span className="dash-action-icon">➕</span>
+                        <div>
+                            <div className="dash-action-label">Thêm câu hỏi</div>
+                            <div className="dash-action-count">Tạo câu hỏi mới</div>
+                        </div>
+                    </Link>
+                </div>
             </div>
 
             <style jsx>{`
-                .dash-stats-grid {
-                    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                    gap: 12px; margin-bottom: 8px;
-                }
-                .dash-grade-table {
-                    background: #111827; border-radius: 12px;
-                    border: 1px solid #1f2937; overflow: hidden;
-                }
-                .dash-grade-table table {
-                    width: 100%; border-collapse: collapse;
-                }
-                .dash-grade-table th {
-                    padding: 10px 16px; text-align: left;
-                    font-size: 12px; font-weight: 700;
-                    color: #9ca3af; text-transform: uppercase;
-                    background: #0d1117; border-bottom: 1px solid #1f2937;
-                }
-                .dash-grade-table td {
-                    padding: 10px 16px; font-size: 14px;
-                    border-bottom: 1px solid #1f293740;
-                }
-                .dash-grade-table tr:hover { background: #1f293740; }
-                .dash-total-row { background: #0d1117; }
-                .dash-total-row td { border-bottom: none; }
-                .dash-action-link {
-                    font-size: 12px; color: #f59e0b; text-decoration: none;
-                    font-weight: 600;
-                }
-                .dash-action-link:hover { text-decoration: underline; }
+                .dash { animation: fadeIn 0.3s ease; }
+                @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
-                .dash-actions-grid {
-                    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-                    gap: 10px;
+                .dash-header {
+                    display: flex; justify-content: space-between; align-items: flex-start;
+                    margin-bottom: 28px;
                 }
-                .dash-quick-btn {
-                    display: flex; align-items: center; gap: 10px;
-                    padding: 14px 16px; border-radius: 10px;
-                    font-size: 14px; font-weight: 600;
+                .dash-greeting {
+                    font-size: 26px; font-weight: 800; color: #f8fafc;
+                    margin: 0 0 4px;
+                }
+                .dash-subtitle { font-size: 14px; color: #64748b; margin: 0; }
+                .dash-date {
+                    font-size: 13px; color: #475569;
+                    background: rgba(255,255,255,0.04);
+                    padding: 6px 14px; border-radius: 8px;
+                    border: 1px solid rgba(255,255,255,0.06);
+                }
+
+                /* Cards */
+                .dash-cards {
+                    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                    gap: 16px; margin-bottom: 32px;
+                }
+                .dash-card {
+                    position: relative; border-radius: 16px; overflow: hidden;
+                    border: 1px solid rgba(255,255,255,0.06);
+                    transition: transform 0.2s, box-shadow 0.2s;
+                }
+                .dash-card:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+                }
+                .dash-card-bg {
+                    position: absolute; inset: 0; opacity: 0.12;
+                }
+                .card-blue { background: #0c1629; }
+                .card-blue .dash-card-bg { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+                .card-blue .dash-card-value { color: #60a5fa; }
+                .card-amber { background: #1a1408; }
+                .card-amber .dash-card-bg { background: linear-gradient(135deg, #f59e0b, #d97706); }
+                .card-amber .dash-card-value { color: #fbbf24; }
+                .card-purple { background: #130d24; }
+                .card-purple .dash-card-bg { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+                .card-purple .dash-card-value { color: #a78bfa; }
+                .card-green { background: #071a0e; }
+                .card-green .dash-card-bg { background: linear-gradient(135deg, #22c55e, #16a34a); }
+                .card-green .dash-card-value { color: #4ade80; }
+
+                .dash-card-content {
+                    position: relative; z-index: 1; padding: 20px;
+                }
+                .dash-card-top {
+                    display: flex; justify-content: space-between; align-items: center;
+                    margin-bottom: 16px;
+                }
+                .dash-card-icon { font-size: 28px; }
+                .dash-card-link {
+                    font-size: 11px; color: #64748b; text-decoration: none;
+                    font-weight: 600; transition: color 0.15s;
+                }
+                .dash-card-link:hover { color: #e2e8f0; }
+                .dash-card-value {
+                    font-size: 36px; font-weight: 800; line-height: 1;
+                    margin-bottom: 4px; letter-spacing: -0.02em;
+                }
+                .dash-card-label {
+                    font-size: 14px; font-weight: 600; color: #94a3b8;
+                    margin-bottom: 4px;
+                }
+                .dash-card-sub { font-size: 12px; color: #475569; }
+
+                /* Section */
+                .dash-section { margin-bottom: 32px; }
+                .dash-section-title {
+                    font-size: 16px; font-weight: 700; color: #e2e8f0;
+                    margin: 0 0 16px;
+                }
+
+                /* Table */
+                .dash-table-wrap {
+                    background: rgba(255,255,255,0.02);
+                    border-radius: 14px;
+                    border: 1px solid rgba(255,255,255,0.06);
+                    overflow: hidden;
+                }
+                .dash-table { width: 100%; border-collapse: collapse; }
+                .dash-table th {
+                    padding: 12px 16px; text-align: left;
+                    font-size: 11px; font-weight: 700; color: #475569;
+                    text-transform: uppercase; letter-spacing: 0.05em;
+                    background: rgba(255,255,255,0.02);
+                    border-bottom: 1px solid rgba(255,255,255,0.06);
+                }
+                .dash-table td {
+                    padding: 12px 16px; font-size: 14px;
+                    border-bottom: 1px solid rgba(255,255,255,0.03);
+                }
+                .dash-table tr:last-child td { border-bottom: none; }
+                .dash-table tr:hover td { background: rgba(255,255,255,0.02); }
+                .dash-grade-badge {
+                    font-weight: 700; color: #e2e8f0; font-size: 13px;
+                }
+                .dash-num { font-weight: 600; color: #cbd5e1; font-size: 14px; font-variant-numeric: tabular-nums; }
+                .dash-bar {
+                    width: 60px; height: 4px; background: rgba(255,255,255,0.06);
+                    border-radius: 2px; margin-top: 4px;
+                }
+                .dash-bar-fill {
+                    height: 100%; border-radius: 2px;
+                    transition: width 0.5s ease;
+                }
+                .dash-bar-fill.blue { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+                .dash-detail-link {
+                    font-size: 12px; color: #f59e0b; text-decoration: none;
+                    font-weight: 600; opacity: 0.7; transition: opacity 0.15s;
+                }
+                .dash-detail-link:hover { opacity: 1; }
+
+                /* Actions */
+                .dash-actions {
+                    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 12px;
+                }
+                .dash-action {
+                    display: flex; align-items: center; gap: 14px;
+                    padding: 16px 18px; border-radius: 14px;
                     text-decoration: none; color: white;
-                    transition: all 0.15s;
+                    border: 1px solid rgba(255,255,255,0.06);
+                    transition: all 0.2s;
                 }
-                .dash-quick-btn:hover { transform: translateY(-1px); filter: brightness(1.1); }
-                .dash-quick-btn.draft { background: linear-gradient(135deg, #92400e, #b45309); }
-                .dash-quick-btn.sgk { background: linear-gradient(135deg, #5b21b6, #7c3aed); }
-                .dash-quick-btn.race { background: linear-gradient(135deg, #b45309, #d97706); }
-                .dash-quick-btn.questions { background: linear-gradient(135deg, #1e40af, #3b82f6); }
+                .dash-action:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+                }
+                .dash-action-icon { font-size: 28px; }
+                .dash-action-label { font-size: 14px; font-weight: 700; }
+                .dash-action-count { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+                .action-amber { background: linear-gradient(135deg, #78350f, #92400e); }
+                .action-purple { background: linear-gradient(135deg, #3b0764, #581c87); }
+                .action-orange { background: linear-gradient(135deg, #7c2d12, #9a3412); }
+                .action-blue { background: linear-gradient(135deg, #1e3a5f, #1e40af); }
 
                 @media (max-width: 768px) {
-                    .dash-stats-grid { grid-template-columns: repeat(2, 1fr); }
-                    .dash-actions-grid { grid-template-columns: 1fr; }
-                    .dash-grade-table { overflow-x: auto; }
+                    .dash-header { flex-direction: column; gap: 12px; }
+                    .dash-cards { grid-template-columns: repeat(2, 1fr); }
+                    .dash-actions { grid-template-columns: 1fr; }
+                    .dash-table-wrap { overflow-x: auto; }
+                    .dash-card-value { font-size: 28px; }
                 }
             `}</style>
         </div>
-    );
-}
-
-/* ─── Stat Card Component ─── */
-function StatCard({ icon, label, value, sub, color, href }: {
-    icon: string; label: string; value: number; sub: string; color: string; href: string;
-}) {
-    return (
-        <Link href={href} style={{
-            background: "#111827", borderRadius: 12,
-            padding: 20, border: "1px solid #1f2937",
-            textDecoration: "none", display: "block",
-            transition: "all 0.15s",
-        }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                <span style={{ fontSize: 24 }}>{icon}</span>
-                <span style={{ fontSize: 11, color: "#6b7280", fontWeight: 600 }}>{label}</span>
-            </div>
-            <div style={{ fontSize: 32, fontWeight: 800, color, lineHeight: 1 }}>{value.toLocaleString()}</div>
-            <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>{sub}</div>
-        </Link>
     );
 }
