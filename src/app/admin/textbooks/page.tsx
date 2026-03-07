@@ -15,6 +15,16 @@ interface Textbook {
     created_at: string;
 }
 
+interface Section {
+    id: number;
+    textbook_id: string;
+    chapter: string;
+    section_title: string;
+    content: string;
+    chunk_index: number;
+    created_at: string;
+}
+
 const SUBJECTS = [
     { id: "math", label: "Toán", emoji: "🔢" },
     { id: "vietnamese", label: "Tiếng Việt", emoji: "📖" },
@@ -45,6 +55,13 @@ export default function AdminTextbooksPage() {
     const [dragOver, setDragOver] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+
+    // Chunk viewer
+    const [viewingBookId, setViewingBookId] = useState<string | null>(null);
+    const [sections, setSections] = useState<Section[]>([]);
+    const [sectionsLoading, setSectionsLoading] = useState(false);
+    const [editingId, setEditingId] = useState<number | null>(null);
+    const [editContent, setEditContent] = useState("");
 
     const token = session?.access_token;
 
@@ -212,9 +229,58 @@ export default function AdminTextbooksPage() {
         if (!confirm(`Xóa sách "${title}"? Tất cả chunks sẽ bị xóa.`)) return;
         try {
             await fetch(`/api/admin/textbooks?id=${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+            if (viewingBookId === id) { setViewingBookId(null); setSections([]); }
             fetchTextbooks();
         } catch (err) {
             console.error("Delete failed:", err);
+        }
+    };
+
+    /* ─── Chunk Management ─── */
+    const viewChunks = async (textbookId: string) => {
+        if (viewingBookId === textbookId) { setViewingBookId(null); setSections([]); return; }
+        if (!token) return;
+        setViewingBookId(textbookId);
+        setSectionsLoading(true);
+        try {
+            const res = await fetch(`/api/admin/textbooks/sections?textbook_id=${textbookId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await res.json();
+            setSections(data.sections || []);
+        } catch (err) {
+            console.error("Fetch sections error:", err);
+        } finally {
+            setSectionsLoading(false);
+        }
+    };
+
+    const saveChunk = async (id: number) => {
+        if (!token) return;
+        try {
+            await fetch("/api/admin/textbooks/sections", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ id, content: editContent }),
+            });
+            setSections(prev => prev.map(s => s.id === id ? { ...s, content: editContent } : s));
+            setEditingId(null);
+        } catch (err) {
+            console.error("Save chunk error:", err);
+        }
+    };
+
+    const deleteChunk = async (id: number) => {
+        if (!token) return;
+        if (!confirm("Xóa chunk này?")) return;
+        try {
+            await fetch(`/api/admin/textbooks/sections?id=${id}`, {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            setSections(prev => prev.filter(s => s.id !== id));
+        } catch (err) {
+            console.error("Delete chunk error:", err);
         }
     };
 
@@ -405,7 +471,49 @@ export default function AdminTextbooksPage() {
                                                 <span>📦 {tb.total_chunks} chunks</span>
                                                 {tb.publisher && <span>🏢 {tb.publisher}</span>}
                                                 <span>📅 {new Date(tb.created_at).toLocaleDateString("vi")}</span>
+                                                <button className="tb-view-btn" onClick={() => viewChunks(tb.id)}>
+                                                    {viewingBookId === tb.id ? "▲ Đóng" : "👁️ Xem chunks"}
+                                                </button>
                                             </div>
+
+                                            {/* Chunk viewer */}
+                                            {viewingBookId === tb.id && (
+                                                <div className="tb-chunks">
+                                                    {sectionsLoading ? (
+                                                        <div className="tb-chunks-loading"><div className="tb-loading-spinner" /></div>
+                                                    ) : sections.length === 0 ? (
+                                                        <p className="tb-chunks-empty">Không có chunks nào</p>
+                                                    ) : (
+                                                        sections.map((sec) => (
+                                                            <div key={sec.id} className="tb-chunk">
+                                                                <div className="tb-chunk-header">
+                                                                    <span className="tb-chunk-idx">#{sec.chunk_index}</span>
+                                                                    {sec.chapter && <span className="tb-chunk-ch">{sec.chapter}</span>}
+                                                                    {sec.section_title && <span className="tb-chunk-sec">{sec.section_title}</span>}
+                                                                    <div className="tb-chunk-actions">
+                                                                        {editingId === sec.id ? (
+                                                                            <>
+                                                                                <button onClick={() => saveChunk(sec.id)} className="tb-chunk-save">💾</button>
+                                                                                <button onClick={() => setEditingId(null)} className="tb-chunk-cancel">✕</button>
+                                                                            </>
+                                                                        ) : (
+                                                                            <>
+                                                                                <button onClick={() => { setEditingId(sec.id); setEditContent(sec.content); }} className="tb-chunk-edit">✏️</button>
+                                                                                <button onClick={() => deleteChunk(sec.id)} className="tb-chunk-del">🗑️</button>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                {editingId === sec.id ? (
+                                                                    <textarea className="tb-chunk-editor" value={editContent} onChange={e => setEditContent(e.target.value)} rows={6} />
+                                                                ) : (
+                                                                    <pre className="tb-chunk-content">{sec.content}</pre>
+                                                                )}
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })}
@@ -607,7 +715,65 @@ export default function AdminTextbooksPage() {
                     display: flex; gap: 14px; font-size: 12px; color: #475569;
                     margin-top: 12px; padding-top: 12px;
                     border-top: 1px solid rgba(255,255,255,0.04);
+                    flex-wrap: wrap; align-items: center;
                 }
+                .tb-view-btn {
+                    margin-left: auto; padding: 4px 12px; border-radius: 6px;
+                    border: 1px solid rgba(139,92,246,0.3); background: rgba(139,92,246,0.1);
+                    color: #c4b5fd; font-size: 11px; font-weight: 600;
+                    cursor: pointer; transition: all 0.15s;
+                }
+                .tb-view-btn:hover { background: rgba(139,92,246,0.2); }
+
+                /* Chunk viewer */
+                .tb-chunks {
+                    margin-top: 14px; padding-top: 14px;
+                    border-top: 1px solid rgba(255,255,255,0.06);
+                    max-height: 500px; overflow-y: auto;
+                    display: flex; flex-direction: column; gap: 8px;
+                }
+                .tb-chunks-loading { text-align: center; padding: 20px; }
+                .tb-chunks-empty { text-align: center; color: #475569; font-size: 13px; margin: 12px 0; }
+                .tb-chunk {
+                    background: rgba(0,0,0,0.2); border-radius: 10px;
+                    padding: 10px 14px; border: 1px solid rgba(255,255,255,0.04);
+                }
+                .tb-chunk-header {
+                    display: flex; align-items: center; gap: 8px;
+                    margin-bottom: 6px; flex-wrap: wrap;
+                }
+                .tb-chunk-idx {
+                    font-size: 10px; font-weight: 700; color: #8b5cf6;
+                    background: rgba(139,92,246,0.15); padding: 2px 6px;
+                    border-radius: 4px; font-variant-numeric: tabular-nums;
+                }
+                .tb-chunk-ch { font-size: 11px; color: #fbbf24; font-weight: 600; }
+                .tb-chunk-sec { font-size: 11px; color: #94a3b8; }
+                .tb-chunk-actions { margin-left: auto; display: flex; gap: 4px; }
+                .tb-chunk-edit, .tb-chunk-del, .tb-chunk-save, .tb-chunk-cancel {
+                    background: none; border: none; cursor: pointer;
+                    font-size: 13px; padding: 2px 6px; border-radius: 4px;
+                    transition: background 0.15s;
+                }
+                .tb-chunk-edit:hover { background: rgba(139,92,246,0.15); }
+                .tb-chunk-del:hover { background: rgba(239,68,68,0.15); }
+                .tb-chunk-save { color: #4ade80; }
+                .tb-chunk-save:hover { background: rgba(34,197,94,0.15); }
+                .tb-chunk-cancel { color: #94a3b8; }
+                .tb-chunk-cancel:hover { background: rgba(255,255,255,0.06); }
+                .tb-chunk-content {
+                    font-size: 12px; color: #94a3b8; line-height: 1.6;
+                    white-space: pre-wrap; word-break: break-word;
+                    margin: 0; max-height: 120px; overflow-y: auto;
+                    font-family: inherit;
+                }
+                .tb-chunk-editor {
+                    width: 100%; padding: 8px 12px; border-radius: 8px;
+                    background: rgba(255,255,255,0.04); border: 1px solid rgba(139,92,246,0.3);
+                    color: #e2e8f0; font-size: 12px; line-height: 1.6;
+                    font-family: 'JetBrains Mono', monospace; resize: vertical;
+                }
+                .tb-chunk-editor:focus { outline: none; border-color: #8b5cf6; }
 
                 @media (max-width: 768px) {
                     .tb-header { flex-direction: column; gap: 12px; align-items: flex-start; }
