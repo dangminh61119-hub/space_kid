@@ -81,12 +81,8 @@ export default function Navbar() {
 
                 {/* Mobile: Calm toggle + hamburger */}
                 <div className="md:hidden flex items-center gap-3">
-                    {player.onboardingComplete && (
-                        <>
-                            <CalmModeToggle />
-                            <VolumeControl />
-                        </>
-                    )}
+                    <CalmModeToggle />
+                    <VolumeControl />
                     <button
                         className="text-white/70 hover:text-neon-cyan transition-colors"
                         onClick={() => setMenuOpen(!menuOpen)}

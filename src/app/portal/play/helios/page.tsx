@@ -7,6 +7,9 @@ import { useGame } from "@/lib/game-context";
 import { getJourneys, type Journey } from "@/lib/services/db";
 import { motion, AnimatePresence } from "framer-motion";
 import StarRaceGame from "@/components/StarRaceGame";
+import NeonButton from "@/components/NeonButton";
+import CalmModeToggle from "@/components/CalmModeToggle";
+import VolumeControl from "@/components/VolumeControl";
 import type { GameLevel } from "@/lib/services/db";
 
 /* ═══════════════════════════════════════════════
@@ -117,97 +120,113 @@ function HeliosContent() {
     ];
 
     return (
-        <div className="min-h-screen bg-space-deep flex items-center justify-center p-4">
-            <div className="w-full max-w-lg mx-auto text-center">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                >
-                    {/* Header */}
-                    <div className="text-6xl mb-3 animate-float">☀️</div>
-                    <h1 className="text-3xl font-bold text-white mb-1 font-[var(--font-heading)]">
-                        Helios
-                    </h1>
-                    <p className="text-white/50 text-sm mb-2">
-                        Cuộc Đua Giữa Các Vì Sao — Chọn đường đua!
-                    </p>
-                    <div className="glass-card !inline-flex !px-4 !py-2 !rounded-full items-center gap-2 mb-6">
-                        <span className="text-lg">⭐</span>
-                        <span className="text-neon-gold font-bold">{player.luckyStars}</span>
-                        <span className="text-white/40 text-xs">sao — mỗi lượt đua tốn 1 ⭐</span>
+        <div className="min-h-screen bg-space-deep flex flex-col">
+            {/* Top bar */}
+            <div className="glass-card-strong border-b border-white/10" style={{ borderRadius: 0 }}>
+                <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+                    <NeonButton href="/portal" variant="cyan" size="sm">
+                        ← Quay lại
+                    </NeonButton>
+                    <h1 className="text-sm font-bold text-white/80 font-[var(--font-heading)]">☀️ Helios — Đua Sao</h1>
+                    <div className="flex items-center gap-2">
+                        <CalmModeToggle />
+                        <VolumeControl />
                     </div>
-                    {starError && (
-                        <div className="text-red-400 text-sm mb-4 animate-pulse">
-                            ⚠️ {starError}
+                </div>
+            </div>
+
+            <div className="flex-1 flex items-center justify-center p-4">
+                <div className="w-full max-w-lg mx-auto text-center">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                    >
+                        {/* Header */}
+                        <div className="text-6xl mb-3 animate-float">☀️</div>
+                        <h1 className="text-3xl font-bold text-white mb-1 font-[var(--font-heading)]">
+                            Helios
+                        </h1>
+                        <p className="text-white/50 text-sm mb-2">
+                            Cuộc Đua Giữa Các Vì Sao — Chọn đường đua!
+                        </p>
+                        <div className="glass-card !inline-flex !px-4 !py-2 !rounded-full items-center gap-2 mb-6">
+                            <span className="text-lg">⭐</span>
+                            <span className="text-neon-gold font-bold">{player.luckyStars}</span>
+                            <span className="text-white/40 text-xs">sao — mỗi lượt đua tốn 1 ⭐</span>
                         </div>
-                    )}
-
-                    {/* Journey tracks */}
-                    <div className="space-y-4">
-                        <AnimatePresence>
-                            {journeys.map((j, i) => (
-                                <motion.button
-                                    key={j.slug}
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: i * 0.1 }}
-                                    onClick={() => {
-                                        // Try to charge 1 star (but allow entry even with 0)
-                                        if (player.luckyStars > 0) {
-                                            spendStars(1);
-                                        }
-                                        setStarError("");
-                                        setSelectedJourney(j.slug);
-                                    }}
-                                    className="w-full p-5 rounded-2xl text-left transition-all hover:scale-[1.02] active:scale-95 border border-white/10 hover:border-white/30"
-                                    style={{
-                                        background: trackColors[i] || trackColors[0],
-                                    }}
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <span className="text-3xl">{j.emoji}</span>
-                                        <div className="flex-1">
-                                            <h3 className="text-lg font-bold text-white">
-                                                {j.title}
-                                            </h3>
-                                            <p className="text-white/80 text-xs">
-                                                {j.description}
-                                            </p>
-                                            <div className="flex gap-2 mt-1.5">
-                                                {j.subjects.map((s: string) => (
-                                                    <span
-                                                        key={s}
-                                                        className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full text-white/90"
-                                                    >
-                                                        {s}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <span className="text-2xl">🏁</span>
-                                    </div>
-                                </motion.button>
-                            ))}
-                        </AnimatePresence>
-
-                        {journeys.length === 0 && (
-                            <div className="glass-card !p-8 !rounded-2xl text-center">
-                                <div className="text-4xl mb-3">🔭</div>
-                                <p className="text-white/50 text-sm">
-                                    Chưa có đường đua nào cho lớp {player.grade}. Hãy quay lại sau!
-                                </p>
+                        {starError && (
+                            <div className="text-red-400 text-sm mb-4 animate-pulse">
+                                ⚠️ {starError}
                             </div>
                         )}
-                    </div>
 
-                    {/* Back button */}
-                    <button
-                        onClick={() => router.push("/portal")}
-                        className="mt-8 text-white/30 text-sm hover:text-white/60 transition-colors"
-                    >
-                        ← Về Portal
-                    </button>
-                </motion.div>
+                        {/* Journey tracks */}
+                        <div className="space-y-4">
+                            <AnimatePresence>
+                                {journeys.map((j, i) => (
+                                    <motion.button
+                                        key={j.slug}
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: i * 0.1 }}
+                                        onClick={() => {
+                                            // Try to charge 1 star (but allow entry even with 0)
+                                            if (player.luckyStars > 0) {
+                                                spendStars(1);
+                                            }
+                                            setStarError("");
+                                            setSelectedJourney(j.slug);
+                                        }}
+                                        className="w-full p-5 rounded-2xl text-left transition-all hover:scale-[1.02] active:scale-95 border border-white/10 hover:border-white/30"
+                                        style={{
+                                            background: trackColors[i] || trackColors[0],
+                                        }}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <span className="text-3xl">{j.emoji}</span>
+                                            <div className="flex-1">
+                                                <h3 className="text-lg font-bold text-white">
+                                                    {j.title}
+                                                </h3>
+                                                <p className="text-white/80 text-xs">
+                                                    {j.description}
+                                                </p>
+                                                <div className="flex gap-2 mt-1.5">
+                                                    {j.subjects.map((s: string) => (
+                                                        <span
+                                                            key={s}
+                                                            className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full text-white/90"
+                                                        >
+                                                            {s}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <span className="text-2xl">🏁</span>
+                                        </div>
+                                    </motion.button>
+                                ))}
+                            </AnimatePresence>
+
+                            {journeys.length === 0 && (
+                                <div className="glass-card !p-8 !rounded-2xl text-center">
+                                    <div className="text-4xl mb-3">🔭</div>
+                                    <p className="text-white/50 text-sm">
+                                        Chưa có đường đua nào cho lớp {player.grade}. Hãy quay lại sau!
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Back button */}
+                        <button
+                            onClick={() => router.push("/portal")}
+                            className="mt-8 text-white/30 text-sm hover:text-white/60 transition-colors"
+                        >
+                            ← Về Portal
+                        </button>
+                    </motion.div>
+                </div>
             </div>
         </div>
     );

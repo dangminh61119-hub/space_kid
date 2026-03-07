@@ -5,6 +5,8 @@ import { Suspense, useState, useEffect, useCallback, useRef } from "react";
 import StarField from "@/components/StarField";
 import NeonButton from "@/components/NeonButton";
 import GameModeController from "@/components/GameModeController";
+import CalmModeToggle from "@/components/CalmModeToggle";
+import VolumeControl from "@/components/VolumeControl";
 import { useGame } from "@/lib/game-context";
 import { useAuth } from "@/lib/services/auth-context";
 import { getJourneyLevels, updateMastery, saveJourneyProgress, getJourneyProgress, getPlanetForGrade, saveAnsweredQuestion, awardBadge, checkAchievementBadges, type GameLevel, type Ship } from "@/lib/services/db";
@@ -223,19 +225,21 @@ function PlayContent() {
                     <h1 className="text-sm sm:text-base font-bold text-white/80 font-[var(--font-heading)]">
                         {journeyEmoji} {journeyTitle}
                     </h1>
-                    <div className="flex items-center gap-4">
-                        <div className="glass-card !p-2 !px-4 !rounded-xl flex items-center gap-2">
+                    <div className="flex items-center gap-2 sm:gap-4">
+                        <div className="hidden sm:flex glass-card !p-2 !px-4 !rounded-xl items-center gap-2">
                             <span className="text-neon-gold">⭐</span>
                             <span className="text-sm font-bold text-white">{player.cosmo.toLocaleString()} ✦</span>
                         </div>
-                        <div className="glass-card !p-2 !px-4 !rounded-xl flex items-center gap-2">
+                        <div className="hidden sm:flex glass-card !p-2 !px-4 !rounded-xl items-center gap-2">
                             <span>🔥</span>
                             <span className="text-sm font-bold text-white">{player.streak} ngày</span>
                         </div>
-                        <div className="glass-card !p-2 !px-4 !rounded-xl flex items-center gap-2">
+                        <div className="hidden sm:flex glass-card !p-2 !px-4 !rounded-xl items-center gap-2">
                             <span>⭐</span>
                             <span className="text-sm font-bold text-neon-gold">{player.luckyStars}</span>
                         </div>
+                        <CalmModeToggle />
+                        <VolumeControl />
                     </div>
                 </div>
             </div>
