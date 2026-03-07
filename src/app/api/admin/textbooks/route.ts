@@ -10,6 +10,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin, forbiddenResponse, getAdminSupabase } from "@/lib/services/admin-guard";
 import { processTextbook, deleteTextbookChunks } from "@/lib/services/rag-service";
 
+// Vercel serverless function config — extend timeout for embedding processing
+export const maxDuration = 60; // seconds (requires Pro plan; Hobby = 10s max)
+
 /* ─── GET: List textbooks ─── */
 export async function GET(request: NextRequest) {
     const admin = await requireAdmin(request);
@@ -51,6 +54,15 @@ export async function POST(request: NextRequest) {
     const supabase = getAdminSupabase(admin.userToken);
     if (!supabase) {
         return NextResponse.json({ error: "DB not configured" }, { status: 500 });
+    }
+
+    // Check OPENAI_API_KEY is available
+    if (!process.env.OPENAI_API_KEY) {
+        console.error("[textbooks/POST] OPENAI_API_KEY is not set");
+        return NextResponse.json(
+            { error: "Server config error: OPENAI_API_KEY is not configured" },
+            { status: 500 }
+        );
     }
 
     const body = await request.json();
@@ -110,14 +122,19 @@ export async function POST(request: NextRequest) {
         });
     } catch (err) {
         // Update status to error
-        await supabase
-            .from("textbooks")
-            .update({ status: "error" })
-            .eq("id", textbook.id);
+        try {
+            await supabase
+                .from("textbooks")
+                .update({ status: "error" })
+                .eq("id", textbook.id);
+        } catch (updateErr) {
+            console.error("[textbooks/POST] Failed to update error status:", updateErr);
+        }
 
-        console.error("[textbooks/POST] Processing error:", err);
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        console.error("[textbooks/POST] Processing error:", errorMsg);
         return NextResponse.json(
-            { error: "Failed to process textbook content", details: String(err) },
+            { error: `Embedding failed: ${errorMsg}` },
             { status: 500 }
         );
     }
