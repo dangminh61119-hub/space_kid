@@ -150,7 +150,7 @@ export default function StarRaceGame({
 }: StarRaceGameProps) {
     const { player, addStars } = useGame();
     const { playerDbId } = useAuth();
-    const { playCorrect, playWrong, playMove, playBGM, stopBGM, playHit } = useSoundEffects();
+    const { playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
 
     // Game state
     const [phase, setPhase] = useState<GamePhase>("ship-select");
@@ -379,16 +379,14 @@ export default function StarRaceGame({
         if (phase !== "countdown") return;
         if (countdownNum <= 0) {
             // Start first question
-            playCorrect(); // GO! sound
             if (isHost && questions.length > 0) {
                 broadcastQuestion(channelRef.current!, questions[0], 0, questions.length);
             }
             return;
         }
-        playMove(); // tick sound
         const t = setTimeout(() => setCountdownNum((n) => n - 1), 1000);
         return () => clearTimeout(t);
-    }, [phase, countdownNum, isHost, questions, playMove, playCorrect]);
+    }, [phase, countdownNum, isHost, questions]);
 
     /* ─── Handle Answer Submission ─── */
     const handleSelectAnswer = (answer: string) => {
@@ -402,9 +400,7 @@ export default function StarRaceGame({
         const isCorrect = answer === currentQuestion.correct_answer;
 
         // Play sound feedback
-        if (answer === "__timeout__") {
-            playHit();
-        } else if (isCorrect) {
+        if (isCorrect) {
             playCorrect();
         } else {
             playWrong();
@@ -505,7 +501,7 @@ export default function StarRaceGame({
                         {SHIP_OPTIONS.map((ship) => (
                             <button
                                 key={ship.emoji}
-                                onClick={() => { setSelectedShip(ship); playMove(); }}
+                                onClick={() => setSelectedShip(ship)}
                                 className={`p-3 rounded-2xl transition-all duration-300 ${selectedShip.emoji === ship.emoji
                                     ? "glass-card-strong scale-110 ring-2"
                                     : "glass-card hover:scale-105"
