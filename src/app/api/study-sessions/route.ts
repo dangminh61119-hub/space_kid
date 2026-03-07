@@ -15,77 +15,105 @@ import {
 
 /* ─── GET: Get sessions ─── */
 export async function GET(request: NextRequest) {
-    const auth = await requireAuth(request);
-    if (!auth.authenticated) return unauthorizedResponse(auth.error);
+    try {
+        const auth = await requireAuth(request);
+        if (!auth.authenticated) return unauthorizedResponse(auth.error);
 
-    const { searchParams } = new URL(request.url);
-    const mode = searchParams.get("mode") || "recent"; // recent | today | unpracticed
-    const playerId = searchParams.get("player_id");
+        const { searchParams } = new URL(request.url);
+        const mode = searchParams.get("mode") || "recent";
+        const playerId = searchParams.get("player_id");
 
-    if (!playerId) {
-        return NextResponse.json({ error: "Missing player_id" }, { status: 400 });
+        if (!playerId) {
+            return NextResponse.json({ error: "Missing player_id" }, { status: 400 });
+        }
+
+        let sessions;
+        switch (mode) {
+            case "today":
+                sessions = await getTodaySessions(playerId);
+                break;
+            case "unpracticed":
+                sessions = await getUnpracticedSessions(playerId);
+                break;
+            default:
+                sessions = await getRecentSessions(playerId);
+        }
+
+        return NextResponse.json({ sessions });
+    } catch (error) {
+        console.error("[study-sessions/GET] Error:", error);
+        return NextResponse.json({ sessions: [], error: String(error) }, { status: 200 });
     }
-
-    let sessions;
-    switch (mode) {
-        case "today":
-            sessions = await getTodaySessions(playerId);
-            break;
-        case "unpracticed":
-            sessions = await getUnpracticedSessions(playerId);
-            break;
-        default:
-            sessions = await getRecentSessions(playerId);
-    }
-
-    return NextResponse.json({ sessions });
 }
 
 /* ─── POST: Save a new session ─── */
 export async function POST(request: NextRequest) {
-    const auth = await requireAuth(request);
-    if (!auth.authenticated) return unauthorizedResponse(auth.error);
+    try {
+        const auth = await requireAuth(request);
+        if (!auth.authenticated) return unauthorizedResponse(auth.error);
 
-    const body = await request.json();
-    const { playerId, query, subject, grade, lesson, sources } = body;
+        const body = await request.json();
+        const { playerId, query, subject, grade, lesson, sources } = body;
 
-    if (!playerId || !query || !grade) {
-        return NextResponse.json(
-            { error: "Missing required fields: playerId, query, grade" },
-            { status: 400 }
-        );
+        if (!playerId || !query || !grade) {
+            return NextResponse.json(
+                { error: "Missing required fields: playerId, query, grade" },
+                { status: 400 }
+            );
+        }
+
+        // Truncate lesson to avoid oversized payloads
+        const truncatedLesson = lesson ? String(lesson).substring(0, 10000) : "";
+        // Limit sources to top 3
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const limitedSources = Array.isArray(sources) ? sources.slice(0, 3).map((s: any) => ({
+            content: String(s.content || "").substring(0, 500),
+            chapter: String(s.chapter || ""),
+            sectionTitle: String(s.sectionTitle || ""),
+            similarity: Number(s.similarity || 0),
+            textbookTitle: String(s.textbookTitle || ""),
+            subject: String(s.subject || ""),
+        })) : [];
+
+        const session = await saveStudySession({
+            playerId,
+            query,
+            subject,
+            grade,
+            lesson: truncatedLesson,
+            sources: limitedSources,
+        });
+
+        if (!session) {
+            return NextResponse.json({ error: "Failed to save session" }, { status: 500 });
+        }
+
+        return NextResponse.json({ session });
+    } catch (error) {
+        console.error("[study-sessions/POST] Error:", error);
+        return NextResponse.json({ error: String(error) }, { status: 500 });
     }
-
-    const session = await saveStudySession({
-        playerId,
-        query,
-        subject,
-        grade,
-        lesson: lesson || "",
-        sources: sources || [],
-    });
-
-    if (!session) {
-        return NextResponse.json({ error: "Failed to save session" }, { status: 500 });
-    }
-
-    return NextResponse.json({ session });
 }
 
 /* ─── PATCH: Update session flags ─── */
 export async function PATCH(request: NextRequest) {
-    const auth = await requireAuth(request);
-    if (!auth.authenticated) return unauthorizedResponse(auth.error);
+    try {
+        const auth = await requireAuth(request);
+        if (!auth.authenticated) return unauthorizedResponse(auth.error);
 
-    const body = await request.json();
-    const { sessionId, practiced, reviewed } = body;
+        const body = await request.json();
+        const { sessionId, practiced, reviewed } = body;
 
-    if (!sessionId) {
-        return NextResponse.json({ error: "Missing sessionId" }, { status: 400 });
+        if (!sessionId) {
+            return NextResponse.json({ error: "Missing sessionId" }, { status: 400 });
+        }
+
+        if (practiced) await markPracticed(sessionId);
+        if (reviewed) await markReviewed(sessionId);
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error("[study-sessions/PATCH] Error:", error);
+        return NextResponse.json({ error: String(error) }, { status: 500 });
     }
-
-    if (practiced) await markPracticed(sessionId);
-    if (reviewed) await markReviewed(sessionId);
-
-    return NextResponse.json({ success: true });
 }
