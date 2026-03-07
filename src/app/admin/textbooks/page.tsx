@@ -93,7 +93,7 @@ export default function AdminTextbooksPage() {
     /* ─── Client-side PDF text extraction (with OCR fallback) ─── */
     const extractPDFText = async (file: File): Promise<string> => {
         const pdfjs = await import("pdfjs-dist");
-        pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+        pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.mjs";
 
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
