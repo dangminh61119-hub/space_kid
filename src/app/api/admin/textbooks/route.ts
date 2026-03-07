@@ -3,6 +3,9 @@
  * 
  * GET  - List all textbooks with grade/subject filtering
  * POST - Create a new textbook + process content (pgvector embeddings)
+ *        Accepts either:
+ *        - multipart/form-data with a PDF file
+ *        - application/json with raw text content
  * DELETE - Remove a textbook and its chunks
  */
 
@@ -12,6 +15,14 @@ import { processTextbook, deleteTextbookChunks } from "@/lib/services/rag-servic
 
 // Vercel serverless function config — extend timeout for embedding processing
 export const maxDuration = 60; // seconds (requires Pro plan; Hobby = 10s max)
+
+/* ─── PDF text extraction ─── */
+async function extractTextFromPDF(buffer: ArrayBuffer): Promise<string> {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pdfParse = require("pdf-parse");
+    const data = await pdfParse(Buffer.from(buffer));
+    return data.text || "";
+}
 
 /* ─── GET: List textbooks ─── */
 export async function GET(request: NextRequest) {
@@ -65,13 +76,66 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    const body = await request.json();
-    const { title, subject, grade, publisher, content } = body;
+    // Parse request body — supports both form-data (PDF) and JSON (text)
+    let title: string;
+    let subject: string;
+    let grade: number;
+    let publisher: string;
+    let content: string;
+
+    const contentType = request.headers.get("content-type") || "";
+
+    if (contentType.includes("multipart/form-data")) {
+        // PDF file upload via FormData
+        const formData = await request.formData();
+        title = formData.get("title") as string || "";
+        subject = formData.get("subject") as string || "";
+        grade = parseInt(formData.get("grade") as string || "1");
+        publisher = formData.get("publisher") as string || "";
+
+        const file = formData.get("file") as File | null;
+        const textContent = formData.get("content") as string || "";
+
+        if (file && file.size > 0) {
+            // Extract text from PDF
+            try {
+                const buffer = await file.arrayBuffer();
+                content = await extractTextFromPDF(buffer);
+                if (!content.trim()) {
+                    return NextResponse.json(
+                        { error: "Không thể trích xuất text từ PDF. File có thể là scan/ảnh. Hãy thử paste text." },
+                        { status: 400 }
+                    );
+                }
+            } catch (err) {
+                console.error("[textbooks/POST] PDF parse error:", err);
+                return NextResponse.json(
+                    { error: `Lỗi đọc PDF: ${err instanceof Error ? err.message : String(err)}` },
+                    { status: 400 }
+                );
+            }
+        } else if (textContent.trim()) {
+            content = textContent;
+        } else {
+            return NextResponse.json(
+                { error: "Cần upload file PDF hoặc paste nội dung text" },
+                { status: 400 }
+            );
+        }
+    } else {
+        // JSON body (backward compatible)
+        const body = await request.json();
+        title = body.title;
+        subject = body.subject;
+        grade = parseInt(body.grade);
+        publisher = body.publisher || "";
+        content = body.content;
+    }
 
     // Validate
     if (!title || !subject || !grade || !content) {
         return NextResponse.json(
-            { error: "Missing required fields: title, subject, grade, content" },
+            { error: "Missing required fields: title, subject, grade, content/file" },
             { status: 400 }
         );
     }
@@ -89,7 +153,7 @@ export async function POST(request: NextRequest) {
         .insert({
             title,
             subject,
-            grade: parseInt(grade),
+            grade,
             publisher: publisher || null,
             status: "processing",
         })
@@ -97,8 +161,9 @@ export async function POST(request: NextRequest) {
         .single();
 
     if (insertError || !textbook) {
+        console.error("[textbooks/POST] Insert error:", insertError);
         return NextResponse.json(
-            { error: insertError?.message || "Failed to create textbook" },
+            { error: `DB insert failed: ${insertError?.message || "Unknown error"}` },
             { status: 500 }
         );
     }

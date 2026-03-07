@@ -40,6 +40,9 @@ export default function AdminTextbooksPage() {
     const [formGrade, setFormGrade] = useState(1);
     const [formPublisher, setFormPublisher] = useState("");
     const [formContent, setFormContent] = useState("");
+    const [pdfFile, setPdfFile] = useState<File | null>(null);
+    const [uploadMode, setUploadMode] = useState<"pdf" | "text">("pdf");
+    const [dragOver, setDragOver] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
 
@@ -66,23 +69,66 @@ export default function AdminTextbooksPage() {
 
     useEffect(() => { fetchTextbooks(); }, [fetchTextbooks]);
 
+    /* ─── Drag & Drop ─── */
+    const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setDragOver(true); };
+    const handleDragLeave = () => setDragOver(false);
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault(); setDragOver(false);
+        const file = e.dataTransfer.files[0];
+        if (file && file.type === "application/pdf") {
+            setPdfFile(file);
+            if (!formTitle) setFormTitle(file.name.replace(/\.pdf$/i, ""));
+        } else {
+            setError("⚠️ Chỉ hỗ trợ file PDF");
+        }
+    };
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setPdfFile(file);
+            if (!formTitle) setFormTitle(file.name.replace(/\.pdf$/i, ""));
+        }
+    };
+
+    /* ─── Upload ─── */
     const handleUpload = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!token) return;
+        if (uploadMode === "pdf" && !pdfFile) { setError("⚠️ Chưa chọn file PDF"); return; }
+        if (uploadMode === "text" && !formContent.trim()) { setError("⚠️ Chưa nhập nội dung"); return; }
+
         setError(""); setSuccess(""); setProcessing(true);
         try {
-            const res = await fetch("/api/admin/textbooks", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ title: formTitle, subject: formSubject, grade: formGrade, publisher: formPublisher, content: formContent }),
-            });
+            let res: Response;
 
-            // Handle non-JSON responses (e.g., Vercel timeout returns HTML)
-            const contentType = res.headers.get("content-type") || "";
-            if (!contentType.includes("application/json")) {
+            if (uploadMode === "pdf" && pdfFile) {
+                // FormData upload for PDF
+                const fd = new FormData();
+                fd.append("file", pdfFile);
+                fd.append("title", formTitle);
+                fd.append("subject", formSubject);
+                fd.append("grade", String(formGrade));
+                fd.append("publisher", formPublisher);
+                res = await fetch("/api/admin/textbooks", {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}` },
+                    body: fd,
+                });
+            } else {
+                // JSON upload for text
+                res = await fetch("/api/admin/textbooks", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({ title: formTitle, subject: formSubject, grade: formGrade, publisher: formPublisher, content: formContent }),
+                });
+            }
+
+            // Handle non-JSON responses (e.g., Vercel timeout)
+            const ct = res.headers.get("content-type") || "";
+            if (!ct.includes("application/json")) {
                 const text = await res.text();
                 if (res.status === 504 || text.includes("FUNCTION_INVOCATION_TIMEOUT")) {
-                    setError(`⏰ Timeout (${res.status}): Nội dung quá dài. Hãy thử paste ít hơn 2000 từ.`);
+                    setError(`⏰ Timeout: Nội dung quá dài cho server. Hãy thử file nhỏ hơn hoặc ít text hơn.`);
                 } else {
                     setError(`❌ Server error ${res.status}: ${res.statusText || text.slice(0, 200)}`);
                 }
@@ -92,7 +138,7 @@ export default function AdminTextbooksPage() {
             const data = await res.json();
             if (!res.ok) { setError(`❌ ${data.error || "Upload failed"}`); return; }
             setSuccess(`✅ Upload thành công! ${data.chunks} chunks đã được tạo.`);
-            setFormTitle(""); setFormContent(""); setFormPublisher(""); setShowForm(false);
+            setFormTitle(""); setFormContent(""); setFormPublisher(""); setPdfFile(null); setShowForm(false);
             fetchTextbooks();
         } catch (err) {
             setError("🔌 Network error: " + String(err));
@@ -165,15 +211,57 @@ export default function AdminTextbooksPage() {
                         </div>
                     </div>
 
-                    <div className="tb-field">
-                        <label>Nội dung SGK (paste text)</label>
-                        <textarea value={formContent} onChange={e => setFormContent(e.target.value)}
-                            placeholder={`Paste nội dung sách giáo khoa vào đây...\n\nVí dụ:\nChương 5: Phép nhân\n\nBài 25: Nhân số có hai chữ số với số có một chữ số\n\nĐể nhân số có hai chữ số với số có một chữ số, ta thực hiện:\n1. Nhân hàng đơn vị\n2. Nhân hàng chục\n...`}
-                            required rows={10} />
-                        <p className="tb-hint">💡 Hệ thống sẽ tự chia ~400 từ/chunk + tạo embedding. Nội dung càng chi tiết, kết quả càng chính xác.</p>
+                    {/* Mode toggle */}
+                    <div className="tb-mode-toggle">
+                        <button type="button" className={`tb-mode-btn ${uploadMode === "pdf" ? "active" : ""}`} onClick={() => setUploadMode("pdf")}>
+                            📄 Upload PDF
+                        </button>
+                        <button type="button" className={`tb-mode-btn ${uploadMode === "text" ? "active" : ""}`} onClick={() => setUploadMode("text")}>
+                            ✏️ Paste Text
+                        </button>
                     </div>
 
-                    <button type="submit" disabled={processing || !formTitle || !formContent} className="tb-submit-btn">
+                    {uploadMode === "pdf" ? (
+                        <div className="tb-field">
+                            <label>File PDF sách giáo khoa</label>
+                            <div
+                                className={`tb-dropzone ${dragOver ? "dragover" : ""} ${pdfFile ? "has-file" : ""}`}
+                                onDragOver={handleDragOver}
+                                onDragLeave={handleDragLeave}
+                                onDrop={handleDrop}
+                                onClick={() => document.getElementById("pdf-input")?.click()}
+                            >
+                                <input id="pdf-input" type="file" accept=".pdf" onChange={handleFileSelect} style={{ display: "none" }} />
+                                {pdfFile ? (
+                                    <div className="tb-file-info">
+                                        <span className="tb-file-icon">📄</span>
+                                        <div>
+                                            <div className="tb-file-name">{pdfFile.name}</div>
+                                            <div className="tb-file-size">{(pdfFile.size / 1024 / 1024).toFixed(2)} MB</div>
+                                        </div>
+                                        <button type="button" className="tb-file-remove" onClick={(e) => { e.stopPropagation(); setPdfFile(null); }}>✕</button>
+                                    </div>
+                                ) : (
+                                    <div className="tb-drop-content">
+                                        <span className="tb-drop-icon">📥</span>
+                                        <p className="tb-drop-title">Kéo thả file PDF vào đây</p>
+                                        <p className="tb-drop-sub">hoặc click để chọn file</p>
+                                    </div>
+                                )}
+                            </div>
+                            <p className="tb-hint">💡 Hệ thống sẽ tự trích xuất text từ PDF → chia chunk → tạo embedding. File scan/ảnh không hỗ trợ.</p>
+                        </div>
+                    ) : (
+                        <div className="tb-field">
+                            <label>Nội dung SGK (paste text)</label>
+                            <textarea value={formContent} onChange={e => setFormContent(e.target.value)}
+                                placeholder={`Paste nội dung sách giáo khoa vào đây...\n\nVí dụ:\nChương 5: Phép nhân\n\nBài 25: Nhân số có hai chữ số với số có một chữ số...`}
+                                rows={10} />
+                            <p className="tb-hint">💡 Hệ thống sẽ tự chia ~400 từ/chunk + tạo embedding.</p>
+                        </div>
+                    )}
+
+                    <button type="submit" disabled={processing || !formTitle || (uploadMode === "pdf" ? !pdfFile : !formContent)} className="tb-submit-btn">
                         {processing ? "⏳ Đang xử lý embedding..." : "🚀 Upload & Tạo Embedding"}
                     </button>
                 </form>
@@ -321,6 +409,48 @@ export default function AdminTextbooksPage() {
                 }
                 .tb-submit-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(139,92,246,0.3); }
                 .tb-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+                /* Mode toggle */
+                .tb-mode-toggle {
+                    display: flex; gap: 4px; margin-bottom: 16px;
+                    background: rgba(255,255,255,0.03); border-radius: 10px; padding: 3px;
+                }
+                .tb-mode-btn {
+                    flex: 1; padding: 8px 16px; border-radius: 8px; border: none;
+                    background: transparent; color: #64748b; font-size: 13px;
+                    font-weight: 600; cursor: pointer; transition: all 0.2s;
+                }
+                .tb-mode-btn.active {
+                    background: rgba(139,92,246,0.15); color: #c4b5fd;
+                    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+                }
+
+                /* Dropzone */
+                .tb-dropzone {
+                    border: 2px dashed rgba(255,255,255,0.1); border-radius: 14px;
+                    padding: 40px 20px; text-align: center; cursor: pointer;
+                    transition: all 0.25s; background: rgba(255,255,255,0.01);
+                }
+                .tb-dropzone:hover { border-color: rgba(139,92,246,0.3); background: rgba(139,92,246,0.03); }
+                .tb-dropzone.dragover {
+                    border-color: #8b5cf6; background: rgba(139,92,246,0.08);
+                    box-shadow: 0 0 20px rgba(139,92,246,0.15);
+                }
+                .tb-dropzone.has-file { border-style: solid; border-color: rgba(34,197,94,0.3); padding: 16px 20px; }
+                .tb-drop-content { pointer-events: none; }
+                .tb-drop-icon { font-size: 36px; display: block; margin-bottom: 8px; }
+                .tb-drop-title { font-weight: 700; color: #94a3b8; margin: 0 0 4px; font-size: 14px; }
+                .tb-drop-sub { color: #475569; font-size: 12px; margin: 0; }
+                .tb-file-info { display: flex; align-items: center; gap: 12px; text-align: left; }
+                .tb-file-icon { font-size: 28px; }
+                .tb-file-name { font-weight: 700; font-size: 14px; color: #e2e8f0; }
+                .tb-file-size { font-size: 12px; color: #64748b; margin-top: 2px; }
+                .tb-file-remove {
+                    margin-left: auto; background: rgba(239,68,68,0.15); border: none;
+                    color: #fca5a5; padding: 6px 10px; border-radius: 8px;
+                    cursor: pointer; font-size: 14px; transition: background 0.15s;
+                }
+                .tb-file-remove:hover { background: rgba(239,68,68,0.3); }
 
                 /* Filters */
                 .tb-filters {
