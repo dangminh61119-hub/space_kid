@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/game-context";
 import { useAuth } from "@/lib/services/auth-context";
@@ -42,7 +43,8 @@ const QUICK_PROMPTS = [
 
 export default function BaoBaiPage() {
     const { player } = useGame();
-    const { session } = useAuth();
+    const { session, playerDbId } = useAuth();
+    const router = useRouter();
     const [query, setQuery] = useState("");
     const [subject, setSubject] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -50,6 +52,8 @@ export default function BaoBaiPage() {
     const [sessions, setSessions] = useState<HomeworkSession[]>([]);
     const [showSources, setShowSources] = useState(false);
     const [error, setError] = useState("");
+    const [lastSessionId, setLastSessionId] = useState<string | null>(null);
+    const [lastQuery, setLastQuery] = useState("");
 
     const token = session?.access_token;
 
@@ -102,8 +106,9 @@ export default function BaoBaiPage() {
                 lesson: data.lesson,
                 sources: data.sources || [],
             });
+            setLastQuery(q);
 
-            // Save to history
+            // Save to history (local)
             saveSession({
                 id: Date.now().toString(),
                 query: q,
@@ -112,6 +117,26 @@ export default function BaoBaiPage() {
                 date: new Date().toISOString(),
                 subject: subject || undefined,
             });
+
+            // Save to DB
+            if (playerDbId && token) {
+                try {
+                    const dbRes = await fetch("/api/study-sessions", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({
+                            playerId: playerDbId,
+                            query: q,
+                            subject: subject || undefined,
+                            grade: player.grade,
+                            lesson: data.lesson,
+                            sources: data.sources || [],
+                        }),
+                    });
+                    const dbData = await dbRes.json();
+                    if (dbData.session?.id) setLastSessionId(dbData.session.id);
+                } catch { /* silent — localStorage backup exists */ }
+            }
         } catch (err) {
             setError("Lỗi kết nối: " + String(err));
         } finally {
@@ -339,14 +364,34 @@ export default function BaoBaiPage() {
                             </div>
                         )}
 
+                        {/* Smart action buttons */}
+                        <div className="bao-bai-actions">
+                            <motion.button
+                                className="learn-btn learn-btn-primary bao-bai-action-btn"
+                                onClick={() => router.push(`/learn/tutor?topic=${encodeURIComponent(lastQuery)}&subject=${subject || ""}&from=bao-bai`)}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                            >
+                                🦉 Học với Gia sư
+                            </motion.button>
+                            <motion.button
+                                className="learn-btn bao-bai-action-btn bao-bai-practice-btn"
+                                onClick={() => router.push(`/learn/practice?topic=${encodeURIComponent(lastQuery)}&subject=${subject || ""}&from=bao-bai${lastSessionId ? `&session=${lastSessionId}` : ""}`)}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                            >
+                                📝 Luyện tập ngay
+                            </motion.button>
+                        </div>
+
                         {/* New query button */}
                         <motion.button
                             className="learn-btn learn-btn-secondary"
-                            onClick={() => { setResult(null); setQuery(""); }}
-                            style={{ width: "100%", padding: 14 }}
+                            onClick={() => { setResult(null); setQuery(""); setLastSessionId(null); }}
+                            style={{ width: "100%", padding: 14, marginTop: 8 }}
                             whileHover={{ scale: 1.01 }}
                         >
-                            📝 Báo bài mới
+                            📋 Báo bài mới
                         </motion.button>
                     </motion.div>
                 )}
@@ -501,11 +546,29 @@ export default function BaoBaiPage() {
                     font-size: 11px; color: var(--learn-text-secondary);
                 }
 
+                .bao-bai-actions {
+                    display: flex; gap: 10px; margin-top: 16px;
+                }
+                .bao-bai-action-btn {
+                    flex: 1; padding: 14px 16px !important; font-size: 15px !important;
+                    border-radius: 16px !important;
+                }
+                .bao-bai-practice-btn {
+                    background: linear-gradient(135deg, #10B981, #059669);
+                    color: white;
+                    box-shadow: 0 4px 16px rgba(16,185,129,0.3), inset 0 -3px 0 rgba(0,0,0,0.1);
+                }
+                .bao-bai-practice-btn:hover {
+                    filter: brightness(1.05);
+                    box-shadow: 0 6px 20px rgba(16,185,129,0.4);
+                }
+
                 @media (max-width: 768px) {
                     .bao-bai-input-row { flex-direction: column; }
                     .bao-bai-submit { width: 100%; }
                     .bao-bai-subjects { gap: 6px; }
                     .bao-bai-subject-btn { min-width: 60px; padding: 8px 10px; }
+                    .bao-bai-actions { flex-direction: column; }
                 }
             `}</style>
         </motion.div>

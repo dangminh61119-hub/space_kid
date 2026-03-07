@@ -32,6 +32,18 @@ const fadeUp = {
     visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
 };
 
+/* ─── Time ago helper ─── */
+function getTimeAgo(dateStr: string): string {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "vừa xong";
+    if (mins < 60) return `${mins} phút trước`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours} giờ trước`;
+    const days = Math.floor(hours / 24);
+    return `${days} ngày trước`;
+}
+
 /* ─── Progress Wheel Component ─── */
 function ProgressWheel({ value, size = 64, stroke = 6, color }: { value: number; size?: number; stroke?: number; color: string }) {
     const radius = (size - stroke) / 2;
@@ -72,6 +84,11 @@ export default function LearnHomePage() {
         sessionsThisWeek: number;
     } | null>(null);
     const [loading, setLoading] = useState(true);
+    const [recentStudy, setRecentStudy] = useState<Array<{
+        id: string; query: string; subject: string | null;
+        practiced: boolean; created_at: string;
+    }>>([]);
+    const srsCount = getDueCount();
 
     useEffect(() => {
         async function load() {
@@ -83,6 +100,15 @@ export default function LearnHomePage() {
                 ]);
                 setProfile(p);
                 setStats(s);
+
+                // Fetch recent study sessions from DB
+                if (playerDbId) {
+                    try {
+                        const sessRes = await fetch(`/api/study-sessions?player_id=${playerDbId}&mode=recent`);
+                        const sessData = await sessRes.json();
+                        if (sessData.sessions) setRecentStudy(sessData.sessions.slice(0, 3));
+                    } catch { /* silent */ }
+                }
             } catch (e) {
                 console.error("Failed to load learn data:", e);
             } finally {
@@ -168,6 +194,63 @@ export default function LearnHomePage() {
                 </div>
             </motion.div>
 
+            {/* Tiếp tục học — from recent báo bài */}
+            {recentStudy.length > 0 && (
+                <motion.div variants={fadeUp} style={{ marginBottom: 24 }}>
+                    <h2 className="learn-card-title" style={{ marginBottom: 12 }}>📋 Tiếp tục học</h2>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        {recentStudy.map((s) => {
+                            const subjectInfo = SUBJECTS.find(sub => sub.id === s.subject);
+                            const ago = getTimeAgo(s.created_at);
+                            return (
+                                <div key={s.id} className="learn-card" style={{ borderLeft: `4px solid ${subjectInfo?.color || "var(--learn-accent)"}` }}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                                        <div style={{ fontWeight: 700, fontSize: 14 }}>
+                                            {subjectInfo?.emoji || "📚"} {s.query}
+                                        </div>
+                                        <span style={{ fontSize: 11, color: "var(--learn-text-secondary)" }}>{ago}</span>
+                                    </div>
+                                    <div style={{ display: "flex", gap: 8 }}>
+                                        <Link href={`/learn/tutor?topic=${encodeURIComponent(s.query)}&subject=${s.subject || ""}&from=bao-bai`} style={{ textDecoration: "none" }}>
+                                            <button className="learn-btn learn-btn-primary" style={{ fontSize: 12, padding: "6px 14px" }}>
+                                                🦉 Gia sư
+                                            </button>
+                                        </Link>
+                                        {!s.practiced && (
+                                            <Link href={`/learn/practice?topic=${encodeURIComponent(s.query)}&subject=${s.subject || ""}&from=bao-bai&session=${s.id}`} style={{ textDecoration: "none" }}>
+                                                <button className="learn-btn learn-btn-secondary" style={{ fontSize: 12, padding: "6px 14px" }}>
+                                                    📝 Luyện tập
+                                                </button>
+                                            </Link>
+                                        )}
+                                        {s.practiced && (
+                                            <span className="learn-badge learn-badge-success">✅ Đã luyện</span>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </motion.div>
+            )}
+
+            {/* Gợi ý khi chưa có báo bài */}
+            {recentStudy.length === 0 && (
+                <motion.div variants={fadeUp} style={{ marginBottom: 24 }}>
+                    <Link href="/learn/bao-bai" style={{ textDecoration: "none" }}>
+                        <motion.div className="learn-card" whileHover={{ scale: 1.01 }} style={{ borderLeft: "4px solid var(--learn-accent)", cursor: "pointer", display: "flex", alignItems: "center", gap: 14 }}>
+                            <span style={{ fontSize: 36 }}>📋</span>
+                            <div>
+                                <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Hôm nay em học gì?</div>
+                                <div style={{ fontSize: 13, color: "var(--learn-text-secondary)" }}>
+                                    Cho Cú Mèo biết bài tập về nhà → AI tìm bài học + tạo bài tập từ SGK
+                                </div>
+                            </div>
+                        </motion.div>
+                    </Link>
+                </motion.div>
+            )}
+
             {/* Two-Column Layout */}
             <div className="learn-two-col">
                 {/* Left: Subject Progress */}
@@ -252,6 +335,9 @@ export default function LearnHomePage() {
                                         <div style={{ fontWeight: 700, fontSize: 14 }}>Ôn tập SRS</div>
                                         <div style={{ fontSize: 12, color: "var(--learn-text-secondary)" }}>Spaced Repetition — nhớ lâu hơn</div>
                                     </div>
+                                    {srsCount > 0 && (
+                                        <span className="learn-badge learn-badge-warning">{srsCount} thẻ</span>
+                                    )}
                                 </motion.div>
                             </Link>
                             <Link href="/learn/practice" style={{ textDecoration: "none" }}>

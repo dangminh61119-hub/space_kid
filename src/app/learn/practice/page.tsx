@@ -13,7 +13,7 @@ import { updateProfileAfterSession } from "@/lib/services/student-profile-servic
 import { startSession, endSession } from "@/lib/services/learning-session-service";
 
 /* ─── Practice Modes ─── */
-type PracticeMode = "select" | "flashcard" | "quiz" | "drill";
+type PracticeMode = "select" | "flashcard" | "quiz" | "drill" | "ai-quiz";
 
 /* ─── Subjects ─── */
 const SUBJECTS = [
@@ -137,6 +137,13 @@ function PracticeContent() {
 
     const playerId = playerDbId || "local";
 
+    // AI quiz state
+    const [aiQuizQuestions, setAiQuizQuestions] = useState<QuizQuestion[]>([]);
+    const [aiQuizLoading, setAiQuizLoading] = useState(false);
+    const [aiQuizTopic, setAiQuizTopic] = useState<string | null>(null);
+    const [fromBaoBai, setFromBaoBai] = useState(false);
+    const [baoBaiSessionId, setBaoBaiSessionId] = useState<string | null>(null);
+
     // Load profile & check URL params
     useEffect(() => {
         async function load() {
@@ -145,8 +152,18 @@ function PracticeContent() {
 
             const focusParam = searchParams.get("focus");
             const subjectParam = searchParams.get("subject");
+            const topicParam = searchParams.get("topic");
+            const fromParam = searchParams.get("from");
+            const sessionParam = searchParams.get("session");
 
-            if (focusParam) {
+            if (topicParam && fromParam === "bao-bai") {
+                // Coming from Báo bài → auto-start AI quiz
+                setAiQuizTopic(topicParam);
+                setFromBaoBai(true);
+                if (subjectParam) setSelectedSubject(subjectParam);
+                if (sessionParam) setBaoBaiSessionId(sessionParam);
+                loadAiQuiz(topicParam, player.grade, subjectParam || undefined);
+            } else if (focusParam) {
                 setDrillErrorType(focusParam);
                 setMode("drill");
             } else if (subjectParam) {
@@ -154,7 +171,41 @@ function PracticeContent() {
             }
         }
         load();
-    }, [playerId, searchParams]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [playerId]);
+
+    // Load AI-generated quiz from SGK
+    const loadAiQuiz = useCallback(async (topic: string, grade: number, subject?: string) => {
+        setAiQuizLoading(true);
+        setMode("ai-quiz");
+        try {
+            const res = await fetch("/api/ai/practice", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ topic, grade, subject, count: 5 }),
+            });
+            const data = await res.json();
+            if (data.questions?.length > 0) {
+                const formatted: QuizQuestion[] = data.questions.map((q: { question: string; options: string[]; correct: number; hint?: string; explanation?: string }, i: number) => ({
+                    id: `ai-${i}`,
+                    question: q.question,
+                    correctAnswer: q.options[q.correct],
+                    wrongAnswers: q.options.filter((_: string, idx: number) => idx !== q.correct),
+                    subject: subject || "mixed",
+                    bloomLevel: 2,
+                    explanation: q.explanation || q.hint || "",
+                }));
+                setAiQuizQuestions(formatted);
+            } else {
+                setAiQuizQuestions([]);
+            }
+        } catch (err) {
+            console.error("AI quiz error:", err);
+            setAiQuizQuestions([]);
+        } finally {
+            setAiQuizLoading(false);
+        }
+    }, []);
 
     const topErrors = useMemo(() => profile ? getTopErrors(profile, 5) : [], [profile]);
 
@@ -251,6 +302,68 @@ function PracticeContent() {
         );
     }
 
+    // AI Quiz mode
+    if (mode === "ai-quiz") {
+        if (aiQuizLoading) {
+            return (
+                <div style={{ textAlign: "center", padding: 60 }}>
+                    <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 1.5, repeat: Infinity }} style={{ fontSize: 48, display: "inline-block" }}>🦉</motion.div>
+                    <p style={{ fontWeight: 700, marginTop: 12 }}>Cú Mèo đang tạo bài tập từ SGK...</p>
+                    <p style={{ fontSize: 13, color: "var(--learn-text-secondary)" }}>
+                        Đang phân tích nội dung: <strong>{aiQuizTopic}</strong>
+                    </p>
+                </div>
+            );
+        }
+
+        if (aiQuizQuestions.length === 0) {
+            return (
+                <div style={{ textAlign: "center", padding: 60 }}>
+                    <div style={{ fontSize: 48, marginBottom: 12 }}>📚</div>
+                    <p style={{ fontWeight: 700 }}>Chưa tìm thấy nội dung SGK phù hợp</p>
+                    <p style={{ fontSize: 13, color: "var(--learn-text-secondary)", marginBottom: 16 }}>
+                        Thử chủ đề khác hoặc quay lại báo bài
+                    </p>
+                    <button className="learn-btn learn-btn-secondary" onClick={handleExit}>← Quay lại</button>
+                </div>
+            );
+        }
+
+        return (
+            <div>
+                <button className="learn-btn learn-btn-secondary" onClick={handleExit} style={{ marginBottom: 16 }}>
+                    ← Quay lại
+                </button>
+                {fromBaoBai && aiQuizTopic && (
+                    <div className="learn-card" style={{ padding: 12, marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontSize: 24 }}>📋</span>
+                        <div>
+                            <div style={{ fontWeight: 700, fontSize: 14 }}>Bài tập từ Báo bài</div>
+                            <div style={{ fontSize: 12, color: "var(--learn-text-secondary)" }}>{aiQuizTopic}</div>
+                        </div>
+                    </div>
+                )}
+                <SmartQuiz
+                    questions={aiQuizQuestions}
+                    onComplete={async (results) => {
+                        await handleComplete({ correct: results.correct, incorrect: results.incorrect });
+                        // Mark báo bài session as practiced
+                        if (baoBaiSessionId) {
+                            try {
+                                await fetch("/api/study-sessions", {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ sessionId: baoBaiSessionId, practiced: true }),
+                                });
+                            } catch { /* silent */ }
+                        }
+                    }}
+                    onExit={handleExit}
+                />
+            </div>
+        );
+    }
+
     // ─── Mode Selection Screen ───
     return (
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
@@ -321,6 +434,30 @@ function PracticeContent() {
                                 key={s.id}
                                 className="practice-subject-btn"
                                 onClick={() => startPractice("quiz", s.id)}
+                                style={{ borderColor: s.color }}
+                            >
+                                {s.emoji} {s.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* AI from SGK mode */}
+                <div className="learn-card practice-mode-card" style={{ borderColor: "rgba(16,185,129,0.3)" }}>
+                    <div className="practice-mode-header">
+                        <span className="practice-mode-emoji">🤖</span>
+                        <h3 className="practice-mode-title">AI từ SGK</h3>
+                    </div>
+                    <p className="practice-mode-desc">Cú Mèo tạo câu hỏi từ nội dung sách giáo khoa — đúng bài, đúng chương trình</p>
+                    <div className="practice-mode-subjects">
+                        {SUBJECTS.map(s => (
+                            <button
+                                key={s.id}
+                                className="practice-subject-btn"
+                                onClick={() => {
+                                    setSelectedSubject(s.id);
+                                    loadAiQuiz(`Ôn tập ${s.label} lớp ${player.grade}`, player.grade, s.id);
+                                }}
                                 style={{ borderColor: s.color }}
                             >
                                 {s.emoji} {s.label}

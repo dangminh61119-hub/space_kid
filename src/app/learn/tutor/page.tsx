@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { useGame } from "@/lib/game-context";
 import { useAuth } from "@/lib/services/auth-context";
@@ -18,15 +19,22 @@ const SUBJECTS = [
     { id: null, label: "Tự do", emoji: "💬" },
 ];
 
-export default function LearnTutorPage() {
+function TutorContent() {
     const { player } = useGame();
     const { playerDbId } = useAuth();
+    const searchParams = useSearchParams();
     const [profile, setProfile] = useState<StudentProfile | null>(null);
     const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
     const [started, setStarted] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [initialTopic, setInitialTopic] = useState<string | null>(null);
 
     const playerId = playerDbId || "local";
+
+    // Read URL params (from Báo bài navigation)
+    const topicParam = searchParams.get("topic");
+    const subjectParam = searchParams.get("subject");
+    const fromParam = searchParams.get("from");
 
     useEffect(() => {
         getStudentProfile(playerId).then(p => {
@@ -34,6 +42,15 @@ export default function LearnTutorPage() {
             setLoading(false);
         });
     }, [playerId]);
+
+    // Auto-start if coming from Báo bài with a topic
+    useEffect(() => {
+        if (topicParam && !started) {
+            setInitialTopic(topicParam);
+            if (subjectParam) setSelectedSubject(subjectParam);
+            setStarted(true);
+        }
+    }, [topicParam, subjectParam, started]);
 
     // Build student context for AI
     const studentContext = useMemo(() => ({
@@ -43,9 +60,16 @@ export default function LearnTutorPage() {
         currentSubject: selectedSubject || undefined,
     }), [player.name, player.grade, profile, selectedSubject]);
 
-    // Suggested topics based on errors
+    // Suggested topics based on errors + topic from báo bài
     const suggestedTopics = useMemo(() => {
         const topics: string[] = [];
+
+        // If coming from báo bài, show related topic first
+        if (initialTopic && fromParam === "bao-bai") {
+            topics.push(`Giải thích chi tiết về: ${initialTopic}`);
+            topics.push(`Cho em ví dụ thêm về: ${initialTopic}`);
+        }
+
         if (profile) {
             const errors = getTopErrors(profile, 2);
             for (const { type } of errors) {
@@ -67,13 +91,13 @@ export default function LearnTutorPage() {
         } else if (selectedSubject === "science") {
             topics.push("Tại sao trời lại mưa?");
             topics.push("Cây cần gì để sống?");
-        } else {
+        } else if (!fromParam) {
             topics.push("Em muốn ôn bài hôm nay");
             topics.push("Cho em một câu đố vui");
         }
 
         return topics.slice(0, 4);
-    }, [profile, selectedSubject]);
+    }, [profile, selectedSubject, initialTopic, fromParam]);
 
     if (loading) {
         return (
@@ -113,16 +137,16 @@ export default function LearnTutorPage() {
                     {/* AI capabilities */}
                     <div className="tutor-capabilities">
                         <div className="tutor-cap-item">
+                            <span>📚</span>
+                            <span>Có kiến thức SGK</span>
+                        </div>
+                        <div className="tutor-cap-item">
                             <span>🧠</span>
                             <span>Phương pháp Socratic</span>
                         </div>
                         <div className="tutor-cap-item">
                             <span>📊</span>
                             <span>Hiểu hồ sơ học tập</span>
-                        </div>
-                        <div className="tutor-cap-item">
-                            <span>💡</span>
-                            <span>Giải thích từng bước</span>
                         </div>
                         <div className="tutor-cap-item">
                             <span>🎯</span>
@@ -211,7 +235,7 @@ export default function LearnTutorPage() {
         );
     }
 
-    // Chat mode
+    // Chat mode — show context banner if from báo bài
     return (
         <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
@@ -219,6 +243,11 @@ export default function LearnTutorPage() {
                     <h1 className="learn-page-title" style={{ marginBottom: 2 }}>
                         🦉 Cú Mèo {selectedSubject ? `• ${SUBJECTS.find(s => s.id === selectedSubject)?.label}` : "• Chat tự do"}
                     </h1>
+                    {fromParam === "bao-bai" && initialTopic && (
+                        <p style={{ fontSize: 13, color: "var(--learn-text-secondary)", marginTop: 2 }}>
+                            📋 Từ báo bài: <strong>{initialTopic}</strong>
+                        </p>
+                    )}
                 </div>
                 <button
                     className="learn-btn learn-btn-secondary"
@@ -233,5 +262,18 @@ export default function LearnTutorPage() {
                 suggestedTopics={suggestedTopics}
             />
         </div>
+    );
+}
+
+export default function LearnTutorPage() {
+    return (
+        <Suspense fallback={
+            <div style={{ textAlign: "center", padding: 60 }}>
+                <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }} style={{ fontSize: 48, display: "inline-block" }}>🦉</motion.div>
+                <p style={{ color: "var(--learn-text-secondary)", marginTop: 12 }}>Đang tải...</p>
+            </div>
+        }>
+            <TutorContent />
+        </Suspense>
     );
 }

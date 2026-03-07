@@ -53,12 +53,37 @@ export async function POST(request: NextRequest) {
 
         const systemPrompt = STUDY_AI_SYSTEM_PROMPT(studentContext);
 
+        // RAG: Search textbook content for relevant context
+        let ragContext = "";
+        if (studentContext.grade && message) {
+            try {
+                const { searchTextbooks, buildRAGContext } = await import("@/lib/services/rag-service");
+                const ragResults = await searchTextbooks(
+                    message,
+                    studentContext.grade,
+                    studentContext.currentSubject || undefined,
+                    3 // top-3 for tutor context
+                );
+                if (ragResults.length > 0) {
+                    ragContext = buildRAGContext(ragResults);
+                }
+            } catch (ragErr) {
+                console.warn("[study/route] RAG search failed (non-fatal):", ragErr);
+            }
+        }
+
         // Build messages with longer history (up to 20 turns for study sessions)
         const recentHistory = history.slice(-20);
+
+        // Inject RAG context into the user message when available
+        const userMessage = ragContext
+            ? `${ragContext}\n\n---\n\nHỌC SINH HỎI: "${message}"\n\nHãy trả lời dựa trên nội dung SGK ở trên (nếu liên quan). Nếu SGK không liên quan, trả lời bình thường.`
+            : message;
+
         const messages = [
             { role: "system", content: systemPrompt },
             ...recentHistory,
-            { role: "user", content: message },
+            { role: "user", content: userMessage },
         ];
 
         const aiRes = await fetch(apiUrl, {
