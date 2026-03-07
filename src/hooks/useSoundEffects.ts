@@ -136,45 +136,42 @@ export function useSoundEffects() {
         osc.stop(ctx.currentTime + 0.05);
     }, [initAudio]);
 
+    // ─── BGM via MP3 file ───
+    const bgmAudioRef = useRef<HTMLAudioElement | null>(null);
+
     const stopBGM = useCallback(() => {
+        // Stop interval-based BGM (legacy, keep for safety)
         if (bgmIntervalRef.current) {
             clearInterval(bgmIntervalRef.current);
             bgmIntervalRef.current = null;
         }
+        // Stop MP3 BGM
+        if (bgmAudioRef.current) {
+            bgmAudioRef.current.pause();
+            bgmAudioRef.current.currentTime = 0;
+        }
     }, []);
 
     const playBGM = useCallback(() => {
-        const ctx = initAudio();
-        if (!ctx || !_sharedMasterGain) return;
-
         stopBGM();
+        if (typeof window === 'undefined') return;
 
-        const notes = [261.63, 329.63, 392.00, 523.25]; // C Major Arpeggio
-        let noteIndex = 0;
+        if (!bgmAudioRef.current) {
+            bgmAudioRef.current = new Audio('/sounds/ambient/Industria_1.mp3');
+            bgmAudioRef.current.loop = true;
+        }
+        bgmAudioRef.current.volume = Math.min(1, Math.max(0, volRef.current * 0.6));
+        bgmAudioRef.current.play().catch(() => {
+            // Autoplay blocked — will play on next user interaction
+        });
+    }, [stopBGM]);
 
-        const playNextNote = () => {
-            if (ctx.state === 'suspended' || !_sharedMasterGain) return;
-
-            const osc = ctx.createOscillator();
-            const gainNode = ctx.createGain();
-
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(notes[noteIndex], ctx.currentTime);
-
-            gainNode.gain.setValueAtTime(0.02, ctx.currentTime); // Quiet BGM
-            gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
-
-            osc.connect(gainNode);
-            gainNode.connect(_sharedMasterGain);
-
-            osc.start();
-            osc.stop(ctx.currentTime + 0.2);
-
-            noteIndex = (noteIndex + 1) % notes.length;
-        };
-
-        bgmIntervalRef.current = setInterval(playNextNote, 250);
-    }, [initAudio, stopBGM]);
+    // Sync MP3 volume when masterVolume changes
+    useEffect(() => {
+        if (bgmAudioRef.current) {
+            bgmAudioRef.current.volume = Math.min(1, Math.max(0, vol * 0.6));
+        }
+    }, [vol]);
 
     useEffect(() => {
         return () => {
