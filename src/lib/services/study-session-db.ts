@@ -30,16 +30,31 @@ export interface RAGSourceDB {
     subject: string;
 }
 
-/* ─── Supabase client ─── */
-function getSupabase() {
+/* ─── Supabase clients ─── */
+
+/** Service-role client — bypasses RLS, used for admin reads */
+function getServiceClient() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     return createClient(url, key);
+}
+
+/** User-context client — respects RLS, has auth.uid() set */
+function getUserClient(userToken: string) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    return createClient(url, anonKey, {
+        global: {
+            headers: {
+                Authorization: `Bearer ${userToken}`,
+            },
+        },
+    });
 }
 
 /* ─── API ─── */
 
-/** Save a new study session (after báo bài) */
+/** Save a new study session (after báo bài) — uses user JWT for RLS */
 export async function saveStudySession(data: {
     playerId: string;
     query: string;
@@ -47,8 +62,10 @@ export async function saveStudySession(data: {
     grade: number;
     lesson: string;
     sources: RAGSourceDB[];
-}): Promise<StudySession | null> {
-    const supabase = getSupabase();
+}, userToken?: string): Promise<StudySession | null> {
+    // Use user JWT if available (RLS requires auth.uid()), otherwise service role
+    const supabase = userToken ? getUserClient(userToken) : getServiceClient();
+
     const { data: row, error } = await supabase
         .from("study_sessions")
         .insert({
@@ -64,18 +81,18 @@ export async function saveStudySession(data: {
 
     if (error) {
         console.error("[study-session] save error:", error.message, error.details, error.hint);
-        throw new Error(`Supabase save failed: ${error.message} | ${error.details || ""} | ${error.hint || ""}`);
+        throw new Error(`Supabase save failed: ${error.message}`);
     }
     return row as StudySession;
 }
 
-/** Get recent study sessions for a player */
+/** Get recent study sessions — uses service role for reliable reads */
 export async function getRecentSessions(
     playerId: string,
     days: number = 7,
     limit: number = 10
 ): Promise<StudySession[]> {
-    const supabase = getSupabase();
+    const supabase = getServiceClient();
     const since = new Date();
     since.setDate(since.getDate() - days);
 
@@ -96,7 +113,7 @@ export async function getRecentSessions(
 
 /** Get today's sessions */
 export async function getTodaySessions(playerId: string): Promise<StudySession[]> {
-    const supabase = getSupabase();
+    const supabase = getServiceClient();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -116,7 +133,7 @@ export async function getTodaySessions(playerId: string): Promise<StudySession[]
 
 /** Mark session as practiced */
 export async function markPracticed(sessionId: string): Promise<void> {
-    const supabase = getSupabase();
+    const supabase = getServiceClient();
     await supabase
         .from("study_sessions")
         .update({ practiced: true })
@@ -125,7 +142,7 @@ export async function markPracticed(sessionId: string): Promise<void> {
 
 /** Mark session as reviewed */
 export async function markReviewed(sessionId: string): Promise<void> {
-    const supabase = getSupabase();
+    const supabase = getServiceClient();
     await supabase
         .from("study_sessions")
         .update({ reviewed: true })
@@ -137,7 +154,7 @@ export async function getUnpracticedSessions(
     playerId: string,
     limit: number = 5
 ): Promise<StudySession[]> {
-    const supabase = getSupabase();
+    const supabase = getServiceClient();
     const { data, error } = await supabase
         .from("study_sessions")
         .select("*")
@@ -155,7 +172,7 @@ export async function getUnpracticedSessions(
 
 /** Get studied subjects summary */
 export async function getStudiedSubjectsSummary(playerId: string): Promise<Record<string, number>> {
-    const supabase = getSupabase();
+    const supabase = getServiceClient();
     const { data, error } = await supabase
         .from("study_sessions")
         .select("subject")

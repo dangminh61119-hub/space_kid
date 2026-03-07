@@ -75,6 +75,10 @@ export async function POST(request: NextRequest) {
             subject: String(s.subject || ""),
         })) : [];
 
+        // Extract user JWT for RLS-compliant Supabase client
+        const authHeader = request.headers.get("Authorization") || "";
+        const userToken = authHeader.replace("Bearer ", "");
+
         const session = await saveStudySession({
             playerId,
             query,
@@ -82,7 +86,7 @@ export async function POST(request: NextRequest) {
             grade,
             lesson: truncatedLesson,
             sources: limitedSources,
-        });
+        }, userToken || undefined);
 
         if (!session) {
             return NextResponse.json({ error: "Failed to save session" }, { status: 500 });
