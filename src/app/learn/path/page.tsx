@@ -17,11 +17,15 @@ interface SkillTreeData {
     tiers: SkillNodeData[][];
 }
 
-function buildSkillTrees(profile: StudentProfile | null): SkillTreeData[] {
+function buildSkillTrees(profile: StudentProfile | null, grade: number): SkillTreeData[] {
     const mastery = (key: string) => profile?.subjectStrengths[key] ?? 0;
     const hasMinMastery = (key: string, min: number) => mastery(key) >= min;
 
-    return [
+    // How many tiers to show based on grade
+    // Grade 1-2: Tier 0-1 (basics), Grade 3: Tier 0-2, Grade 4-5: all tiers
+    const maxTier = grade <= 2 ? 1 : grade <= 3 ? 2 : 3;
+
+    const allTrees: SkillTreeData[] = [
         {
             id: "math", label: "Toán học", emoji: "🔢", color: "var(--learn-math)",
             tiers: [
@@ -87,6 +91,12 @@ function buildSkillTrees(profile: StudentProfile | null): SkillTreeData[] {
             ],
         },
     ];
+
+    // Filter tiers by grade
+    return allTrees.map(tree => ({
+        ...tree,
+        tiers: tree.tiers.slice(0, maxTier + 1),
+    }));
 }
 
 /* ─── Page ─── */
@@ -105,7 +115,7 @@ export default function LearnPathPage() {
         });
     }, [playerDbId]);
 
-    const skillTrees = useMemo(() => buildSkillTrees(profile), [profile]);
+    const skillTrees = useMemo(() => buildSkillTrees(profile, player.grade), [profile, player.grade]);
     const activeTree = useMemo(() => skillTrees.find(t => t.id === activeSubject) || skillTrees[0], [skillTrees, activeSubject]);
 
     // Overall progress for active tree

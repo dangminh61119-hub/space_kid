@@ -78,7 +78,7 @@ function generateFlashcards(subject: string, grade: number): FlashcardItem[] {
     };
     const all = templates[subject] || templates.math;
     const filtered = all.filter(c => !c.grade || c.grade === grade);
-    return filtered.length > 0 ? filtered : all.slice(0, 4); // fallback if no match
+    return filtered; // only return grade-matched items, no fallback
 }
 
 function generateQuizQuestions(subject: string, grade: number): QuizQuestion[] {
@@ -120,7 +120,7 @@ function generateQuizQuestions(subject: string, grade: number): QuizQuestion[] {
     };
     const all = templates[subject] || templates.math;
     const filtered = all.filter(q => !q.grade || q.grade === grade);
-    return filtered.length > 0 ? filtered : all.slice(0, 3); // fallback if no match
+    return filtered; // only return grade-matched items, no fallback
 }
 
 /* ─── Practice Page Content ─── */

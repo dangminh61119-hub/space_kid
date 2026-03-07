@@ -66,7 +66,6 @@ const SUBJECT_COLORS: Record<string, string> = {
 };
 
 const GRADE_FILTERS = [
-    { id: 0, label: "Tất cả lớp" },
     { id: 1, label: "Lớp 1" },
     { id: 2, label: "Lớp 2" },
     { id: 3, label: "Lớp 3" },
@@ -100,7 +99,7 @@ export default function LearnLessonsPage() {
     const { player } = useGame();
     const { playerDbId } = useAuth();
     const [subjectFilter, setSubjectFilter] = useState("all");
-    const [gradeFilter, setGradeFilter] = useState(0); // will set to player.grade in useEffect
+    const [gradeFilter, setGradeFilter] = useState(player.grade >= 1 && player.grade <= 5 ? player.grade : 1);
     const [activeLesson, setActiveLesson] = useState<LessonData | null>(null);
     const [profile, setProfile] = useState<StudentProfile | null>(null);
     const [watchHistory, setWatchHistory] = useState<Record<string, { seconds: number; lastWatched: string }>>({});
@@ -109,10 +108,7 @@ export default function LearnLessonsPage() {
     useEffect(() => {
         setWatchHistory(getWatchHistory());
         getStudentProfile(playerDbId || "local").then(setProfile);
-        if (player.grade >= 1 && player.grade <= 5) {
-            setGradeFilter(player.grade);
-        }
-    }, [playerDbId, player.grade]);
+    }, [playerDbId]);
 
     // AI recommendations based on error patterns
     const recommendations = useMemo(() => {
@@ -131,11 +127,11 @@ export default function LearnLessonsPage() {
         return recommended;
     }, [profile, watchHistory]);
 
-    // Filtered lessons
+    // Filtered lessons — always filter by grade
     const filteredLessons = useMemo(() => {
         return LESSON_CATALOG.filter(l => {
             if (subjectFilter !== "all" && l.subject !== subjectFilter) return false;
-            if (gradeFilter > 0 && l.grade !== gradeFilter) return false;
+            if (l.grade !== gradeFilter) return false;
             return true;
         });
     }, [subjectFilter, gradeFilter]);
