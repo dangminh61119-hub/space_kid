@@ -298,7 +298,25 @@ export async function matchQueryToTopics(
     }
 
     // Sort by best match, limit to top 3 (focused results)
-    const sortedTopics = matches.sort((a, b) => a.priority - b.priority).slice(0, 3);
+    let sortedTopics = matches.sort((a, b) => a.priority - b.priority).slice(0, 3);
+
+    // FALLBACK: If no direct match but subject is known, suggest general topics for that subject
+    if (sortedTopics.length === 0 && subject && topics.length > 0) {
+        const subjectTopics = topics.filter(t => t.subject === subject).slice(0, 3);
+        sortedTopics = subjectTopics.map(topic => ({
+            topic_id: topic.id,
+            topic_name: topic.topic_name,
+            topic_slug: topic.topic_slug,
+            subject: topic.subject,
+            chapter: topic.chapter,
+            mastery_score: 0,
+            total_attempts: 0,
+            reason: "suggested",
+            priority: 50,
+            question_count: 0,
+            last_practiced_at: null,
+        }));
+    }
 
     // Find lessons for top 2 matched topics only (most relevant)
     const lessonTopicIds = sortedTopics.slice(0, 2).map(t => t.topic_id);
