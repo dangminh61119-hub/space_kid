@@ -224,6 +224,13 @@ export async function matchQueryToTopics(
 ): Promise<BaoBaiMatchResult> {
     const supabase = getClient(userToken);
 
+    // Vietnamese stop words — common words that cause false matches
+    const STOP_WORDS = new Set([
+        "hôm", "nay", "em", "con", "học", "bài", "làm", "dạy", "thầy", "cô",
+        "được", "của", "cho", "với", "trong", "trên", "này", "đó", "là", "và",
+        "có", "không", "rồi", "được", "muốn", "ôn", "về", "một", "các", "những",
+    ]);
+
     // Get topics, optionally filtered by subject
     let topicQuery = supabase
         .from("curriculum_topics")
@@ -234,43 +241,46 @@ export async function matchQueryToTopics(
     const { data: topics } = await topicQuery;
     if (!topics) return { topics: [], lessons: [] };
 
-    // Tokenize query for better partial matching
+    // Tokenize query — remove stop words for precision
     const queryLower = query.toLowerCase();
     const queryTokens = queryLower
         .replace(/[.,!?;:()]/g, " ")
         .split(/\s+/)
-        .filter(t => t.length >= 2); // skip very short words
+        .filter(t => t.length >= 2 && !STOP_WORDS.has(t));
 
     const matches: TopicRecommendation[] = [];
 
     for (const topic of topics) {
         const keywords: string[] = topic.sgk_keywords || [];
         const topicNameLower = topic.topic_name.toLowerCase();
-        const chapterLower = (topic.chapter || "").toLowerCase();
 
         // Score-based matching: higher score = better match
         let score = 0;
 
-        // 1. Full topic name appears in query or vice versa (strongest match)
-        if (queryLower.includes(topicNameLower) || topicNameLower.includes(queryLower)) {
-            score += 10;
-        }
-
-        // 2. Keyword match — check if any keyword appears in query
+        // 1. Full keyword phrase match (most precise) — e.g. "cộng có nhớ" in query
         for (const kw of keywords) {
-            if (queryLower.includes(kw.toLowerCase())) {
-                score += 5;
+            const kwLower = kw.toLowerCase();
+            if (queryLower.includes(kwLower)) {
+                // Bonus for longer keyword matches (multi-word keyword = higher relevance)
+                score += kwLower.split(/\s+/).length >= 2 ? 10 : 4;
             }
         }
 
-        // 3. Token-based matching — check how many query words appear in topic fields
-        for (const token of queryTokens) {
-            if (topicNameLower.includes(token)) score += 2;
-            if (chapterLower.includes(token)) score += 1;
-            if (keywords.some(k => k.toLowerCase().includes(token))) score += 2;
+        // 2. Full topic name appears in query or vice versa
+        if (queryLower.includes(topicNameLower) || topicNameLower.includes(queryLower)) {
+            score += 15;
         }
 
-        if (score > 0) {
+        // 3. Token-based matching — only meaningful tokens after stop word removal
+        let tokenHits = 0;
+        for (const token of queryTokens) {
+            if (topicNameLower.includes(token)) tokenHits++;
+            if (keywords.some(k => k.toLowerCase().includes(token))) tokenHits++;
+        }
+        score += Math.min(tokenHits, 4) * 2; // cap token bonus at 8 pts
+
+        // Only include if score is high enough (avoids weak token-only matches)
+        if (score >= 4) {
             matches.push({
                 topic_id: topic.id,
                 topic_name: topic.topic_name,
@@ -280,26 +290,26 @@ export async function matchQueryToTopics(
                 mastery_score: 0,
                 total_attempts: 0,
                 reason: "match",
-                priority: 100 - score, // lower priority number = better match
+                priority: 100 - score,
                 question_count: 0,
                 last_practiced_at: null,
             });
         }
     }
 
-    // Sort by priority (best matches first), limit to top 5
-    const sortedTopics = matches.sort((a, b) => a.priority - b.priority).slice(0, 5);
+    // Sort by best match, limit to top 3 (focused results)
+    const sortedTopics = matches.sort((a, b) => a.priority - b.priority).slice(0, 3);
 
-    // Find lessons for ALL matched topics (not just the first)
-    const matchedTopicIds = sortedTopics.map(t => t.topic_id);
+    // Find lessons for top 2 matched topics only (most relevant)
+    const lessonTopicIds = sortedTopics.slice(0, 2).map(t => t.topic_id);
     let lessons: LessonRecommendation[] = [];
 
-    if (matchedTopicIds.length > 0) {
+    if (lessonTopicIds.length > 0) {
         const { data: lessonData } = await supabase
             .from("lesson_resources")
             .select("*, curriculum_topics(topic_name, grade)")
             .eq("active", true)
-            .in("topic_id", matchedTopicIds);
+            .in("topic_id", lessonTopicIds);
 
         if (lessonData) {
             lessons = lessonData.map(l => {
@@ -319,12 +329,13 @@ export async function matchQueryToTopics(
     }
 
     // Also try to enrich topics with question counts
-    if (matchedTopicIds.length > 0) {
+    const allTopicIds = sortedTopics.map(t => t.topic_id);
+    if (allTopicIds.length > 0) {
         const { data: qData } = await supabase
             .from("question_bank")
             .select("topic_id")
             .eq("active", true)
-            .in("topic_id", matchedTopicIds);
+            .in("topic_id", allTopicIds);
 
         if (qData) {
             const countMap = new Map<string, number>();
