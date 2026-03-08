@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState, useCallback, useRef, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/services/auth-context";
 
 interface Question {
@@ -47,6 +47,7 @@ const PLANET_OPTIONS = [
 function QuestionsContent() {
     const { session } = useAuth();
     const searchParams = useSearchParams();
+    const router = useRouter();
     const [questions, setQuestions] = useState<Question[]>([]);
     const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 50, total: 0, totalPages: 0 });
     const [loading, setLoading] = useState(true);
@@ -56,21 +57,30 @@ function QuestionsContent() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [reviewingId, setReviewingId] = useState<string | null>(null);
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-    const [activeTab, setActiveTab] = useState<"all" | "pending" | "approved" | "draft">("all");
 
-    // Filters
-    const initialStatus = searchParams.get("status") || "";
+    // Initialize all filter state from URL params for persistence across navigations
+    const initTab = (searchParams.get("tab") as "all" | "pending" | "approved" | "draft") || "all";
+    const [activeTab, setActiveTab] = useState<"all" | "pending" | "approved" | "draft">(initTab);
     const [filterPlanet, setFilterPlanet] = useState(searchParams.get("planet") || "");
     const [filterGrade, setFilterGrade] = useState(searchParams.get("grade") || "");
-    const [filterStatus, setFilterStatus] = useState(initialStatus);
+    const [filterStatus, setFilterStatus] = useState(searchParams.get("status") || "");
     const [filterType, setFilterType] = useState(searchParams.get("type") || "");
 
-    // Derive initial tab from URL params
+    // Sync filter/tab state → URL search params (so state persists across navigations)
+    const isFirstRender = useRef(true);
     useEffect(() => {
-        if (initialStatus === "draft" || initialStatus === "review") setActiveTab("pending");
-        else if (initialStatus === "approved") setActiveTab("approved");
+        // Skip syncing on initial mount to avoid unnecessary push
+        if (isFirstRender.current) { isFirstRender.current = false; return; }
+        const params = new URLSearchParams();
+        if (activeTab !== "all") params.set("tab", activeTab);
+        if (filterPlanet) params.set("planet", filterPlanet);
+        if (filterGrade) params.set("grade", filterGrade);
+        if (filterStatus) params.set("status", filterStatus);
+        if (filterType) params.set("type", filterType);
+        const qs = params.toString();
+        router.replace(`/admin/questions${qs ? `?${qs}` : ""}`, { scroll: false });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [activeTab, filterPlanet, filterGrade, filterStatus, filterType]);
 
     // Count pending questions
     const pendingCount = questions.filter(q => q.status === "draft" || q.status === "review").length;
