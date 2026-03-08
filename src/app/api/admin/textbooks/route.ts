@@ -1,28 +1,19 @@
 /**
  * Admin Textbooks API
  * 
- * GET  - List all textbooks with grade/subject filtering
- * POST - Create a new textbook + process content (pgvector embeddings)
- *        Accepts either:
- *        - multipart/form-data with a PDF file
- *        - application/json with raw text content
+ * GET    - List all textbooks with grade/subject filtering
+ * POST   - Create textbook metadata (content processing via /chunks endpoint)
+ * PATCH  - Update textbook metadata
  * DELETE - Remove a textbook and its chunks
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin, forbiddenResponse, getAdminSupabase } from "@/lib/services/admin-guard";
-import { processTextbook, deleteTextbookChunks } from "@/lib/services/rag-service";
+import { deleteTextbookChunks } from "@/lib/services/rag-service";
 
-// Vercel serverless function config — extend timeout for embedding processing
-export const maxDuration = 60; // seconds (requires Pro plan; Hobby = 10s max)
+// Vercel Hobby plan = 10s max
+export const maxDuration = 10;
 
-/* ─── PDF text extraction ─── */
-async function extractTextFromPDF(buffer: ArrayBuffer): Promise<string> {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require("pdf-parse");
-    const data = await pdfParse(Buffer.from(buffer));
-    return data.text || "";
-}
 
 /* ─── GET: List textbooks ─── */
 export async function GET(request: NextRequest) {
@@ -93,7 +84,8 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ textbook: data });
 }
 
-/* ─── POST: Create + process textbook ─── */
+/* ─── POST: Create textbook metadata ─── */
+/* Content processing (chunking + embedding) is handled by /chunks endpoint */
 export async function POST(request: NextRequest) {
     const admin = await requireAdmin(request);
     if (!admin.isAdmin) return forbiddenResponse(admin.error);
@@ -103,75 +95,27 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "DB not configured" }, { status: 500 });
     }
 
-    // Check OPENAI_API_KEY is available
-    if (!process.env.OPENAI_API_KEY) {
-        console.error("[textbooks/POST] OPENAI_API_KEY is not set");
-        return NextResponse.json(
-            { error: "Server config error: OPENAI_API_KEY is not configured" },
-            { status: 500 }
-        );
-    }
-
-    // Parse request body — supports both form-data (PDF) and JSON (text)
-    let title: string;
-    let subject: string;
-    let grade: number;
-    let publisher: string;
-    let content: string;
-
     const contentType = request.headers.get("content-type") || "";
+    let title: string, subject: string, grade: number, publisher: string;
 
     if (contentType.includes("multipart/form-data")) {
-        // PDF file upload via FormData
         const formData = await request.formData();
         title = formData.get("title") as string || "";
         subject = formData.get("subject") as string || "";
         grade = parseInt(formData.get("grade") as string || "1");
         publisher = formData.get("publisher") as string || "";
-
-        const file = formData.get("file") as File | null;
-        const textContent = formData.get("content") as string || "";
-
-        if (file && file.size > 0) {
-            // Extract text from PDF
-            try {
-                const buffer = await file.arrayBuffer();
-                content = await extractTextFromPDF(buffer);
-                if (!content.trim()) {
-                    return NextResponse.json(
-                        { error: "Không thể trích xuất text từ PDF. File có thể là scan/ảnh. Hãy thử paste text." },
-                        { status: 400 }
-                    );
-                }
-            } catch (err) {
-                console.error("[textbooks/POST] PDF parse error:", err);
-                return NextResponse.json(
-                    { error: `Lỗi đọc PDF: ${err instanceof Error ? err.message : String(err)}` },
-                    { status: 400 }
-                );
-            }
-        } else if (textContent.trim()) {
-            content = textContent;
-        } else {
-            return NextResponse.json(
-                { error: "Cần upload file PDF hoặc paste nội dung text" },
-                { status: 400 }
-            );
-        }
     } else {
-        // JSON body (backward compatible)
         const body = await request.json();
         title = body.title;
         subject = body.subject;
         grade = parseInt(body.grade);
         publisher = body.publisher || "";
-        content = body.content;
     }
 
     // Validate
-    if (!title || !subject || !grade || !content) {
+    if (!title || !subject || !grade) {
         return NextResponse.json(
-            { error: "Missing required fields: title, subject, grade, content/file" },
+            { error: "Missing required fields: title, subject, grade" },
             { status: 400 }
         );
     }
@@ -183,7 +127,7 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    // Insert textbook metadata
+    // Insert textbook metadata only
     const { data: textbook, error: insertError } = await supabase
         .from("textbooks")
         .insert({
@@ -204,41 +148,7 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    // Process content: chunk → embed → store in Supabase pgvector
-    try {
-        const chunkCount = await processTextbook(
-            textbook.id,
-            content
-        );
-
-        // Update status to ready
-        await supabase
-            .from("textbooks")
-            .update({ status: "ready", total_chunks: chunkCount })
-            .eq("id", textbook.id);
-
-        return NextResponse.json({
-            textbook: { ...textbook, status: "ready", total_chunks: chunkCount },
-            chunks: chunkCount,
-        });
-    } catch (err) {
-        // Update status to error
-        try {
-            await supabase
-                .from("textbooks")
-                .update({ status: "error" })
-                .eq("id", textbook.id);
-        } catch (updateErr) {
-            console.error("[textbooks/POST] Failed to update error status:", updateErr);
-        }
-
-        const errorMsg = err instanceof Error ? err.message : String(err);
-        console.error("[textbooks/POST] Processing error:", errorMsg);
-        return NextResponse.json(
-            { error: `Embedding failed: ${errorMsg}` },
-            { status: 500 }
-        );
-    }
+    return NextResponse.json({ textbook });
 }
 
 /* ─── DELETE: Remove textbook ─── */

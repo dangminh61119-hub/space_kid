@@ -202,6 +202,43 @@ export async function processTextbook(
 }
 
 /**
+ * Process a small batch of text chunks: embed + store.
+ * Designed for chunked upload on Vercel Hobby plan (10s timeout, 4.5MB body).
+ * Call this multiple times with different batches to process an entire textbook.
+ */
+export async function processChunkBatch(
+    textbookId: string,
+    chunks: { text: string; chunkIndex: number }[]
+): Promise<number> {
+    const supabase = getSupabase();
+
+    // Generate embeddings for this batch
+    const texts = chunks.map((c) => c.text);
+    const embeddings = await generateEmbeddings(texts);
+
+    // Parse chapter/section info and build rows
+    const rows = chunks.map((chunk, i) => {
+        const { chapter, sectionTitle } = parseChapterInfo(chunk.text);
+        return {
+            textbook_id: textbookId,
+            chapter: chapter || "",
+            section_title: sectionTitle || "",
+            content: chunk.text,
+            chunk_index: chunk.chunkIndex,
+            embedding: JSON.stringify(embeddings[i]),
+        };
+    });
+
+    const { error } = await supabase.from("textbook_sections").insert(rows);
+    if (error) {
+        console.error("[rag] Insert chunk batch error:", error.message);
+        throw new Error(`Failed to insert chunks: ${error.message}`);
+    }
+
+    return chunks.length;
+}
+
+/**
  * Search textbook sections by semantic similarity.
  * Uses the match_textbook_sections() PostgreSQL function with pgvector.
  */

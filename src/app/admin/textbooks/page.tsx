@@ -185,7 +185,36 @@ export default function AdminTextbooksPage() {
         return ocrPages.join("\n\n");
     };
 
-    /* ─── Upload ─── */
+    /* ─── Text Chunking (client-side, matching rag-service logic) ─── */
+    const chunkTextClient = (text: string, chunkSize = 400, overlap = 80): string[] => {
+        const cleaned = text.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+        const paragraphs = cleaned.split(/\n\n+/);
+        const chunks: string[] = [];
+        let currentChunk: string[] = [];
+        let currentWordCount = 0;
+
+        for (const para of paragraphs) {
+            const paraWords = para.split(/\s+/).length;
+            if (currentWordCount + paraWords > chunkSize && currentChunk.length > 0) {
+                chunks.push(currentChunk.join("\n\n"));
+                const overlapText = currentChunk.join("\n\n");
+                const words = overlapText.split(/\s+/);
+                if (words.length > overlap) {
+                    currentChunk = [words.slice(-overlap).join(" ")];
+                    currentWordCount = overlap;
+                } else {
+                    currentChunk = [];
+                    currentWordCount = 0;
+                }
+            }
+            currentChunk.push(para);
+            currentWordCount += paraWords;
+        }
+        if (currentChunk.length > 0) chunks.push(currentChunk.join("\n\n"));
+        return chunks;
+    };
+
+    /* ─── Upload (chunked for Vercel Hobby plan) ─── */
     const handleUpload = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!token) return;
@@ -196,7 +225,7 @@ export default function AdminTextbooksPage() {
         try {
             let content = formContent;
 
-            // Extract text from PDF (digital or OCR)
+            // Step 1: Extract text from PDF (client-side)
             if (uploadMode === "pdf" && pdfFile) {
                 content = await extractPDFText(pdfFile);
                 if (!content.trim()) {
@@ -205,35 +234,80 @@ export default function AdminTextbooksPage() {
                     return;
                 }
                 const wordCount = content.split(/\s+/).length;
-                setSuccess(`✅ Trích xuất ${wordCount} từ. Đang tạo embedding...`);
+                setSuccess(`✅ Trích xuất ${wordCount} từ. Đang chuẩn bị...`);
             }
 
-            // Get a fresh token before sending text to server (token may have expired during OCR)
+            // Step 2: Chunk text on client
+            const textChunks = chunkTextClient(content);
+            setSuccess(`📦 Chia thành ${textChunks.length} chunks. Đang tạo textbook...`);
+
+            // Step 3: Create textbook metadata
             const freshToken = await getFreshToken();
             if (!freshToken) { setError("❌ Phiên đăng nhập hết hạn. Hãy tải lại trang."); setSuccess(""); return; }
 
-            // Send text to create embedding
-            const res = await fetch("/api/admin/textbooks", {
+            const metaRes = await fetch("/api/admin/textbooks", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${freshToken}` },
-                body: JSON.stringify({ title: formTitle, subject: formSubject, grade: formGrade, publisher: formPublisher, content }),
+                body: JSON.stringify({ title: formTitle, subject: formSubject, grade: formGrade, publisher: formPublisher }),
             });
 
-            const ct = res.headers.get("content-type") || "";
-            if (!ct.includes("application/json")) {
-                const text = await res.text();
-                if (res.status === 504 || text.includes("FUNCTION_INVOCATION_TIMEOUT")) {
-                    setError(`⏰ Timeout: Nội dung quá dài. Thử chia nhỏ file PDF.`);
-                } else {
-                    setError(`❌ Server error ${res.status}: ${res.statusText || text.slice(0, 200)}`);
-                }
+            if (!metaRes.ok) {
+                const metaData = await metaRes.json().catch(() => ({}));
+                setError(`❌ ${metaData.error || "Không tạo được textbook"}`);
                 setSuccess("");
                 return;
             }
 
-            const data = await res.json();
-            if (!res.ok) { setError(`❌ ${data.error || "Upload failed"}`); setSuccess(""); return; }
-            setSuccess(`✅ Upload thành công! ${data.chunks} chunks đã được tạo.`);
+            const { textbook } = await metaRes.json();
+            const textbookId = textbook.id;
+
+            // Step 4: Send chunks in batches of 5
+            const BATCH_SIZE = 5;
+            let totalProcessed = 0;
+
+            for (let i = 0; i < textChunks.length; i += BATCH_SIZE) {
+                const batch = textChunks.slice(i, i + BATCH_SIZE).map((text, j) => ({
+                    text,
+                    chunkIndex: i + j,
+                }));
+
+                setSuccess(`⏳ Embedding chunk ${i + 1}-${Math.min(i + BATCH_SIZE, textChunks.length)} / ${textChunks.length}...`);
+
+                // Get fresh token for each batch (in case of long uploads)
+                const batchToken = await getFreshToken();
+                if (!batchToken) { setError("❌ Phiên đăng nhập hết hạn."); setSuccess(""); return; }
+
+                const chunkRes = await fetch("/api/admin/textbooks/chunks", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${batchToken}` },
+                    body: JSON.stringify({ textbookId, chunks: batch }),
+                });
+
+                if (!chunkRes.ok) {
+                    const chunkErr = await chunkRes.json().catch(() => ({}));
+                    // Update textbook status to error
+                    await fetch("/api/admin/textbooks/chunks", {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${batchToken}` },
+                        body: JSON.stringify({ textbookId, status: "error", totalChunks: totalProcessed }),
+                    }).catch(() => { });
+                    setError(`❌ Lỗi embedding batch ${Math.floor(i / BATCH_SIZE) + 1}: ${chunkErr.error || "Unknown"}`);
+                    setSuccess("");
+                    return;
+                }
+
+                totalProcessed += batch.length;
+            }
+
+            // Step 5: Update textbook status to ready
+            const finalToken = await getFreshToken();
+            await fetch("/api/admin/textbooks/chunks", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${finalToken}` },
+                body: JSON.stringify({ textbookId, status: "ready", totalChunks: textChunks.length }),
+            });
+
+            setSuccess(`✅ Upload thành công! ${textChunks.length} chunks đã được tạo.`);
             setFormTitle(""); setFormContent(""); setFormPublisher(""); setPdfFile(null); setShowForm(false);
             fetchTextbooks();
         } catch (err) {
