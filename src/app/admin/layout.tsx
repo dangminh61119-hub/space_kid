@@ -7,14 +7,20 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/services/auth-context";
 
 /* ─── Navigation structure ─── */
-const NAV_ITEMS = [
+const NAV_CONTENT = [
     { href: "/admin", icon: "📊", label: "Tổng quan", id: "dashboard" },
-    { href: "/admin/questions", icon: "📋", label: "Câu hỏi Game", id: "questions" },
-    { href: "/admin/race-questions", icon: "☀️", label: "Race", id: "race" },
-    { href: "/admin/question-bank", icon: "🧩", label: "Ngân hàng CH", id: "qbank" },
     { href: "/admin/curriculum", icon: "📐", label: "Chương trình", id: "curriculum" },
     { href: "/admin/lessons", icon: "🎬", label: "Bài giảng", id: "lessons" },
     { href: "/admin/textbooks", icon: "📚", label: "Sách GK", id: "textbooks" },
+];
+
+const NAV_QUESTIONS = [
+    { href: "/admin/question-bank", icon: "🧩", label: "Ngân hàng câu hỏi", id: "qbank" },
+    { href: "/admin/questions", icon: "📋", label: "Câu hỏi Game", id: "questions" },
+    { href: "/admin/race-questions", icon: "☀️", label: "Race Questions", id: "race" },
+];
+
+const NAV_USERS = [
     { href: "/admin/players", icon: "👤", label: "Học sinh", id: "players" },
 ];
 
@@ -109,9 +115,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                 {/* Nav items */}
                 <nav className="adm-nav">
+                    {/* Content management */}
                     <div className="adm-nav-group">
-                        {sidebarOpen && <div className="adm-nav-group-label">QUẢN LÝ</div>}
-                        {NAV_ITEMS.map((item) => (
+                        {sidebarOpen && <div className="adm-nav-group-label">NỘI DUNG</div>}
+                        {NAV_CONTENT.map((item) => (
                             <Link
                                 key={item.id}
                                 href={item.href}
@@ -119,11 +126,41 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 onClick={() => isMobile && setSidebarOpen(false)}
                             >
                                 <span className="adm-nav-icon">{item.icon}</span>
-                                {sidebarOpen && (
-                                    <>
-                                        <span className="adm-nav-label">{item.label}</span>
-                                    </>
-                                )}
+                                {sidebarOpen && <span className="adm-nav-label">{item.label}</span>}
+                                {isActive(item.href) && <div className="adm-nav-active-bar" />}
+                            </Link>
+                        ))}
+                    </div>
+
+                    {/* Questions */}
+                    <div className="adm-nav-group">
+                        {sidebarOpen && <div className="adm-nav-group-label">CÂU HỎI</div>}
+                        {NAV_QUESTIONS.map((item) => (
+                            <Link
+                                key={item.id}
+                                href={item.href}
+                                className={`adm-nav-item ${isActive(item.href) ? "active" : ""}`}
+                                onClick={() => isMobile && setSidebarOpen(false)}
+                            >
+                                <span className="adm-nav-icon">{item.icon}</span>
+                                {sidebarOpen && <span className="adm-nav-label">{item.label}</span>}
+                                {isActive(item.href) && <div className="adm-nav-active-bar" />}
+                            </Link>
+                        ))}
+                    </div>
+
+                    {/* Users */}
+                    <div className="adm-nav-group">
+                        {sidebarOpen && <div className="adm-nav-group-label">NGƯỜI DÙNG</div>}
+                        {NAV_USERS.map((item) => (
+                            <Link
+                                key={item.id}
+                                href={item.href}
+                                className={`adm-nav-item ${isActive(item.href) ? "active" : ""}`}
+                                onClick={() => isMobile && setSidebarOpen(false)}
+                            >
+                                <span className="adm-nav-icon">{item.icon}</span>
+                                {sidebarOpen && <span className="adm-nav-label">{item.label}</span>}
                                 {isActive(item.href) && <div className="adm-nav-active-bar" />}
                             </Link>
                         ))}
@@ -231,7 +268,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 .adm-sidebar::-webkit-scrollbar { width: 4px; }
                 .adm-sidebar::-webkit-scrollbar-track { background: transparent; }
                 .adm-sidebar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
-                .adm-sidebar.open { width: 240px; }
+                .adm-sidebar.open { width: 260px; }
                 .adm-sidebar.closed { width: 64px; }
 
                 /* Logo */
@@ -257,24 +294,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     letter-spacing: 0.1em; font-weight: 600;
                 }
 
-                /* Nav */
                 .adm-nav {
-                    flex: 1; padding: 12px 8px;
-                    display: flex; flex-direction: column; gap: 4px;
+                    flex: 1; padding: 8px;
+                    display: flex; flex-direction: column; gap: 2px;
                 }
-                .adm-nav-group { margin-bottom: 8px; }
+                .adm-nav-group {
+                    margin-bottom: 4px;
+                    padding-bottom: 4px;
+                    border-bottom: 1px solid rgba(255,255,255,0.04);
+                }
+                .adm-nav-group:last-child { border-bottom: none; }
                 .adm-nav-group-label {
                     font-size: 10px; font-weight: 700; color: #475569;
-                    padding: 12px 14px 6px; letter-spacing: 0.1em;
+                    padding: 10px 14px 4px; letter-spacing: 0.1em;
                 }
                 .adm-nav-item {
                     position: relative;
                     display: flex; align-items: center; gap: 12px;
-                    padding: 10px 14px; border-radius: 10px;
+                    padding: 9px 14px; border-radius: 10px;
                     color: #94a3b8; font-size: 13px; font-weight: 500;
                     text-decoration: none; cursor: pointer;
                     transition: all 0.2s ease; border: none; background: none;
                     width: 100%; text-align: left;
+                    white-space: nowrap; overflow: hidden;
                 }
                 .adm-nav-item:hover {
                     background: rgba(255,255,255,0.04); color: #e2e8f0;
@@ -289,13 +331,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     width: 3px; height: 20px; border-radius: 0 3px 3px 0;
                     background: linear-gradient(180deg, #f59e0b, #8b5cf6);
                 }
-                .adm-nav-icon { font-size: 18px; flex-shrink: 0; width: 24px; text-align: center; }
-                .adm-nav-label { white-space: nowrap; flex: 1; }
-                .adm-nav-badge {
-                    font-size: 10px; font-weight: 700; color: #94a3b8;
-                    background: rgba(255,255,255,0.06); padding: 2px 8px;
-                    border-radius: 10px;
-                }
+                .adm-nav-icon { font-size: 16px; flex-shrink: 0; width: 22px; text-align: center; }
+                .adm-nav-label { white-space: nowrap; flex: 1; overflow: hidden; text-overflow: ellipsis; }
 
                 /* Grade accordion */
                 .adm-grade-btn.expanded { color: #fbbf24; }
@@ -330,7 +367,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     flex: 1; transition: margin-left 0.25s cubic-bezier(0.4,0,0.2,1);
                     display: flex; flex-direction: column; min-height: 100vh;
                 }
-                .adm-main.sb-open { margin-left: 240px; }
+                .adm-main.sb-open { margin-left: 260px; }
                 .adm-main.sb-closed { margin-left: 64px; }
 
                 /* Top bar */
