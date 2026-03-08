@@ -300,6 +300,61 @@ export async function matchQueryToTopics(
     // Sort by best match, limit to top 3 (focused results)
     let sortedTopics = matches.sort((a, b) => a.priority - b.priority).slice(0, 3);
 
+    // ALSO search lesson_resources by TITLE (handles specific lesson names like "Bé Mai đã lớn")
+    let titleMatchedLessons: LessonRecommendation[] = [];
+    {
+        // Build search: use ilike with the full query for partial title match
+        let lessonQuery = supabase
+            .from("lesson_resources")
+            .select("*, curriculum_topics(id, topic_name, topic_slug, subject, chapter, grade)")
+            .eq("active", true)
+            .ilike("title", `%${queryLower}%`);
+        if (subject) {
+            // Filter by subject via the joined curriculum_topics
+            lessonQuery = lessonQuery.eq("curriculum_topics.subject", subject);
+        }
+
+        const { data: titleLessons } = await lessonQuery;
+
+        if (titleLessons && titleLessons.length > 0) {
+            for (const l of titleLessons) {
+                const topicInfo = l.curriculum_topics as Record<string, unknown> | null;
+                if (!topicInfo) continue;
+
+                // Add the parent topic if not already in sortedTopics
+                const topicId = topicInfo.id as string;
+                if (!sortedTopics.some(t => t.topic_id === topicId)) {
+                    sortedTopics.unshift({
+                        topic_id: topicId,
+                        topic_name: (topicInfo.topic_name as string) || "",
+                        topic_slug: (topicInfo.topic_slug as string) || "",
+                        subject: (topicInfo.subject as string) || "",
+                        chapter: (topicInfo.chapter as string) || "",
+                        mastery_score: 0,
+                        total_attempts: 0,
+                        reason: "match",
+                        priority: 0, // highest priority — exact lesson title match
+                        question_count: 0,
+                        last_practiced_at: null,
+                    });
+                }
+
+                titleMatchedLessons.push({
+                    id: l.id,
+                    title: l.title,
+                    youtube_id: l.youtube_id,
+                    summary: l.summary,
+                    thumbnail_url: l.thumbnail_url,
+                    topic_name: (topicInfo.topic_name as string) || "",
+                    topic_id: l.topic_id,
+                    reason: "Bài giảng khớp tên",
+                });
+            }
+            // Re-limit to top 3 after adding title-matched topics
+            sortedTopics = sortedTopics.slice(0, 3);
+        }
+    }
+
     // FALLBACK: If no direct match but subject is known, suggest general topics for that subject
     if (sortedTopics.length === 0 && subject && topics.length > 0) {
         const subjectTopics = topics.filter(t => t.subject === subject).slice(0, 3);
@@ -318,9 +373,9 @@ export async function matchQueryToTopics(
         }));
     }
 
-    // Find lessons for top 2 matched topics only (most relevant)
+    // Find lessons for top 2 matched topics (from keyword matching)
     const lessonTopicIds = sortedTopics.slice(0, 2).map(t => t.topic_id);
-    let lessons: LessonRecommendation[] = [];
+    let lessons: LessonRecommendation[] = [...titleMatchedLessons]; // start with title-matched
 
     if (lessonTopicIds.length > 0) {
         const { data: lessonData } = await supabase
@@ -330,9 +385,11 @@ export async function matchQueryToTopics(
             .in("topic_id", lessonTopicIds);
 
         if (lessonData) {
-            lessons = lessonData.map(l => {
+            for (const l of lessonData) {
+                // Skip if already added from title match
+                if (lessons.some(ex => ex.id === l.id)) continue;
                 const topicInfo = l.curriculum_topics as Record<string, unknown> | null;
-                return {
+                lessons.push({
                     id: l.id,
                     title: l.title,
                     youtube_id: l.youtube_id,
@@ -341,8 +398,8 @@ export async function matchQueryToTopics(
                     topic_name: (topicInfo?.topic_name as string) || "",
                     topic_id: l.topic_id,
                     reason: "Bài giảng liên quan",
-                };
-            });
+                });
+            }
         }
     }
 
