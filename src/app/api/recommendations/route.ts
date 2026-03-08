@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { query, grade } = body;
+    const { query, grade, subject } = body;
     const userToken = request.headers.get("authorization")?.replace("Bearer ", "");
 
     if (!query || !grade) {
@@ -53,8 +53,16 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const matches = await matchQueryToTopics(query, parseInt(grade), userToken || undefined);
-        return NextResponse.json({ data: matches });
+        const result = await matchQueryToTopics(
+            query,
+            parseInt(grade),
+            userToken || undefined,
+            subject || undefined
+        );
+        return NextResponse.json({
+            data: result.topics,
+            lessons: result.lessons,
+        });
     } catch (err) {
         return NextResponse.json({ error: String(err) }, { status: 500 });
     }

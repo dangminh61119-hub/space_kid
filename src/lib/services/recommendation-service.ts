@@ -211,31 +211,66 @@ export async function getRecommendations(
 }
 
 /* ─── Match báo bài query to topics ─── */
+export interface BaoBaiMatchResult {
+    topics: TopicRecommendation[];
+    lessons: LessonRecommendation[];
+}
+
 export async function matchQueryToTopics(
     query: string,
     grade: number,
-    userToken?: string
-): Promise<TopicRecommendation[]> {
+    userToken?: string,
+    subject?: string
+): Promise<BaoBaiMatchResult> {
     const supabase = getClient(userToken);
 
-    // Get topics and search by sgk_keywords overlap
-    const { data: topics } = await supabase
+    // Get topics, optionally filtered by subject
+    let topicQuery = supabase
         .from("curriculum_topics")
         .select("*")
         .eq("grade", grade);
+    if (subject) topicQuery = topicQuery.eq("subject", subject);
 
-    if (!topics) return [];
+    const { data: topics } = await topicQuery;
+    if (!topics) return { topics: [], lessons: [] };
 
+    // Tokenize query for better partial matching
     const queryLower = query.toLowerCase();
+    const queryTokens = queryLower
+        .replace(/[.,!?;:()]/g, " ")
+        .split(/\s+/)
+        .filter(t => t.length >= 2); // skip very short words
+
     const matches: TopicRecommendation[] = [];
 
     for (const topic of topics) {
         const keywords: string[] = topic.sgk_keywords || [];
-        const nameMatch = topic.topic_name.toLowerCase().includes(queryLower) ||
-            queryLower.includes(topic.topic_name.toLowerCase());
-        const keywordMatch = keywords.some(k => queryLower.includes(k.toLowerCase()));
+        const topicNameLower = topic.topic_name.toLowerCase();
+        const chapterLower = (topic.chapter || "").toLowerCase();
 
-        if (nameMatch || keywordMatch) {
+        // Score-based matching: higher score = better match
+        let score = 0;
+
+        // 1. Full topic name appears in query or vice versa (strongest match)
+        if (queryLower.includes(topicNameLower) || topicNameLower.includes(queryLower)) {
+            score += 10;
+        }
+
+        // 2. Keyword match — check if any keyword appears in query
+        for (const kw of keywords) {
+            if (queryLower.includes(kw.toLowerCase())) {
+                score += 5;
+            }
+        }
+
+        // 3. Token-based matching — check how many query words appear in topic fields
+        for (const token of queryTokens) {
+            if (topicNameLower.includes(token)) score += 2;
+            if (chapterLower.includes(token)) score += 1;
+            if (keywords.some(k => k.toLowerCase().includes(token))) score += 2;
+        }
+
+        if (score > 0) {
             matches.push({
                 topic_id: topic.id,
                 topic_name: topic.topic_name,
@@ -245,12 +280,62 @@ export async function matchQueryToTopics(
                 mastery_score: 0,
                 total_attempts: 0,
                 reason: "match",
-                priority: nameMatch ? 0 : 1,
+                priority: 100 - score, // lower priority number = better match
                 question_count: 0,
                 last_practiced_at: null,
             });
         }
     }
 
-    return matches.sort((a, b) => a.priority - b.priority);
+    // Sort by priority (best matches first), limit to top 5
+    const sortedTopics = matches.sort((a, b) => a.priority - b.priority).slice(0, 5);
+
+    // Find lessons for ALL matched topics (not just the first)
+    const matchedTopicIds = sortedTopics.map(t => t.topic_id);
+    let lessons: LessonRecommendation[] = [];
+
+    if (matchedTopicIds.length > 0) {
+        const { data: lessonData } = await supabase
+            .from("lesson_resources")
+            .select("*, curriculum_topics(topic_name, grade)")
+            .eq("active", true)
+            .in("topic_id", matchedTopicIds);
+
+        if (lessonData) {
+            lessons = lessonData.map(l => {
+                const topicInfo = l.curriculum_topics as Record<string, unknown> | null;
+                return {
+                    id: l.id,
+                    title: l.title,
+                    youtube_id: l.youtube_id,
+                    summary: l.summary,
+                    thumbnail_url: l.thumbnail_url,
+                    topic_name: (topicInfo?.topic_name as string) || "",
+                    topic_id: l.topic_id,
+                    reason: "Bài giảng liên quan",
+                };
+            });
+        }
+    }
+
+    // Also try to enrich topics with question counts
+    if (matchedTopicIds.length > 0) {
+        const { data: qData } = await supabase
+            .from("question_bank")
+            .select("topic_id")
+            .eq("active", true)
+            .in("topic_id", matchedTopicIds);
+
+        if (qData) {
+            const countMap = new Map<string, number>();
+            for (const q of qData) {
+                countMap.set(q.topic_id, (countMap.get(q.topic_id) || 0) + 1);
+            }
+            for (const t of sortedTopics) {
+                t.question_count = countMap.get(t.topic_id) || 0;
+            }
+        }
+    }
+
+    return { topics: sortedTopics, lessons };
 }

@@ -174,31 +174,18 @@ export default function BaoBaiPage() {
                             "Content-Type": "application/json",
                             Authorization: `Bearer ${token}`,
                         },
-                        body: JSON.stringify({ query: q, grade: player.grade }),
+                        body: JSON.stringify({ query: q, grade: player.grade, subject: subject || undefined }),
                     });
                     const matchData = await matchRes.json();
                     const topics: MatchedTopic[] = matchData.data || [];
 
-                    // Enrich with question counts + mastery
+                    // Enrich with mastery data from player
                     if (topics.length > 0 && playerDbId) {
                         try {
-                            const [qRes, mRes] = await Promise.all([
-                                fetch(`/api/practice/questions?topic_id=${topics[0].topic_id}&count=1`, {
-                                    headers: { Authorization: `Bearer ${token}` },
-                                }),
-                                fetch(`/api/mastery?player_id=${playerDbId}&grade=${player.grade}`, {
-                                    headers: { Authorization: `Bearer ${token}` },
-                                }),
-                            ]);
-                            const qData = await qRes.json();
+                            const mRes = await fetch(`/api/mastery?player_id=${playerDbId}&grade=${player.grade}`, {
+                                headers: { Authorization: `Bearer ${token}` },
+                            });
                             const mData = await mRes.json();
-
-                            // Update question counts from total
-                            if (qData.total !== undefined) {
-                                topics[0].question_count = qData.total;
-                            }
-
-                            // Update mastery from player data
                             const masteryList = mData.data || [];
                             for (const t of topics) {
                                 const m = masteryList.find((x: Record<string, unknown>) => x.topic_id === t.topic_id);
@@ -212,17 +199,9 @@ export default function BaoBaiPage() {
 
                     setMatchedTopics(topics);
 
-                    // Also try to find matching lesson resources
-                    if (topics.length > 0) {
-                        try {
-                            const lessonsRes = await fetch(`/api/admin/lesson-resources?topic_id=${topics[0].topic_id}`, {
-                                headers: { Authorization: `Bearer ${token}` },
-                            });
-                            const lessonsData = await lessonsRes.json();
-                            setMatchedLessons(lessonsData.data || []);
-                        } catch { setMatchedLessons([]); }
-                    }
-                } catch { setMatchedTopics([]); }
+                    // Lessons come from the same API response (server-side join)
+                    setMatchedLessons(matchData.lessons || []);
+                } catch { setMatchedTopics([]); setMatchedLessons([]); }
                 setMatchLoading(false);
             }
         } catch (err) {
