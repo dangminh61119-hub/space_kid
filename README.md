@@ -71,6 +71,7 @@ Mở [http://localhost:3000](http://localhost:3000) trong trình duyệt.
 | `npm run build` | Build production |
 | `npm run start` | Chạy production server |
 | `npm run lint` | Kiểm tra linting |
+| `npm test` | Chạy unit tests (vitest) |
 
 ### Biến môi trường (tuỳ chọn)
 

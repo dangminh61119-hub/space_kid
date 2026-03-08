@@ -9,9 +9,13 @@ import { useAuth } from "@/lib/services/auth-context";
 /* ─── Navigation structure ─── */
 const NAV_ITEMS = [
     { href: "/admin", icon: "📊", label: "Tổng quan", id: "dashboard" },
-    { href: "/admin/questions", icon: "📋", label: "Câu hỏi", id: "questions", badge: "5.5k" },
+    { href: "/admin/questions", icon: "📋", label: "Câu hỏi Game", id: "questions" },
     { href: "/admin/race-questions", icon: "☀️", label: "Race", id: "race" },
+    { href: "/admin/question-bank", icon: "🧩", label: "Ngân hàng CH", id: "qbank" },
+    { href: "/admin/curriculum", icon: "📐", label: "Chương trình", id: "curriculum" },
+    { href: "/admin/lessons", icon: "🎬", label: "Bài giảng", id: "lessons" },
     { href: "/admin/textbooks", icon: "📚", label: "Sách GK", id: "textbooks" },
+    { href: "/admin/players", icon: "👤", label: "Học sinh", id: "players" },
 ];
 
 const GRADES = [1, 2, 3, 4, 5];
@@ -118,9 +122,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 {sidebarOpen && (
                                     <>
                                         <span className="adm-nav-label">{item.label}</span>
-                                        {item.badge && (
-                                            <span className="adm-nav-badge">{item.badge}</span>
-                                        )}
                                     </>
                                 )}
                                 {isActive(item.href) && <div className="adm-nav-active-bar" />}
@@ -185,9 +186,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         </button>
                         <div className="adm-breadcrumb">
                             {pathname === "/admin" ? "Tổng quan" :
-                                pathname.includes("questions") && !pathname.includes("race") ? "Câu hỏi" :
-                                    pathname.includes("race") ? "Race Questions" :
-                                        pathname.includes("textbooks") ? "Sách Giáo Khoa" : "Admin"}
+                                pathname.includes("question-bank") ? "Ngân hàng Câu hỏi" :
+                                    pathname.includes("questions") && !pathname.includes("race") ? "Câu hỏi Game" :
+                                        pathname.includes("race") ? "Race Questions" :
+                                            pathname.includes("curriculum") ? "Chương trình học" :
+                                                pathname.includes("lessons") ? "Bài giảng" :
+                                                    pathname.includes("textbooks") ? "Sách Giáo Khoa" :
+                                                        pathname.includes("players") ? "Quản lý Học sinh" : "Admin"}
                         </div>
                     </div>
                     <div className="adm-topbar-right">

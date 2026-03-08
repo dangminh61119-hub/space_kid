@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     const topic_id = searchParams.get("topic_id");
     const grade = searchParams.get("grade");
     const subject = searchParams.get("subject");
+    const source = searchParams.get("source");
     const limit = parseInt(searchParams.get("limit") || "100");
 
     let query = supabase.from("question_bank").select("*, curriculum_topics(topic_name, topic_slug, chapter)");
@@ -20,6 +21,7 @@ export async function GET(request: NextRequest) {
     if (topic_id) query = query.eq("topic_id", topic_id);
     if (grade) query = query.eq("grade", parseInt(grade));
     if (subject) query = query.eq("subject", subject);
+    if (source) query = query.eq("source", source);
     query = query.order("created_at", { ascending: false }).limit(limit);
 
     const { data, error } = await query;
@@ -81,7 +83,7 @@ Ví dụ: [{"question_text":"5 + 3 = ?","options":["7","8","9","6"],"correct_ind
             const parsed = JSON.parse(text);
             const questions = Array.isArray(parsed) ? parsed : (parsed.questions || parsed.data || []);
 
-            // Insert into DB
+            // Insert into DB — tagged as ai-generated for admin review
             const rows = questions.map((q: Record<string, unknown>) => ({
                 topic_id,
                 question_text: q.question_text,
@@ -95,6 +97,7 @@ Ví dụ: [{"question_text":"5 + 3 = ?","options":["7","8","9","6"],"correct_ind
                 grade,
                 subject,
                 active: true,
+                source: "ai-generated",
             }));
 
             const { data: inserted, error } = await supabase

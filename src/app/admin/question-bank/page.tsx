@@ -27,6 +27,8 @@ interface Question {
     bloom_level: number;
     difficulty: number;
     active: boolean;
+    source?: string;
+    reviewed_at?: string | null;
     attempt_count?: number;
     correct_count?: number;
     calibrated_difficulty?: number | null;
@@ -54,6 +56,7 @@ export default function QuestionBankAdmin() {
     const [generating, setGenerating] = useState(false);
     const [genCount, setGenCount] = useState(10);
     const [showCreate, setShowCreate] = useState(false);
+    const [sourceFilter, setSourceFilter] = useState("all");
     const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
     const authHeaders = { Authorization: `Bearer ${session?.access_token}` };
@@ -74,12 +77,14 @@ export default function QuestionBankAdmin() {
 
     const fetchQuestions = useCallback(async (topicId: string) => {
         try {
-            const res = await fetch(`/api/admin/question-bank?topic_id=${topicId}&limit=200`, { headers: authHeaders });
+            const params = new URLSearchParams({ topic_id: topicId, limit: "200" });
+            if (sourceFilter !== "all") params.set("source", sourceFilter);
+            const res = await fetch(`/api/admin/question-bank?${params}`, { headers: authHeaders });
             const { data } = await res.json();
             setQuestions(data || []);
         } catch { /* ignore */ }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [session]);
+    }, [session, sourceFilter]);
 
     useEffect(() => {
         if (session?.access_token) fetchTopics();
@@ -165,6 +170,19 @@ export default function QuestionBankAdmin() {
         fetchTopics();
     }
 
+    /* ─── Mark as Reviewed ─── */
+    async function handleReview(id: string) {
+        try {
+            await fetch("/api/admin/question-bank", {
+                method: "PUT",
+                headers: { ...authHeaders, "Content-Type": "application/json" },
+                body: JSON.stringify({ id, reviewed_at: new Date().toISOString() }),
+            });
+            setQuestions(q => q.map(x => x.id === id ? { ...x, reviewed_at: new Date().toISOString() } : x));
+            setMsg({ type: "ok", text: "✅ Đã đánh dấu đã review" });
+        } catch { /* ignore */ }
+    }
+
     return (
         <div className="qb">
             <div className="qb-header">
@@ -191,6 +209,12 @@ export default function QuestionBankAdmin() {
                     {Object.entries(SUBJECT_LABELS).map(([k, v]) => (
                         <option key={k} value={k}>{v}</option>
                     ))}
+                </select>
+                <select value={sourceFilter} onChange={e => { setSourceFilter(e.target.value); if (selectedTopic) fetchQuestions(selectedTopic.id); }}>
+                    <option value="all">Tất cả nguồn</option>
+                    <option value="manual">✍️ Thủ công</option>
+                    <option value="ai-generated">🤖 AI sinh</option>
+                    <option value="csv-import">📄 CSV Import</option>
                 </select>
             </div>
 
@@ -288,6 +312,11 @@ export default function QuestionBankAdmin() {
                                             <div className="qb-q-tags">
                                                 <span className="qb-tag bloom">{BLOOM_LABELS[q.bloom_level]}</span>
                                                 <span className="qb-tag diff">{DIFF_LABELS[q.difficulty]}</span>
+                                                {q.source === "ai-generated" && (
+                                                    <span className={`qb-tag ${q.reviewed_at ? "reviewed" : "ai-src"}`}>
+                                                        {q.reviewed_at ? "✅ Đã review" : "🤖 AI"}
+                                                    </span>
+                                                )}
                                                 {q.calibrated_difficulty != null ? (
                                                     <span className="qb-tag calibrated" title={`Calibrated từ ${q.attempt_count} lượt trả lời (${q.correct_count} đúng)`}>
                                                         📊 Calibrated: {DIFF_LABELS[q.calibrated_difficulty]} ({q.attempt_count} lượt)
@@ -299,7 +328,12 @@ export default function QuestionBankAdmin() {
                                                 ) : null}
                                             </div>
                                         </div>
-                                        <button onClick={() => handleDelete(q.id)} className="qb-q-del" title="Xóa">🗑️</button>
+                                        <div className="qb-q-btns">
+                                            {q.source === "ai-generated" && !q.reviewed_at && (
+                                                <button onClick={() => handleReview(q.id)} className="qb-q-review" title="Đánh dấu đã review">✅</button>
+                                            )}
+                                            <button onClick={() => handleDelete(q.id)} className="qb-q-del" title="Xóa">🗑️</button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -434,6 +468,14 @@ export default function QuestionBankAdmin() {
                 .qb-tag.diff { background:rgba(245,158,11,0.15); color:#fbbf24; }
                 .qb-tag.calibrated { background:rgba(34,197,94,0.15); color:#4ade80; }
                 .qb-tag.stats { background:rgba(99,102,241,0.1); color:#818cf8; }
+                .qb-tag.ai-src { background:rgba(168,85,247,0.15); color:#c084fc; }
+                .qb-tag.reviewed { background:rgba(34,197,94,0.1); color:#86efac; }
+                .qb-q-btns { display:flex; flex-direction:column; gap:4px; }
+                .qb-q-review {
+                    background:none; border:none; cursor:pointer; font-size:16px;
+                    opacity:0.4; transition:opacity 0.15s; padding:4px;
+                }
+                .qb-q-review:hover { opacity:1; }
                 .qb-q-del {
                     background:none; border:none; cursor:pointer; font-size:16px;
                     opacity:0.3; transition:opacity 0.15s; padding:4px;

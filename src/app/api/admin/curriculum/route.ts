@@ -52,3 +52,55 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ data: enriched });
 }
+
+/* ─── POST: Create a new curriculum topic ─── */
+export async function POST(request: NextRequest) {
+    const auth = await requireAdmin(request);
+    if (!auth.isAdmin) return forbiddenResponse(auth.error);
+
+    const supabase = getAdminSupabase(auth.userToken);
+    if (!supabase) return NextResponse.json({ error: "DB not configured" }, { status: 500 });
+
+    const body = await request.json();
+    const { subject, grade, chapter, topic_name, topic_slug, description, bloom_max, sort_order, sgk_keywords } = body;
+
+    if (!subject || !grade || !topic_name || !topic_slug) {
+        return NextResponse.json({ error: "Missing required fields: subject, grade, topic_name, topic_slug" }, { status: 400 });
+    }
+
+    const { data, error } = await supabase
+        .from("curriculum_topics")
+        .insert({
+            subject,
+            grade: parseInt(grade),
+            chapter: chapter || null,
+            topic_name,
+            topic_slug,
+            description: description || null,
+            bloom_max: bloom_max ? parseInt(bloom_max) : 3,
+            sort_order: sort_order ? parseInt(sort_order) : 0,
+            sgk_keywords: sgk_keywords || [],
+        })
+        .select()
+        .single();
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ data }, { status: 201 });
+}
+
+/* ─── DELETE: Remove curriculum topics ─── */
+export async function DELETE(request: NextRequest) {
+    const auth = await requireAdmin(request);
+    if (!auth.isAdmin) return forbiddenResponse(auth.error);
+
+    const supabase = getAdminSupabase(auth.userToken);
+    if (!supabase) return NextResponse.json({ error: "DB not configured" }, { status: 500 });
+
+    const { ids } = await request.json();
+    if (!ids?.length) return NextResponse.json({ error: "ids required" }, { status: 400 });
+
+    const { error } = await supabase.from("curriculum_topics").delete().in("id", ids);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    return NextResponse.json({ success: true });
+}
