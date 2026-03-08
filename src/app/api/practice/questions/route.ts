@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
         .from("question_bank")
-        .select("id, topic_id, question_text, options, correct_index, explanation, hint, bloom_level, difficulty, curriculum_topics(topic_name)")
+        .select("id, topic_id, question_text, options, correct_index, explanation, hint, bloom_level, difficulty, calibrated_difficulty, attempt_count, correct_count, curriculum_topics(topic_name)")
         .eq("active", true);
 
     if (topicId) query = query.eq("topic_id", topicId);
@@ -46,17 +46,22 @@ export async function GET(request: NextRequest) {
     const shuffled = (data || []).sort(() => Math.random() - 0.5).slice(0, count);
 
     // Format for SmartQuiz component compatibility
+    // Use calibrated_difficulty if available (cold-start: fall back to original difficulty)
     const questions = shuffled.map((q, i) => ({
         id: q.id || `qb-${i}`,
         question: q.question_text,
-        correctAnswer: q.options[q.correct_index],
-        wrongAnswers: q.options.filter((_: string, idx: number) => idx !== q.correct_index),
+        correctAnswer: (q.options || [])[q.correct_index] || "",
+        wrongAnswers: (q.options || []).filter((_: string, idx: number) => idx !== q.correct_index),
         subject: subject || "mixed",
         bloomLevel: q.bloom_level,
+        difficulty: q.calibrated_difficulty ?? q.difficulty,
         explanation: q.explanation || q.hint || "",
         topic_id: q.topic_id,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         topic_name: (q.curriculum_topics as any)?.topic_name || "",
+        // Stats metadata (for admin/debug)
+        attemptCount: q.attempt_count || 0,
+        isCalibrated: q.calibrated_difficulty != null,
     }));
 
     return NextResponse.json({ questions, total: data?.length || 0 });

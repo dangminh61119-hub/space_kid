@@ -48,7 +48,7 @@ Khi nghi ngờ → hỏi lại, không tự quyết.
 ```typescript
 // ✅ ĐÚNG — Khích lệ, không phán xét
 const feedbackMessages = {
-  correct: ["Xuất sắc! 🌟", "Bạn nhỏ thật thông minh!", "Tuyệt vời! +100 XP"],
+  correct: ["Xuất sắc! 🌟", "Bạn nhỏ thật thông minh!", "Tuyệt vời! +100 Cosmo"],
   incorrect: ["Chưa đúng rồi, thử lại nhé! 💪", "Gần đúng rồi! Cú Mèo tin bạn làm được!"],
   timeout: ["Hết giờ! Lần sau nhanh hơn nhé 🦉"]
 };
@@ -163,7 +163,7 @@ const badQuestion = {
 const bloomProgression = {
   beginner: [1, 2],        // Remember → Understand
   intermediate: [3, 4],   // Apply → Analyze
-  advanced: [5, 6]         // Evaluate → Create
+  advanced: [5]            // Higher-order (Evaluate +综合)
 };
 
 // Planet levels nên tăng dần Bloom level:
@@ -180,8 +180,7 @@ function generateHint(question: Question): string {
     2: "Hãy nghĩ xem {concept} có nghĩa là gì?",        // Understand: explain
     3: "Thử áp dụng công thức {formula} vào đây...",    // Apply: use
     4: "So sánh {A} và {B}, chúng khác nhau ở điểm nào?", // Analyze
-    5: "Theo bạn, lựa chọn nào tốt hơn và tại sao?",   // Evaluate
-    6: "Bạn có thể tạo ra {artifact} của riêng mình không?" // Create
+    5: "Theo bạn, lựa chọn nào tốt hơn và tại sao?",   // Higher-order
   };
   return hintStrategies[question.bloomLevel];
 }
@@ -215,23 +214,23 @@ Nếu player.mastery[topic] ≥ 80% → cho phép bloom_level +1 (vẫn cùng gr
 ### 3.1 Sử dụng GameContext đúng cách
 
 ```typescript
-// ✅ ĐÚNG — Đọc từ GameContext
+// ✅ ĐÚNg — Đọc từ GameContext
 function PlayerStats() {
   const { player } = useGame();
-  return <div>Level {player.level} — {player.xp} XP</div>;
+  return <div>Level {player.level} — {player.cosmo} Cosmo</div>;
 }
 
-// ✅ ĐÚNG — Cộng XP qua addXP
+// ✅ ĐÚNg — Cộng Cosmo qua addCosmo
 function onCorrectAnswer() {
-  const { addXP } = useGame();
-  addXP(100);
+  const { addCosmo } = useGame();
+  addCosmo(100);
 }
 
 // ❌ SAI — State riêng cho player data
-const [playerXP, setPlayerXP] = useState(0); // KHÔNG làm thế này
+const [playerCosmo, setPlayerCosmo] = useState(0); // KHÔNG làm thế này
 
-// ❌ SAI — Set XP trực tiếp
-updatePlayer({ xp: player.xp + 100 }); // KHÔNG, phải dùng addXP()
+// ❌ SAI — Set Cosmo trực tiếp
+updatePlayer({ cosmo: player.cosmo + 100 }); // KHÔNG, phải dùng addCosmo()
 
 // ❌ SAI — State riêng cho features liên quan player
 const [calmMode, setCalmMode] = useState(false); // KHÔNG, đã có trong GameContext
@@ -299,7 +298,7 @@ export async function POST(req: NextRequest) {
   const { questionContext, bloomLevel, wasCorrect } = await req.json();
   
   // Validate input — KHÔNG pass raw user input vào AI
-  if (!questionContext || bloomLevel < 1 || bloomLevel > 6) {
+  if (!questionContext || bloomLevel < 1 || bloomLevel > 5) {
     return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
   
@@ -398,7 +397,7 @@ function applyClassAbility(
 // Phải gọi khi win HOẶC gameOver
 function handleGameEnd(won: boolean) {
   onGameComplete?.(score, levelsCompleted);
-  // GameContext sẽ tự động: addXP + updatePlanetProgress
+  // GameModeController sẽ unmount game và hiện LevelTransition
 }
 ```
 
@@ -585,7 +584,9 @@ Trước khi output code, AI phải tự hỏi:
 
 **Technical:**
 - [ ] Player data qua GameContext, không phải local state?
-- [ ] XP cộng qua `addXP()` không?
+- [ ] Cosmo cộng qua `addCosmo()`, Stars qua `addStars()` không?
+- [ ] `onAnswered` callback được gọi cho mỗi câu trả lời không?
+- [ ] Game dừng khi `paused === true` không?
 - [ ] 3 class abilities đều implemented?
 - [ ] Calm Mode toggle ảnh hưởng đúng không?
 - [ ] RLS policy có cho bảng mới không?
@@ -603,7 +604,7 @@ Trước khi output code, AI phải tự hỏi:
 |---|---|---|
 | Trẻ trả lời sai | "Sai rồi!" | "Gần đúng rồi! Thử lại nhé 💪" |
 | Lỗi kỹ thuật | Show stack trace | Show rocket crash animation + retry |
-| XP update | `player.xp += 100` | `addXP(100)` |
+| XP update | `player.cosmo += 100` | `addCosmo(100)` |
 | Câu hỏi DB | Query không filter `reviewedByTeacher` | `.eq("reviewed_by_teacher", true)` |
 | AI input | Pass raw chat input | Pass structured `{questionContext, bloomLevel}` |
 | Animation | Fixed duration | `duration: calmMode ? base * 1.5 : base` |

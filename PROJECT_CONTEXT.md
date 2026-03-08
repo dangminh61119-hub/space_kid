@@ -45,18 +45,34 @@ src/
 │   ├── globals.css             ← Design tokens + Calm Mode CSS vars
 │   ├── login/page.tsx          ← Đăng nhập Supabase Auth
 │   ├── auth/callback/page.tsx  ← OAuth callback handler
-│   ├── survey/page.tsx         ← Diagnostic survey (tùy chọn)
+│   ├── survey/page.tsx         ← Diagnostic survey
 │   ├── profile/page.tsx        ← Profile + parent consent
 │   ├── onboarding/page.tsx     ← 5-step onboarding (mascot + class)
 │   ├── portal/
-│   │   ├── page.tsx            ← Planet map + player sidebar
+│   │   ├── page.tsx            ← Journey map + player sidebar + badges/ships
 │   │   ├── player/page.tsx     ← Player management
 │   │   └── play/
-│   │       ├── page.tsx        ← Multi-mode via GameModeController (?planet=)
-│   │       ├── math/page.tsx   ← MathForge (?planet=)
-│   │       ├── star/page.tsx   ← Multi-mode via GameModeController (?planet=)
-│   │       ├── craft/page.tsx  ← WordCraft (?planet=)
-│   │       └── heritage/page.tsx ← HeritagePuzzle (?planet=)
+│   │       ├── page.tsx        ← Multi-mode via GameModeController
+│   │       ├── math/page.tsx   ← MathForge
+│   │       ├── star/page.tsx   ← Multi-mode StarHunter
+│   │       └── craft/page.tsx  ← WordCraft
+│   ├── learn/                  ← ⭐ Learning Hub
+│   │   ├── layout.tsx          ← Hub layout + navigation
+│   │   ├── page.tsx            ← Hub chính (skill tree + streak + recommendations)
+│   │   ├── practice/page.tsx   ← Smart Quiz (adaptive practice)
+│   │   ├── lessons/page.tsx    ← Video lessons
+│   │   ├── tutor/page.tsx      ← AI Tutor (Socratic Cú Mèo)
+│   │   ├── bao-bai/page.tsx    ← Homework reporting + RAG
+│   │   ├── review/page.tsx     ← SRS review (flashcards)
+│   │   └── path/page.tsx       ← Learning path
+│   ├── admin/                  ← ⭐ Admin Portal
+│   │   ├── layout.tsx          ← Admin layout + guard
+│   │   ├── page.tsx            ← Admin dashboard
+│   │   ├── questions/page.tsx  ← Question CRUD
+│   │   ├── question-bank/      ← Question bank management
+│   │   ├── race-questions/     ← Race question management
+│   │   ├── lessons/            ← Lesson management
+│   │   └── textbooks/          ← RAG textbook management
 │   ├── dashboard/
 │   │   ├── layout.tsx          ← Dashboard layout
 │   │   ├── page.tsx            ← Parent dashboard (PDF export)
@@ -65,9 +81,8 @@ src/
 │   │   ├── link/page.tsx       ← Link child account
 │   │   └── settings/page.tsx   ← Dashboard settings
 │   └── api/
-│       ├── ai/route.ts         ← AI mascot endpoint (guardrailed)
-│       └── ai/chat/route.ts    ← AI chat endpoint
-│       └── ai/tts/route.ts     ← Text-to-speech endpoint
+│       ├── ai/                 ← AI endpoints (mascot, chat, tts, tutor)
+│       ├── practice/           ← Practice question API + auto-calibrate
 ├── components/
 │   ├── GameModeController.tsx  ← ⭐ State machine: planetIntro→levelIntro→playing→result
 │   ├── PlanetStoryIntro.tsx    ← Video intro khi vào hành tinh
@@ -82,37 +97,36 @@ src/
 │   ├── MeteorShowerGame.tsx    ← Meteor shower (Mưa Sao Băng)
 │   ├── WordRushGame.tsx        ← Word rush (Chạy Đua Từ Vựng)
 │   ├── WordCraftGame.tsx       ← Writing craft (Xưởng Chữ Vũ Trụ)
-│   ├── HeritagePuzzleGame.tsx  ← Heritage puzzle mini-game
+│   ├── StarRaceGame.tsx        ← ⭐ Multiplayer real-time race
+│   ├── BossBattle.tsx          ← Boss battle mini-game
+│   ├── SummonOverlay.tsx       ← Cú Mèo summon overlay (in-game AI help)
+│   ├── MascotAbilityButton.tsx ← Summon button + crystal cost
+│   ├── AchievementBadge.tsx    ← Badge display component
 │   ├── CalmModeToggle.tsx      ← Calm Mode toggle 🌙/☀️
 │   ├── ParentConsentModal.tsx  ← Parent consent flow
 │   ├── MascotAI.tsx            ← AI mascot chat widget
 │   ├── Navbar.tsx              ← Navigation bar
+│   ├── VolumeControl.tsx       ← Sound volume control
 │   ├── GlassCard.tsx           ← Glass morphism card
 │   ├── NeonButton.tsx          ← Styled neon button
-│   ├── PlanetIcon.tsx          ← SVG planet icon
+│   ├── Spaceship.tsx           ← Spaceship animation
 │   ├── StarField.tsx           ← Star particle background
-│   ├── ChallengePlanets.tsx    ← Landing page planets
+│   ├── LinkCodePopup.tsx       ← Parent-child link code popup
+│   ├── effects/                ← Visual effects (ComboFlash, ConfettiShower, FloatingText, etc.)
+│   ├── learn/                  ← Learning Hub components (AITutorChat, SmartQuiz, Flashcard, etc.)
 │   └── dashboard/              ← Dashboard sub-components
-│       ├── AIInsights.tsx
-│       ├── ProgressChart.tsx
-│       ├── StatsCards.tsx
-│       └── SubjectBreakdown.tsx
 ├── hooks/
 │   ├── usePdfExport.ts         ← PDF export cho dashboard
 │   ├── useRequireRole.ts       ← Role-based auth guard
-│   └── useSoundEffects.ts      ← Sound effects management
+│   ├── useSoundEffects.ts      ← Sound effects management (singleton AudioContext)
+│   └── useVoice.ts             ← TTS/STT voice interaction
 └── lib/
     ├── data/                   ← mock-data.ts, curriculum-map.ts, survey-questions.ts, planet-videos.ts
-    ├── services/               ← supabase.ts, auth-context.tsx, db.ts, proficiency.ts, survey-engine.ts
-    ├── ai/                     ← guardrails.ts, prompts.ts
+    ├── services/               ← 17 service files (see PROJECT_REQUIREMENTS.md §10)
+    ├── ai/                     ← guardrails.ts, prompts.ts, lesson-prompts.ts
     ├── analytics/              ← learning-events.ts
+    ├── sound/                  ← Sound system utilities
     └── game-context.tsx        ← ⭐ STATE DUY NHẤT
-
-public/
-└── videos/
-    └── planets/                ← Video intro clips (~10s mỗi file)
-        ├── hue.mp4, halong.mp4, giong.mp4, phongnha.mp4
-        ├── hoian.mp4, sapa.mp4, hanoi.mp4, mekong.mp4
 ```
 
 ### 3.2 State Management — GameContext
@@ -144,7 +158,8 @@ interface PlayerData {
 
 **API của GameContext:**
 - `updatePlayer()` — cập nhật bất kỳ field
-- `addCosmo(amount)` — Cosmo (XP) chỉ được cộng qua đây, tự tính level/cosmoInLevel
+- `addCosmo(amount)` — Cosmo chỉ được cộng qua đây, tự tính level/cosmoInLevel
+- `addStars(amount)` — cộng Lucky Stars (thưởng race, đổi badge)
 - `addCoins(amount)` / `spendCoins(amount)` — quản lý tiền tệ in-game
 - `addCrystals(amount)` / `spendCrystals(amount)` — quản lý tiền tệ premium
 - `updatePlanetProgress()` — cập nhật tiến trình hành tinh
@@ -226,10 +241,10 @@ interface Question {
   wrongAnswers: string[];
   subject: SubjectCode;       // "math" | "vietnamese" | "english" | "science" | "geography" | "history"
   grade: number;              // 1–5
-  bloomLevel: 1 | 2 | 3 | 4 | 5 | 6;
+  bloomLevel: 1 | 2 | 3 | 4 | 5;
   planetId: string;
   curriculumRef: string;      // Ví dụ: "SGK-Toan-3-Chuong2-Bai5"
-  difficultyScore: number;    // 0.0–1.0 (IRT calibrated)
+  difficultyScore: number;    // 1–3 (auto-calibrated from real accuracy data)
   reviewedByTeacher: boolean; // PHẢI = true trước khi xuất lên prod
 }
 ```
@@ -237,14 +252,24 @@ interface Question {
 > **Mục tiêu v2.0:** 300+ câu hỏi, 100% đã review bởi giáo viên tiểu học có kinh nghiệm.
 
 ---
-### 4.5 Adaptive Difficulty (TODO — Future Phase)
+### 4.5 Auto-Calibrate Difficulty (Implemented)
 
-Khi mastery data đủ lớn, hệ thống sẽ bổ sung:
-- Nếu mastery ≥ 80% → unlock +1 bloom level (vẫn cùng grade)
-- Nếu mastery ≤ 40% → ưu tiên bloom_level thấp hơn
-- Mỗi session tối đa 20% câu "thử thách" (bloom cao hơn)
+Hệ thống tự động hiệu chuẩn `difficulty` dựa trên tỷ lệ trả lời đúng thực tế của học sinh:
 
-> Hiện tại: progressive difficulty đảm bảo bằng bloom_level sort trong `getSmartQuestions`.
+| Accuracy Rate | Calibrated Difficulty |
+|---|---|
+| ≥ 80% | 1 (Dễ) |
+| 40–79% | 2 (Trung bình) |
+| < 40% | 3 (Khó) |
+
+**Cơ chế "Trust then Verify":**
+- Threshold: ≥20 lượt trả lời trước khi calibrate
+- Cột DB: `attempt_count`, `correct_count`, `calibrated_difficulty` trên bảng `question_bank`
+- API: `POST /api/practice/calibrate` — nhận per-question results sau mỗi quiz
+- Serving: `COALESCE(calibrated_difficulty, difficulty)` — ưu tiên giá trị đã calibrate
+- Liên tục cập nhật: `calibrated_difficulty` được tính lại mỗi lần có answer mới (sau threshold)
+
+> Nhãn gốc (AI/admin gán) được dùng cho cold-start. Khi có đủ data, hệ thống tự ghi đè.
 
 ## 5. Hệ thống Nhân vật
 
@@ -372,7 +397,7 @@ Xưng hô: "Cú Mèo" và "bạn nhỏ"
 | `--space-mid` | `#131842` | Card background |
 | `--neon-cyan` | `#00F5FF` | Primary accent |
 | `--neon-magenta` | `#FF6BFF` | Secondary accent |
-| `--neon-gold` | `#FFE066` | XP, rewards, highlights |
+| `--neon-gold` | `#FFE066` | Cosmo, rewards, highlights |
 | `--neon-green` | `#7BFF7B` | Correct answers, success |
 | `--calm-filter` | `saturate(0.3)` | Calm Mode overlay |
 
@@ -491,13 +516,14 @@ Trước mọi PR, kiểm tra:
 - [ ] Game mode mới → 3 class abilities + `onGameComplete(score, levels)` ngay lập tức + Calm Mode support
 - [ ] Game gọi `onGameComplete` **ngay khi kết thúc** (không delay) để controller chuyển state
 - [ ] Mascot/class mới → MASCOT_INFO / CLASS_ABILITIES + onboarding
-- [ ] XP chỉ qua `addXP()`
+- [ ] Cosmo chỉ qua `addCosmo()`, Stars qua `addStars()`
 - [ ] Bloom level tagged trong question data
 - [ ] Calm Mode không break animation/layout
 - [ ] WCAG AA contrast check
 - [ ] AI content → qua guardrail prompt, log vào ai_feedback
 - [ ] Data mới → có RLS policy trong Supabase
 - [ ] Teacher review = true trước khi câu hỏi lên prod
+- [ ] Question bank câu hỏi mới: AI gán `difficulty` ban đầu, auto-calibrate sẽ override khi có ≥20 lượt
 - [ ] Video intro → thêm entry vào `planet-videos.ts` + đặt file `.mp4` vào `public/videos/planets/`
 
 ## 12. Quy tắc Game Component

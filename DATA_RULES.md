@@ -110,7 +110,8 @@ difficulty = f( số bước suy nghĩ, độ nhiễu đáp án, khối lượng
 ✅ **Cho phép:** Bloom 3 + easy, Bloom 2 + hard, Bloom 1 + medium
 ❌ **Không đánh đồng:** Bloom thấp ≠ easy, Bloom cao ≠ hard
 
----
+> [!NOTE]
+> **Auto-Calibrate (question_bank):** Nhãn `difficulty` ban đầu do AI/admin gán. Khi có ≥20 lượt trả lời, hệ thống tự gán `calibrated_difficulty` dựa trên accuracy thật (≥80% → Dễ, 40-79% → TB, <40% → Khó). Giá trị calibrated ghi đè nhãn gốc khi serve câu hỏi.
 
 ## 5. Skill Tag (bắt buộc)
 
@@ -382,7 +383,7 @@ Ngăn cách giá trị trong `wrong_words`, `options`, `accept_answers` bằng `
 - [ ] Bloom không vượt mức tối đa (theo môn × lớp)
 - [ ] Có `skill_tag` rõ ràng
 - [ ] Difficulty hợp lý (tách biệt với Bloom)
-- [ ] `difficulty_score` (0.0–1.0) phản ánh độ khó thực tế
+- [ ] `difficulty_score` (0.0–1.0) phản ánh độ khó thực tế (sẽ được auto-calibrate khi có đủ data)
 - [ ] Nội dung đúng SGK 2018
 - [ ] Có `explanation` — AI Mascot giải thích được
 - [ ] Không gây hiểu nhầm cho trẻ (6–11 tuổi)
@@ -390,6 +391,7 @@ Ngăn cách giá trị trong `wrong_words`, `options`, `accept_answers` bằng `
 - [ ] `correct_word` và `wrong_words` ≤ 20 ký tự
 - [ ] Không trùng lặp câu hỏi đã có **trong cùng grade + level**
 - [ ] Mỗi level phải có đủ 12 câu cho **mỗi grade**
+- [ ] Question bank: nhãn `difficulty` ban đầu sẽ được auto-calibrate ghi đè khi có ≥20 lượt trả lời
 
 ---
 

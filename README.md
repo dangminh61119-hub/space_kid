@@ -12,10 +12,17 @@
 ### Tính năng chính
 
 - 🌌 **Vũ trụ Neon/Pastel** — Giao diện dark-mode futuristic với glassmorphism & neon glow
-- 🤖 **Mascot AI** — Bạn đồng hành không gian nói tiếng Việt, tương tác real-time
+- 🤖 **Mascot AI (Cú Mèo)** — Bạn đồng hành nói tiếng Việt, hỗ trợ Socratic tutoring & báo bài
 - 🏝️ **Hành tinh Di sản Việt Nam** — Mỗi hành tinh mang tên một di sản (Hạ Long, Huế, Gióng...)
 - ⚔️ **RPG Class System** — 3 lớp nhân vật với kỹ năng riêng biệt
 - 📊 **Parent Dashboard** — Bảng điều khiển phụ huynh theo dõi tiến độ học tập
+- 📚 **Learning Hub** — Luyện tập cá nhân hoá với nhiều chế độ:
+  - Smart Quiz, Flashcard, Error Drill (sửa lỗi chuyên sâu)
+  - Ôn tập SRS (Spaced Repetition System)
+  - AI Quiz từ SGK (RAG Textbook Knowledge Base)
+  - Luyện tập theo chủ đề curriculum
+- 📈 **Auto-Calibrate Difficulty** — Tự động hiệu chuẩn độ khó câu hỏi dựa trên tỷ lệ trả lời đúng thực tế (≥20 lượt → calibrate, liên tục cập nhật)
+- 🏁 **Multiplayer Race** — Đua trả lời câu hỏi real-time với bạn bè
 
 ---
 
@@ -29,7 +36,7 @@
 | **Animation** | [Framer Motion 12](https://www.framer.com/motion/) |
 | **Charts** | [Recharts 3](https://recharts.org/) |
 | **Backend/DB** | [Supabase](https://supabase.com/) (Auth, PostgreSQL, Storage) |
-| **Fonts** | Outfit, Inter (Google Fonts) |
+| **Fonts** | Baloo 2 (headings), Nunito (body) |
 
 ---
 
@@ -86,33 +93,40 @@ space_kid/
 ├── src/
 │   ├── app/                    # Next.js App Router pages
 │   │   ├── layout.tsx          # Root layout
-│   │   ├── globals.css         # Design system (CSS variables, animations, utilities)
+│   │   ├── globals.css         # Design system (CSS variables, animations)
 │   │   ├── page.tsx            # Trang chủ (Homepage)
-│   │   ├── onboarding/         # Trang onboarding (chọn mascot, quiz, class)
-│   │   ├── portal/             # Bản đồ vũ trụ (Universe Map) + gameplay
-│   │   │   └── play/           # Màn chơi quiz
-│   │   └── dashboard/          # Parent Dashboard
-│   ├── components/             # Reusable UI components
-│   │   ├── ChallengePlanets.tsx     # Hành tinh thử thách (floating planets)
-│   │   ├── GlassCard.tsx            # Glassmorphism card
-│   │   ├── MascotAI.tsx             # AI mascot tương tác
-│   │   ├── Navbar.tsx               # Navigation bar
-│   │   ├── NeonButton.tsx           # Neon-glow button
-│   │   ├── PlanetIcon.tsx           # SVG planet renderer
-│   │   ├── StarField.tsx            # Animated star background
-│   │   └── dashboard/              # Dashboard-specific components
-│   │       ├── AIInsights.tsx       # AI phân tích học tập
-│   │       ├── ProgressChart.tsx    # Biểu đồ tiến độ tuần
-│   │       ├── StatsCards.tsx       # Thẻ thống kê tổng quan
-│   │       └── SubjectBreakdown.tsx # Phân tích theo môn học
-│   └── lib/                    # Utilities & data
-│       ├── mock-data.ts        # Dữ liệu mock (students, planets, quizzes)
-│       └── supabase.ts         # Supabase client (với fallback mock mode)
+│   │   ├── login/              # Đăng nhập Supabase Auth
+│   │   ├── onboarding/         # Onboarding (chọn mascot, quiz, class)
+│   │   ├── portal/             # Bản đồ vũ trụ + gameplay
+│   │   │   └── play/           # Màn chơi quiz (9 game modes)
+│   │   ├── learn/              # Learning Hub (practice, tutor, lessons, review)
+│   │   ├── admin/              # Admin Portal (questions, lessons, textbooks)
+│   │   ├── dashboard/          # Parent Dashboard
+│   │   └── api/                # API routes (AI, practice)
+│   ├── components/             # Game & UI components
+│   │   ├── GameModeController.tsx   # State machine: progression qua levels
+│   │   ├── StarRaceGame.tsx         # Multiplayer real-time race
+│   │   ├── SpaceShooterGame.tsx     # Bắn từ không gian
+│   │   ├── TimeBombGame.tsx         # Bom hẹn giờ
+│   │   ├── MathForgeGame.tsx        # Lò rèn toán học
+│   │   ├── (+ 5 game modes khác)    # CosmoBridge, StarHunter, GalaxySort, etc.
+│   │   ├── MascotAI.tsx             # AI mascot tương tác (Cú Mèo)
+│   │   ├── SummonOverlay.tsx        # In-game AI help overlay
+│   │   ├── effects/                 # Visual effects (confetti, combo flash, etc.)
+│   │   ├── learn/                   # Learning Hub components
+│   │   └── dashboard/               # Dashboard components
+│   ├── hooks/                  # Custom hooks
+│   │   ├── useSoundEffects.ts       # Sound management
+│   │   └── useVoice.ts              # TTS/STT voice
+│   └── lib/                    # Core logic
+│       ├── data/               # Curriculum data, planet videos
+│       ├── services/           # 17 service files (Supabase, auth, db, etc.)
+│       ├── ai/                 # AI guardrails & prompts
+│       ├── sound/              # Sound system
+│       └── game-context.tsx    # ⭐ Global game state (single source of truth)
 ├── package.json
 ├── tsconfig.json
-├── next.config.ts
-├── postcss.config.mjs
-└── eslint.config.mjs
+└── next.config.ts
 ```
 
 ---
@@ -124,7 +138,7 @@ Dự án sử dụng hệ thống thiết kế **"Future Space Station"**:
 - **Background:** Deep space (`#0A0E27`) với star field & nebula gradients
 - **Cards:** Glassmorphism (`bg-white/5 backdrop-blur-md border-white/10`)
 - **Accents:** Neon Cyan (`#00F5FF`), Magenta (`#FF6BFF`), Gold (`#FFE066`)
-- **Typography:** Outfit (headings), Inter (body)
+- **Typography:** Baloo 2 (headings), Nunito (body)
 - **Animations:** Framer Motion — float, fade-up, stagger, hover glow
 - **Separators:** 1px gradient dividers (`from-transparent via-color to-transparent`)
 
@@ -135,10 +149,13 @@ Dự án sử dụng hệ thống thiết kế **"Future Space Station"**:
 | Route | Mô tả |
 |-------|-------|
 | `/` | Trang chủ — Hero, features, planets, class system, CTA |
+| `/login` | Đăng nhập Supabase Auth |
 | `/onboarding` | Onboarding — Chọn mascot, quiz khởi động, chọn class nhân vật |
-| `/portal` | Bản đồ Vũ trụ — Tổng quan hành tinh, daily quest, tiến độ |
-| `/portal/play` | Màn chơi quiz — Gameplay trả lời câu hỏi theo hành tinh |
-| `/dashboard` | Parent Dashboard — Thống kê, biểu đồ, AI insights cho phụ huynh |
+| `/portal` | Bản đồ Vũ trụ — Hành trình di sản, badges, ships, tiến độ |
+| `/portal/play` | Màn chơi — 9 game modes luân phiên qua GameModeController |
+| `/learn` | Learning Hub — Luyện tập, AI Tutor, bài giảng, ôn tập SRS |
+| `/admin` | Admin Portal — Quản lý câu hỏi, bài giảng, sách giáo khoa |
+| `/dashboard` | Parent Dashboard — Thống kê, biểu đồ, AI insights |
 
 ---
 

@@ -165,7 +165,6 @@ export function getReviewForecast(deck?: SRSCard[]): Array<{ date: string; count
         const date = new Date();
         date.setDate(date.getDate() + i);
         const dayStr = date.toISOString().split("T")[0];
-        const nextDayStr = new Date(date.getTime() + 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
         const count = cards.filter(c => {
             const reviewDate = c.nextReview.split("T")[0];

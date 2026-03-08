@@ -1,5 +1,5 @@
 # CosmoMosaic – Tài liệu Yêu cầu Dự án
-> Phiên bản: 1.0 · Cập nhật: 2026-02-28  
+> Phiên bản: 2.0 · Cập nhật: 2026-03-08
 > Mọi tính năng mới **BẮT BUỘC** tuân thủ các quy tắc trong tài liệu này.
 
 ---
@@ -12,7 +12,7 @@
 | **Đối tượng** | Học sinh tiểu học Việt Nam (lớp 1–5) |
 | **Thể loại** | Game giáo dục – học mà chơi |
 | **Chủ đề** | Không gian neon + di sản Việt Nam |
-| **Stack** | Next.js 16, Tailwind CSS, Framer Motion, Supabase |
+| **Stack** | Next.js 16, Tailwind CSS 4, Framer Motion 12, Supabase |
 
 ### Câu chuyện nền
 Vũ trụ CosmoMosaic bị **Băng đảng Lười Biếng** xâm chiếm. Mỗi hành tinh đại diện cho một di sản Việt Nam đang bị phong ấn. Người chơi là tân binh, được **Chỉ huy Cú Mèo** 🦉 hướng dẫn, cùng mascot đồng hành giải phóng các hành tinh bằng tri thức.
@@ -28,10 +28,15 @@ Vũ trụ CosmoMosaic bị **Băng đảng Lười Biếng** xâm chiếm. Mỗi
 GameProvider (layout.tsx)
   ├── player: PlayerData         ← state duy nhất
   ├── updatePlayer()             ← cập nhật bất kỳ field
-  ├── addXP(amount)              ← tự động tính level
-  ├── updatePlanetProgress()     ← cập nhật tiến trình hành tinh
+  ├── addCosmo(amount)           ← cộng Cosmo (kinh nghiệm), tự tính level
+  ├── addStars(amount)           ← cộng Lucky Stars
+  ├── addCoins(amount)           ← cộng Coins
+  ├── spendCoins(amount)         ← tiêu Coins
+  ├── addCrystals(amount)        ← cộng Crystals (premium)
+  ├── spendCrystals(amount)      ← tiêu Crystals (summon Cú Mèo)
   ├── useClassAbility()          ← kích hoạt năng lực
   ├── resetClassAbility()        ← reset mỗi level mới
+  ├── setCalmMode(boolean)       ← bật/tắt Calm Mode
   └── resetGame()                ← xóa toàn bộ
 ```
 
@@ -39,18 +44,24 @@ GameProvider (layout.tsx)
 
 ```typescript
 interface PlayerData {
-  name: string;                    // Tên người chơi
-  mascot: "cat" | "dog" | null;   // Mascot đồng hành
+  name: string;
+  mascot: "cat" | "dog" | null;
   playerClass: "warrior" | "wizard" | "hunter" | null;
-  grade: number;                   // Lớp học (1-5)
-  level: number;                   // Level game (auto-calculated)
-  xp: number;                     // Điểm kinh nghiệm
-  xpToNext: number;               // XP cần cho level tiếp (auto)
-  streak: number;                  // Số ngày chơi liên tiếp
+  grade: number;                    // 1–5
+  level: number;                    // auto-calculated from cosmo
+  cosmo: number;                    // Tổng điểm kinh nghiệm
+  cosmoInLevel: number;             // Tiến trình trong level hiện tại (0–499)
+  cosmoToNext: number;              // = COSMO_PER_LEVEL (500)
+  coins: number;                    // Tiền tệ in-game
+  crystals: number;                 // Tiền tệ premium (summon Cú Mèo)
+  streak: number;
   totalPlayHours: number;
   onboardingComplete: boolean;
   onboardingQuizScore: number;
+  calmMode: boolean;
   planetsProgress: Record<string, PlanetProgress>;
+  masteryByTopic: Record<string, number>;   // 0–100%
+  bloomLevelReached: Record<string, number>;
 }
 ```
 
@@ -58,9 +69,9 @@ interface PlayerData {
 > **KHÔNG tạo state riêng cho tính năng mới nếu nó liên quan đến player.** Thêm field vào `PlayerData` và cập nhật `DEFAULT_PLAYER`.
 
 ### 2.3 Persistence
-- **Storage**: `localStorage` key = `"cosmomosaic_player"`
+- **Storage**: `localStorage` key = `"cosmomosaic_player"` + Supabase `players` table
 - **Hydration**: GameProvider chờ hydration xong mới render children (tránh SSR mismatch)
-- **Tương lai**: Khi tích hợp Supabase Auth, đồng bộ localStorage ↔ database
+- **Sync**: AuthContext tự động đồng bộ localStorage ↔ Supabase khi đăng nhập
 
 ---
 
@@ -73,295 +84,265 @@ interface PlayerData {
 | `cat` | 🐱 | Mèo Sao Băng | Đồng hành, hiển thị trên Portal |
 | `dog` | 🐶 | Cún Tinh Vân | Đồng hành, hiển thị trên Portal |
 
-> [!IMPORTANT]
-> Khi thêm mascot mới: cập nhật `MASCOT_INFO` trong `game-context.tsx`, thêm option vào onboarding, và đảm bảo mascot hiển thị ở mọi nơi dùng `MASCOT_INFO[player.mascot]`.
-
 ### 3.2 Lớp nhân vật (Class)
 
-| Class | Icon | Tên | Hiệu ứng SpaceShooter | Hiệu ứng MathForge |
-|---|---|---|---|---|
-| `warrior` | 🛡️ | Chiến binh Sao Băng | Miễn 1 lần sai/level (không trừ HP) | Miễn 1 lần sai/level (không trừ HP) |
-| `wizard` | ⏳ | Phù thủy Tinh Vân | Bom rơi chậm 30% (`speed × 0.7`) | +5 giây timer mỗi câu |
-| `hunter` | 🎯 | Thợ săn Ngân Hà | Loại 1 từ sai mỗi câu hỏi | Loại 1 đáp án sai mỗi câu |
+| Class | Icon | Tên | Hiệu ứng |
+|---|---|---|---|
+| `warrior` | 🛡️ | Chiến binh Sao Băng | Miễn 1 lần sai/level (shield) |
+| `wizard` | ⏳ | Phù thủy Tinh Vân | +5 giây hoặc giảm tốc 30% |
+| `hunter` | 🎯 | Thợ săn Ngân Hà | Loại 1 đáp án sai mỗi câu |
 
 > [!WARNING]
 > Mọi game mode mới **BẮT BUỘC** implement cả 3 class abilities. Hằng số mô tả nằm trong `CLASS_ABILITIES` của `game-context.tsx`.
 
 ---
 
-## 4. Hệ thống Hành tinh
+## 4. Hệ thống Hành trình Di sản
 
-### 4.1 Bản đồ hành tinh (đã cập nhật grade_range)
+### 4.1 Kiến trúc Journey-Based (v2.0)
 
-| ID | Tên | Emoji | Môn học | Bloom Focus | Game Type | Levels | Phù hợp Lớp (grade_range) |
-|---|---|---|---|---|---|---|---|
-| `ha-long` | Vịnh Hạ Long | 🏝️ | Tiếng Anh, Địa lý | L1–L3 | SpaceShooter | 20 | 1–3 |
-| `hue` | Cố đô Huế | 🏯 | Lịch sử, Tiếng Việt | L1–L4 | SpaceShooter | 25 | 2–4 |
-| `giong` | Làng Gióng | ⚔️ | Toán, Tin học | L2–L4 | MathForge | 20 | 3–5 |
-| `phong-nha` | Phong Nha | 🦇 | Khoa học, Địa lý | L1–L3 | SpaceShooter | 18 | 1–3 |
-| `hoi-an` | Phố cổ Hội An | 🏮 | Mỹ thuật, Tiếng Anh | L1–L2 | SpaceShooter | 15 | 1–2 |
-| `sapa` | Ruộng bậc thang Sa Pa | 🌾 | Toán, Khoa học | L2–L4 | MathForge | 22 | 3–5 |
+Hệ thống sử dụng **10 hành trình di sản** trên hành tinh Earth, mỗi hành trình có 6 levels:
 
-> **grade_range**: Dùng để lọc hành tinh phù hợp với lớp của trẻ (trẻ lớp 1–2 không vào được hành tinh Sa Pa vì quá khó).
+| Hành trình | Emoji | Môn học chính | Levels |
+|---|---|---|---|
+| Vịnh Hạ Long | 🏝️ | Địa lý, Tiếng Anh, Khoa học | 6 |
+| Phố cổ Hội An | 🏮 | Tiếng Anh, Mỹ thuật | 6 |
+| Làng Gióng | ⚔️ | Tiếng Việt | 6 |
+| Cố đô Huế | 🏯 | Lịch sử, Tiếng Việt, Địa lý | 6 |
+| Đồng bằng Mê Kông | 🌊 | Địa lý, Khoa học | 6 |
+| Sa Pa | 🏔️ | Toán, Địa lý | 6 |
+| Phong Nha | 🦇 | Khoa học | 6 |
+| Hà Nội | 🌆 | Địa lý, Lịch sử | 6 |
+| Hồ Gươm | 🐢 | Tiếng Việt, Lịch sử | 6 |
+| Mỹ Sơn | 🎋 | Lịch sử, Mỹ thuật | 6 |
 
-### 4.2 Question Selection & Adaptive Difficulty (v2.0)
+### 4.2 Question Selection & Smart Sort
 
-Khi load câu hỏi cho người chơi:
-- **Bắt buộc**: chỉ lấy câu hỏi có `grade === player.grade`
-- **Kiểm tra thêm**: hành tinh phải nằm trong `grade_range` của trẻ
-- **Adaptive**: 
-  - Nếu mastery ≥ 80% → tự động đưa câu hỏi bloom level cao hơn (vẫn cùng lớp).
-  - Nếu mastery ≤ 40% → ưu tiên câu dễ hơn.
-- Mỗi session tối đa 20% câu “thử thách” (bloom level cao).
-- **Mục tiêu**: Câu hỏi luôn vừa sức, không quá dễ gây chán, không quá khó gây nản.
-
-### 4.3 Quy tắc thêm hành tinh mới
-1. Thêm entry vào `mockPlanets` trong `mock-data.ts` (cần có `grade_range`)
-2. Thêm `PlanetProgress` vào `DEFAULT_PLAYER.planetsProgress` trong `game-context.tsx`
-3. Tạo level data (`mockXxxLevels`) trong `mock-data.ts`
-4. Thêm vào `PLANET_LEVELS` + `PLANET_NAMES` trong page tương ứng (`play/page.tsx` hoặc `play/math/page.tsx`)
-5. Routing tự động qua query param `?planet=<id>`
-6. Thêm story intro vào `storyIntros` trong `LevelIntro.tsx`
-
-### 4.4 Planet Routing Logic
-```
-Portal page.tsx:
-  planet.id ∈ {"giong", "sapa"} → /portal/play/math?planet=<id>   (MathForge)
-  planet.id ∈ {còn lại}         → /portal/play?planet=<id>         (SpaceShooter)
-```
+Khi load câu hỏi cho người chơi (`getSmartQuestions`):
+- **Bắt buộc**: chỉ lấy câu hỏi có `grade === player.grade` và `reviewed_by_teacher = true`
+- **Fallback**: Nếu không có câu cho grade → bỏ filter grade (tránh game trống)
+- **Smart Sort** (player đã login):
+  1. Chưa làm → ưu tiên cao nhất
+  2. Đã làm sai → ôn lại
+  3. Đã làm đúng (cũ → mới) → spaced repetition
+- Trong mỗi nhóm: sort theo `bloom_level` tăng dần (progressive difficulty)
 
 ---
 
-## 5. Game Modes
+## 5. Game Modes (9 chế độ)
 
-### 5.1 SpaceShooterGame (`src/components/SpaceShooterGame.tsx`)
+### 5.1 Danh sách Game Modes
 
-**Mô tả**: Bắn từ không gian – người chơi điều khiển tàu, bắn chọn từ/đáp án đúng.
+| Mode | Component | Mô tả |
+|---|---|---|
+| TimeBomb | `TimeBombGame.tsx` | Bom hẹn giờ — chọn đáp án trước khi hết thời gian |
+| SpaceShooter | `SpaceShooterGame.tsx` | Bắn từ không gian — bắn chọn từ/đáp án đúng |
+| CosmoBridge | `CosmoBridgeGame.tsx` | Cầu nối tri thức — nối cặp đúng |
+| StarHunter | `StarHunterGame.tsx` | Đa chế độ tăng dần |
+| GalaxySort | `GalaxySortGame.tsx` | Phân loại thiên hà |
+| MeteorShower | `MeteorShowerGame.tsx` | Mưa sao băng |
+| WordRush | `WordRushGame.tsx` | Chạy đua từ vựng |
+| MathForge | `MathForgeGame.tsx` | Lò rèn vũ trụ — toán kéo thả |
+| WordCraft | `WordCraftGame.tsx` | Xưởng chữ vũ trụ — viết sáng tạo |
 
-**Props bắt buộc**:
-```typescript
-interface Props {
-  levels: GameLevel[];
-  onExit?: () => void;
-  playerClass?: "warrior" | "wizard" | "hunter" | null;
-  onGameComplete?: (finalScore: number, levelsCompleted: number) => void;
-}
+**Game modes xoay vòng theo level**: L1=timebomb, L2=shooter, L3=cosmo-bridge, L4=star-hunter, L5=galaxy-sort, L6=meteor
+
+### 5.2 Đặc biệt: Star Race (Multiplayer)
+
+`StarRaceGame.tsx` — Đua giữa các vì sao, theo thời gian thực qua Supabase Realtime:
+- Tạo/vào phòng bằng mã 4 ký tự
+- Tối đa 6 người chơi
+- Host có thể kick người chơi
+- Câu hỏi từ bảng `race_questions`
+- Xếp hạng theo điểm (100/80/60/40/20 theo thứ tự trả lời đúng)
+
+### 5.3 GameModeController
+
+`GameModeController.tsx` — State machine quản lý progression qua các level:
+
+```
+planetIntro → levelIntro → playing → levelWin / levelLose
+                                       ↓ win      ↓ lose
+                                  levelIntro(+1)   retry/exit
 ```
 
-**Luật chơi**:
-| Quy tắc | Giá trị |
-|---|---|
-| HP tối đa | 3 ❤️ |
-| XP mỗi câu đúng | +100 |
-| Mất HP khi | Bắn trúng từ SAI hoặc từ ĐÚNG rơi khỏi màn hình |
-| Game Over khi | HP = 0 |
-| Win khi | Hoàn thành tất cả questions của tất cả levels |
-| Level data format | `{ level, planet, subject, title, speed, questions[] }` |
-| Question format | `{ question, correctWord, wrongWords[] }` |
+### 5.4 Quy tắc thêm Game Mode mới
 
-**Game States**: `ready` → `playing` → `levelComplete` → `playing` → ... → `win` / `gameOver`
-
-### 5.2 MathForgeGame (`src/components/MathForgeGame.tsx`)
-
-**Mô tả**: Lò Rèn Vũ Trụ – kéo thả hoặc click chọn số điền vào phương trình.
-
-**Props bắt buộc**:
-```typescript
-interface Props {
-  levels: MathLevel[];
-  onExit?: () => void;
-  playerClass?: "warrior" | "wizard" | "hunter" | null;
-  onGameComplete?: (finalScore: number, levelsCompleted: number) => void;
-}
-```
-
-**Luật chơi**:
-| Quy tắc | Giá trị |
-|---|---|
-| HP tối đa | 3 ❤️ |
-| XP mỗi câu đúng | +100 × combo multiplier |
-| Combo bonus | ×1.5 khi ≥3 câu đúng liên tiếp |
-| Timer | `timePerQuestion` giây/câu (default 15s) |
-| Mất HP khi | Chọn sai hoặc hết giờ |
-| Level data format | `{ level, planet, subject, title, timePerQuestion, questions[] }` |
-| Question format | `{ equation, answer, options[] }` |
-
-### 5.3 Quy tắc thêm Game Mode mới
+Mọi game mode mới **PHẢI**:
+1. **Props**: `levels, onExit, playerClass, onGameComplete, onAnswered, paused, calmMode?`
+2. **Implement 3 class abilities**: warrior (shield), wizard (thêm giờ), hunter (loại đáp án)
+3. **Gọi `onGameComplete(score, levelsCompleted)`** ngay lập tức khi game kết thúc (KHÔNG delay)
+4. **Gọi `onAnswered(questionId, isCorrect, subject, bloomLevel)`** cho mỗi câu trả lời
+5. **Dừng toàn bộ khi `paused === true`** (SummonOverlay)
+6. **Hỗ trợ Calm Mode**: animation duration × 1.5
 
 > [!IMPORTANT]
-> Mọi game mode mới **PHẢI** tuân thủ:
-
-1. **Nhận props**: `playerClass` + `onGameComplete(finalScore, levelsCompleted)`
-2. **Implement 3 class abilities**: warrior (shield/miễn sai), wizard (thêm thời gian/giảm tốc), hunter (loại bỏ đáp án sai)
-3. **Gọi `onGameComplete`**: khi `win` hoặc `gameOver` để cập nhật XP và planet progress
-4. **Hỗ trợ HP/Score**: sử dụng MAX_HP = 3, +100 XP mỗi câu đúng làm cơ sở
-5. **Game states**: phải có `ready`, `playing`, `levelComplete`, `win`, `gameOver`
-6. **Fullscreen**: hỗ trợ toggle fullscreen
+> `key={gameKey}` phải truyền trực tiếp vào JSX element, KHÔNG spread qua `{...commonProps}`.
 
 ---
 
-## 6. User Flow
-
-### 6.1 Flow chính
-```mermaid
-graph TD
-    A["Landing /"] -->|"Bắt đầu Hành trình"| B["Onboarding /onboarding"]
-    A -->|"Phụ huynh"| F["Dashboard /dashboard"]
-    B -->|"5 bước"| C["Portal /portal"]
-    C -->|"Chọn hành tinh"| D["LevelIntro"]
-    D -->|"Bắt đầu sứ mệnh"| E["Game"]
-    E -->|"Quay lại / win / gameOver"| C
-```
-
-### 6.2 Onboarding (5 bước)
-1. **Welcome** – Giới thiệu "Tân Binh"
-2. **Mascot** – Chọn mascot đồng hành (cat/dog)
-3. **Quiz** – 4 câu hỏi (Toán, Tiếng Anh, Địa lý, Tiếng Việt)
-4. **Class** – Chọn lớp nhân vật (warrior/wizard/hunter)
-5. **Ready** – Xác nhận → **lưu tất cả vào GameContext** → navigate `/portal`
-
-> [!CAUTION]
-> Onboarding **PHẢI** gọi `updatePlayer()` trước khi navigate. Nếu không, dữ liệu sẽ mất.
-
-### 6.3 LevelIntro Component
-Hiển thị trước mỗi game, bao gồm:
-- Chỉ huy Cú Mèo 🦉 với câu chuyện `storyIntros[planetName]`
-- Tên hành tinh + emoji
-- Level number + title + subject
-- Class ability notice tương ứng
-- Nút "Bắt đầu sứ mệnh!"
-
----
-
-## 7. Hệ thống XP & Level
+## 6. Hệ thống Cosmo & Kinh tế
 
 ```
-XP_PER_LEVEL = 500
+COSMO_PER_LEVEL = 500
+level = floor(totalCosmo / 500) + 1
+cosmoInLevel = totalCosmo % 500
 
-Level = floor(totalXP / 500) + 1
-xpToNext = level × 500
-
-Ví dụ:
-  0 XP    → Level 1, cần 500
-  500 XP  → Level 2, cần 1000
-  1000 XP → Level 3, cần 1500
+Nguồn Cosmo:
+  Hoàn thành game: addCosmo(Math.max(100, finalScore))
+  → Tối thiểu 100 Cosmo, thưởng theo điểm thực tế
 ```
 
-**Nguồn XP**:
-- SpaceShooterGame: +100 XP mỗi từ đúng
-- MathForgeGame: +100 XP × combo mỗi câu đúng
+### 6.1 Tiền tệ
+
+| Loại | Ký hiệu | Nguồn | Dùng cho |
+|---|---|---|---|
+| Cosmo | ✦ | Hoàn thành game | Tính level |
+| Coins | 🪙 | 10/level hoàn thành | Mua sắm in-game |
+| Crystals | 💎 | Premium, khởi đầu 3 | Summon Cú Mèo |
+| Lucky Stars | ⭐ | Thắng race (3★), thưởng đặc biệt | Đổi 3★ = 1 huy hiệu |
+
+### 6.2 Badge & Ship Economy
+
+- **Badges**: Nhận khi hoàn thành journey (heritage badge) hoặc đạt achievement (special badge)
+- **Ships**: Mua bằng badges (exchange system). Mỗi ship yêu cầu N badges
+- **Retroactive check**: Portal tự kiểm tra và trao badges chưa nhận khi load
 
 > [!IMPORTANT]
-> XP **chỉ được cộng thông qua** `addXP()` hoặc `onGameComplete()`. KHÔNG set trực tiếp `player.xp`.
+> Cosmo chỉ cộng qua `addCosmo()`, Stars qua `addStars()`, Coins qua `addCoins()`. **KHÔNG set trực tiếp**.
 
 ---
 
-## 8. Dashboard Phụ huynh (`/dashboard`)
+## 7. Tính năng Học tập (Learning Hub)
 
-Hiển thị:
-- **StatsCards**: XP, thời gian chơi, streak, hành tinh hoàn thành
-- **ProgressChart**: Biểu đồ tiến trình theo tuần
-- **SubjectBreakdown**: Phân tích điểm theo môn
-- **AIInsights**: Gợi ý AI tự động
+### 7.1 Routes (`/learn/*`)
 
-> [!NOTE]
-> Dashboard hiện dùng `mockStudent` + mock data. Khi tích hợp Supabase, cần đọc từ database thay vì mock.
+| Route | Mô tả |
+|---|---|
+| `/learn` | Hub chính — skill tree, streak, recommendations |
+| `/learn/practice` | Luyện tập thông minh (adaptive quiz) |
+| `/learn/lessons` | Video bài giảng |
+| `/learn/tutor` | AI Tutor (Cú Mèo Socratic) |
+| `/learn/bao-bai` | Báo bài (homework reporting) + RAG |
+| `/learn/review` | Ôn tập SRS (Spaced Repetition) |
+| `/learn/path` | Learning path cá nhân hóa |
+
+### 7.2 Components (`/components/learn/`)
+
+| Component | Mô tả |
+|---|---|
+| `AITutorChat.tsx` | Chat Socratic với Cú Mèo |
+| `ErrorDrill.tsx` | Luyện tập theo lỗi thường gặp |
+| `Flashcard.tsx` | Flashcard SRS |
+| `LessonPlayer.tsx` | Video player cho bài giảng |
+| `SkillNode.tsx` | Node trong skill tree |
+| `SmartQuiz.tsx` | Quiz thông minh adaptive |
+| `SmartRecommendations.tsx` | Gợi ý học tập AI |
+| `StreakWidget.tsx` | Widget streak hiển thị |
+
+### 7.3 Auto-Calibrate Difficulty
+
+Hệ thống tự động hiệu chuẩn `difficulty` của câu hỏi trong `question_bank`:
+- API: `POST /api/practice/calibrate` — nhận per-question results sau quiz
+- Cột: `attempt_count`, `correct_count`, `calibrated_difficulty` trên `question_bank`
+- Logic: ≥80% accuracy → Dễ (1), 40-79% → TB (2), <40% → Khó (3)
+- Threshold: ≥20 lượt trước khi calibrate, liên tục cập nhật sau đó
+- Serving: `calibrated_difficulty ?? difficulty` (ưu tiên data thật)
 
 ---
 
-## 9. Cấu trúc Files
+## 8. Admin Portal (`/admin/*`)
+
+| Route | Mô tả |
+|---|---|
+| `/admin` | Dashboard thống kê |
+| `/admin/questions` | Quản lý câu hỏi (CRUD) |
+| `/admin/question-bank` | Ngân hàng câu hỏi chi tiết |
+| `/admin/race-questions` | Quản lý câu hỏi Đua Sao |
+| `/admin/lessons` | Quản lý video bài giảng |
+| `/admin/textbooks` | Quản lý sách giáo khoa (RAG) |
+
+---
+
+## 9. User Flow
+
+### 9.1 Flow Chính
 
 ```
-src/
-├── app/
-│   ├── layout.tsx            ← Wrap <Providers>
-│   ├── providers.tsx         ← Client: GameProvider + AuthProvider
-│   ├── page.tsx              ← Landing page
-│   ├── globals.css           ← Design tokens + animations
-│   ├── login/page.tsx        ← Đăng nhập Supabase Auth
-│   ├── auth/callback/page.tsx ← OAuth callback handler
-│   ├── survey/page.tsx       ← Diagnostic survey (xác định trình độ)
-│   ├── profile/page.tsx      ← Profile + parent consent
-│   ├── onboarding/page.tsx   ← 5-step onboarding (mascot + class)
-│   ├── portal/
-│   │   ├── page.tsx          ← Planet map + player sidebar
-│   │   └── play/
-│   │       ├── page.tsx      ← SpaceShooter (?planet=)
-│   │       ├── math/page.tsx ← MathForge (?planet=)
-│   │       ├── star/page.tsx ← StarHunter (?planet=)
-│   │       └── heritage/page.tsx ← HeritagePuzzle (?planet=)
-│   ├── dashboard/
-│   │   ├── layout.tsx        ← Dashboard layout
-│   │   └── page.tsx          ← Parent dashboard
-│   └── api/
-│       └── ai/route.ts       ← AI mascot endpoint (guardrailed)
-├── components/
-│   ├── SpaceShooterGame.tsx  ← Canvas-based shooter
-│   ├── MathForgeGame.tsx     ← Drag-n-drop math
-│   ├── StarHunterGame.tsx    ← Star hunter mini-game
-│   ├── HeritagePuzzleGame.tsx ← Heritage puzzle mini-game
-│   ├── LevelIntro.tsx        ← Story intro trước game
-│   ├── CalmModeToggle.tsx    ← Calm Mode toggle 🌙/☀️
-│   ├── ParentConsentModal.tsx ← Parent consent flow
-│   ├── MascotAI.tsx          ← AI mascot widget
-│   ├── Navbar.tsx            ← Navigation bar
-│   ├── GlassCard.tsx         ← Glass morphism card
-│   ├── NeonButton.tsx        ← Styled button
-│   ├── PlanetIcon.tsx        ← SVG planet icon
-│   ├── StarField.tsx         ← Star particle background
-│   ├── ChallengePlanets.tsx  ← Landing page planets
-│   └── dashboard/            ← Dashboard sub-components
-│       ├── AIInsights.tsx
-│       ├── ProgressChart.tsx
-│       ├── StatsCards.tsx
-│       └── SubjectBreakdown.tsx
-├── hooks/
-│   ├── usePdfExport.ts       ← PDF export cho dashboard
-│   └── useSoundEffects.ts    ← Sound effects management
-└── lib/
-    ├── data/                 ← mock-data.ts, curriculum-map.ts, survey-questions.ts
-    ├── services/             ← supabase.ts, auth-context.tsx, db.ts, proficiency.ts, survey-engine.ts
-    ├── ai/                   ← guardrails.ts, prompts.ts
-    ├── analytics/            ← learning-events.ts
-    └── game-context.tsx      ← ⭐ STATE DUY NHẤT
+Landing → Onboarding (5 bước) → Portal
+Portal → Chọn hành trình → GameModeController → 6 levels → Về Portal
+Portal → Learning Hub (/learn) → Practice / Tutor / Lessons / Bao Bai
+Portal → Star Race → Tạo/Vào phòng → Đua → Kết quả
 ```
+
+### 9.2 Onboarding (5 bước)
+1. **Welcome** — Giới thiệu "Tân Binh" + parent consent
+2. **Mascot** — Chọn mascot đồng hành (cat/dog)
+3. **Quiz** — 4 câu hỏi chẩn đoán
+4. **Class** — Chọn lớp nhân vật (warrior/wizard/hunter)
+5. **Ready** — `updatePlayer()` → navigate `/portal`
 
 ---
 
-## 10. Design System
+## 10. Services (`src/lib/services/`)
 
-### 10.1 Colors
+| Service | Mô tả |
+|---|---|
+| `supabase.ts` | Shared Supabase client + DB types |
+| `auth-context.tsx` | Authentication, session, user roles |
+| `db.ts` | Data access layer — planets, journeys, questions, badges, ships |
+| `race-service.ts` | Real-time multiplayer race |
+| `mastery-service.ts` | Student mastery tracking |
+| `rag-service.ts` | RAG textbook search |
+| `srs-service.ts` | Spaced Repetition System |
+| `recommendation-service.ts` | AI learning recommendations |
+| `student-profile-service.ts` | Student profiling & analytics |
+| `learning-session-service.ts` | Study session tracking |
+| `error-tracking-service.ts` | Error pattern classification |
+| `study-session-db.ts` | Study session database |
+| `question-validation.ts` | Question validation rules |
+| `proficiency.ts` | Proficiency calculation |
+| `survey-engine.ts` | Diagnostic survey engine |
+| `admin-guard.ts` | Admin route protection |
+| `api-auth.ts` | API route authentication |
+
+---
+
+## 11. Design System
+
+### 11.1 Colors
 | Token | Hex | Dùng cho |
 |---|---|---|
 | `--space-deep` | `#0A0E27` | Background chính |
 | `--space-mid` | `#131842` | Card background |
 | `--neon-cyan` | `#00F5FF` | Primary accent |
 | `--neon-magenta` | `#FF6BFF` | Secondary accent |
-| `--neon-gold` | `#FFE066` | Highlight, XP, rewards |
+| `--neon-gold` | `#FFE066` | Highlight, Cosmo, rewards |
 | `--neon-green` | `#7BFF7B` | Success, correct |
 
-### 10.2 Typography
+### 11.2 Typography
 - **Headings**: `Baloo 2` (600–800)
 - **Body**: `Nunito` (400–700)
 
-### 10.3 UI Patterns
+### 11.3 UI Patterns
 - **Glass Cards**: `glass-card`, `glass-card-strong`
 - **Neon Glow**: `neon-glow`, `neon-glow-magenta`, `neon-glow-gold`
 - **Animations**: `animate-float`, `animate-float-slow`, `animate-glow-pulse`
 
 ---
 
-## 11. Checklist cho Tính năng Mới
+## 12. Checklist cho Tính năng Mới
 
-Trước khi phát triển bất kỳ tính năng mới nào, kiểm tra:
+Trước khi phát triển bất kỳ tính năng mới nào:
 
-- [ ] Dữ liệu player lưu qua `GameContext` (KHÔNG dùng useState riêng cho data player)
-- [ ] Nếu thêm field vào PlayerData → cập nhật `DEFAULT_PLAYER`
-- [ ] Nếu thêm hành tinh → cập nhật cả `mockPlanets`, `DEFAULT_PLAYER.planetsProgress`, routing, và `LevelIntro.storyIntros`
-- [ ] Nếu thêm game mode → implement 3 class abilities + `onGameComplete` callback
-- [ ] Nếu thêm mascot/class → cập nhật `MASCOT_INFO` / `CLASS_ABILITIES` + onboarding UI
-- [ ] XP chỉ cộng qua `addXP()`, KHÔNG set trực tiếp
-- [ ] LevelIntro hiển thị trước khi bắt đầu game
-- [ ] Chỉ huy Cú Mèo 🦉 xuất hiện trong narrative mới
-- [ ] Dashboard phụ huynh phản ánh dữ liệu mới (khi applicable)
+- [ ] Dữ liệu player lưu qua `GameContext` (KHÔNG dùng useState riêng)
+- [ ] Field mới → cập nhật `DEFAULT_PLAYER`
+- [ ] Cosmo chỉ cộng qua `addCosmo()`, Stars qua `addStars()`, Coins qua `addCoins()`
+- [ ] Game mode mới → implement 3 class abilities + `onGameComplete` + `onAnswered` + `paused`
+- [ ] `onGameComplete` gọi **ngay lập tức** khi game kết thúc (không delay)
+- [ ] Calm Mode support: animation duration × 1.5
+- [ ] Bloom level tags trong question data (1–5, KHÔNG dùng Bloom 6)
+- [ ] Filter `.eq("reviewed_by_teacher", true)` khi query câu hỏi
+- [ ] Question bank mới: AI gán `difficulty` ban đầu, auto-calibrate ghi đè khi ≥20 lượt
+- [ ] RLS policy cho bảng mới
 - [ ] Tuân thủ design system: neon colors, glass cards, Baloo 2/Nunito fonts

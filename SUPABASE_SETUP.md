@@ -26,7 +26,7 @@ Copy toàn bộ nội dung file này và chạy:
 supabase/migrations/002_seed_data.sql
 ```
 
-Kết quả mong đợi: **6 planets, 23 levels, 115 questions** trong database.
+Kết quả mong đợi: **1 planet (Earth), 10 journeys, 60 levels, 3600+ questions** trong database.
 
 ---
 
@@ -93,8 +93,8 @@ Player chọn lớp trong onboarding → game tự lọc câu hỏi phù hợp.
 
 ## Chế độ Mock (không có Supabase)
 
-App **vẫn chạy bình thường** khi không có `.env.local`.
-Tất cả câu hỏi sẽ đọc từ `src/lib/mock-data.ts`.
+App vẫn hình thành layout nhưng sẽ không có dữ liệu game (câu hỏi, hành trình) khi không có Supabase.
+Mock data chỉ còn `mockDailyQuest` dùng cho banner trên portal.
 
 ---
 
@@ -103,11 +103,37 @@ Tất cả câu hỏi sẽ đọc từ `src/lib/mock-data.ts`.
 Theo dõi câu hỏi nào nhiều người sai:
 
 ```sql
--- Top 10 câu hỏi hay sai nhất
+-- Top 10 câu hỏi hay sai nhất (bảng questions - game hành tinh)
 SELECT question_text, correct_word, times_shown, times_wrong,
        ROUND(times_wrong::DECIMAL / NULLIF(times_shown, 0) * 100, 1) AS error_rate_pct
 FROM questions
 WHERE times_shown > 0
 ORDER BY error_rate_pct DESC
 LIMIT 10;
+```
+
+---
+
+## Auto-Calibrate Difficulty (question_bank)
+
+Bảng `question_bank` (Learning Hub) có hệ thống tự động hiệu chuẩn độ khó:
+
+| Cột | Mô tả |
+|---|---|
+| `attempt_count` | Tổng lượt trả lời |
+| `correct_count` | Tổng lượt trả lời đúng |
+| `calibrated_difficulty` | 1=Dễ, 2=TB, 3=Khó (null nếu chưa đủ data) |
+
+Logic: khi `attempt_count ≥ 20`, hệ thống tự gán `calibrated_difficulty` dựa trên accuracy thật.
+
+```sql
+-- Xem câu hỏi nào đã được calibrate và accuracy thực tế
+SELECT question_text, difficulty AS original,
+       attempt_count, correct_count,
+       ROUND(correct_count::numeric / NULLIF(attempt_count, 0) * 100) AS accuracy_pct,
+       calibrated_difficulty AS calibrated
+FROM question_bank
+WHERE attempt_count > 0
+ORDER BY attempt_count DESC
+LIMIT 20;
 ```

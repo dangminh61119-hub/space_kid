@@ -98,7 +98,6 @@ export interface DBPlayer {
     mascot: "cat" | "dog" | null;
     player_class: "warrior" | "wizard" | "hunter" | null;
     grade: number;
-    xp: number;
     streak: number;
     onboarding_complete: boolean;
     onboarding_quiz_score: number;

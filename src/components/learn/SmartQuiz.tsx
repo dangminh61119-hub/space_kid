@@ -63,22 +63,6 @@ export default function SmartQuiz({ questions, timePerQuestion = 0, onComplete, 
         }
     }, [currentIndex, currentQ, timePerQuestion]);
 
-    // Timer
-    useEffect(() => {
-        if (timePerQuestion <= 0 || showResult || isFinished) return;
-        const interval = setInterval(() => {
-            setTimeLeft(prev => {
-                if (prev <= 1) {
-                    handleAnswer("__timeout__");
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
-        return () => clearInterval(interval);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentIndex, showResult, timePerQuestion, isFinished]);
-
     const handleAnswer = useCallback((answer: string) => {
         if (showResult) return;
 
@@ -97,17 +81,39 @@ export default function SmartQuiz({ questions, timePerQuestion = 0, onComplete, 
         }]);
     }, [showResult, currentQ]);
 
+    // Timer
+    useEffect(() => {
+        if (timePerQuestion <= 0 || showResult || isFinished) return;
+        let timedOut = false;
+        const interval = setInterval(() => {
+            setTimeLeft(prev => {
+                if (prev <= 1 && !timedOut) {
+                    timedOut = true;
+                    // Schedule outside setState to avoid side-effect in updater
+                    setTimeout(() => handleAnswer("__timeout__"), 0);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [currentIndex, showResult, timePerQuestion, isFinished, handleAnswer]);
+
     const handleNext = useCallback(() => {
         if (currentIndex + 1 >= questions.length) {
+            // answers already includes the latest via handleAnswer — no extra +1 needed
+            const finalAnswers = [...answers];
             onComplete({
-                correct: answers.filter(a => a.isCorrect).length + (selectedAnswer === currentQ?.correctAnswer ? 1 : 0),
-                incorrect: answers.filter(a => !a.isCorrect).length + (selectedAnswer !== currentQ?.correctAnswer ? 1 : 0),
-                answers: [...answers],
+                correct: finalAnswers.filter(a => a.isCorrect).length,
+                incorrect: finalAnswers.filter(a => !a.isCorrect).length,
+                answers: finalAnswers,
             });
+            // Move past last question to trigger isFinished → results screen
+            setCurrentIndex(prev => prev + 1);
         } else {
             setCurrentIndex(prev => prev + 1);
         }
-    }, [currentIndex, questions.length, answers, onComplete, selectedAnswer, currentQ]);
+    }, [currentIndex, questions.length, answers, onComplete]);
 
     if (isFinished) {
         const totalCorrect = answers.filter(a => a.isCorrect).length;

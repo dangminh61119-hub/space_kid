@@ -192,6 +192,9 @@ function PracticeContent() {
     const loadAiQuiz = useCallback(async (topic: string, grade: number, subject?: string) => {
         setAiQuizLoading(true);
         setMode("ai-quiz");
+        // Start learning session for tracking (BUG-7 fix)
+        const sid = await startSession(playerId, "study", subject || "mixed");
+        setSessionId(sid);
         try {
             const res = await fetch("/api/ai/practice", {
                 method: "POST",
@@ -222,12 +225,15 @@ function PracticeContent() {
         } finally {
             setAiQuizLoading(false);
         }
-    }, []);
+    }, [playerId, token]);
 
     // Load topic-based quiz from question_bank
     const loadTopicQuiz = useCallback(async (topicId: string, subject?: string) => {
         setTopicQuizLoading(true);
         setMode("topic-quiz");
+        // Start learning session for tracking (BUG-7 fix)
+        const sid = await startSession(playerId, "study", subject || "mixed");
+        setSessionId(sid);
         try {
             const params = new URLSearchParams({ topic_id: topicId, count: "10" });
             if (subject) params.set("subject", subject);
@@ -254,7 +260,7 @@ function PracticeContent() {
         } finally {
             setTopicQuizLoading(false);
         }
-    }, [token]);
+    }, [playerId, token]);
 
     const topErrors = useMemo(() => profile ? getTopErrors(profile, 5) : [], [profile]);
 
@@ -268,7 +274,11 @@ function PracticeContent() {
     }, [playerId]);
 
     // Handle completion
-    const handleComplete = useCallback(async (results: { correct: number; incorrect: number }) => {
+    const handleComplete = useCallback(async (results: {
+        correct: number;
+        incorrect: number;
+        answers?: Array<{ questionId: string; isCorrect: boolean }>;
+    }) => {
         if (sessionId) {
             await endSession(playerId, sessionId, {
                 questionsTotal: results.correct + results.incorrect,
@@ -301,6 +311,20 @@ function PracticeContent() {
                     }),
                 });
             } catch { /* silent */ }
+        }
+
+        // Auto-calibrate question difficulty based on real answer stats
+        if (results.answers && results.answers.length > 0 && token) {
+            try {
+                await fetch("/api/practice/calibrate", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ answers: results.answers }),
+                });
+            } catch { /* silent — calibration is non-critical */ }
         }
     }, [sessionId, playerId, selectedSubject, topicQuizId, token]);
 
@@ -353,7 +377,7 @@ function PracticeContent() {
                 <SmartQuiz
                     questions={topicQuizQuestions}
                     onComplete={async (results) => {
-                        await handleComplete({ correct: results.correct, incorrect: results.incorrect });
+                        await handleComplete({ correct: results.correct, incorrect: results.incorrect, answers: results.answers });
                     }}
                     onExit={handleExit}
                 />
@@ -389,7 +413,7 @@ function PracticeContent() {
                 <SmartQuiz
                     questions={questions}
                     onComplete={async (results) => {
-                        await handleComplete({ correct: results.correct, incorrect: results.incorrect });
+                        await handleComplete({ correct: results.correct, incorrect: results.incorrect, answers: results.answers });
                     }}
                     onExit={handleExit}
                 />
@@ -398,8 +422,19 @@ function PracticeContent() {
     }
 
     if (mode === "drill" && drillErrorType) {
-        // Get questions for this error type (use math as fallback)
-        const drillSubject = drillErrorType.split("_")[0] || "math";
+        // Map error types to their actual subject (BUG-5 fix)
+        const ERROR_SUBJECT_MAP: Record<string, string> = {
+            addition_carry: "math",
+            subtraction_borrow: "math",
+            multiplication_table: "math",
+            unit_confusion: "math",
+            spelling_double_consonant: "english",
+            vocabulary_meaning: "english",
+            dau_thanh: "vietnamese",
+            cause_effect: "science",
+            location_confusion: "geography",
+        };
+        const drillSubject = ERROR_SUBJECT_MAP[drillErrorType] || "math";
         const questions = generateQuizQuestions(drillSubject, player.grade);
         return (
             <div>
@@ -462,7 +497,7 @@ function PracticeContent() {
                 <SmartQuiz
                     questions={aiQuizQuestions}
                     onComplete={async (results) => {
-                        await handleComplete({ correct: results.correct, incorrect: results.incorrect });
+                        await handleComplete({ correct: results.correct, incorrect: results.incorrect, answers: results.answers });
                         // Mark báo bài session as practiced
                         if (baoBaiSessionId && token) {
                             try {

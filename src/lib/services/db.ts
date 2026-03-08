@@ -727,11 +727,6 @@ export async function exchangeBadgesForShip(playerId: string, shipId: string): P
     return { success: true, ship };
 }
 
-/** Check badge count and auto-unlock any new ships (legacy — kept for backward compat) */
-export async function checkAndUnlockShips(playerId: string): Promise<Ship[]> {
-    // No longer auto-unlocks — ships require manual exchange
-    return [];
-}
 
 /** Get list of planet IDs the player can access based on their ships */
 export async function getUnlockedPlanetIds(playerId: string): Promise<string[]> {

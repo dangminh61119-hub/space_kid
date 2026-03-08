@@ -60,14 +60,14 @@ export default function LearnReviewPage() {
     }, []);
 
     const resetSession = useCallback(() => {
-        const d = getSRSDeck();
+        const d = getGradeDeck(player.grade);
         setDeck(d);
-        setDueCards(getDueCards(d));
+        setDueCards(getDueCards(d, player.grade));
         setReviewing(false);
         setSessionComplete(false);
         setCurrentIndex(0);
         setSessionResults([]);
-    }, []);
+    }, [player.grade]);
 
     // ─── Session Complete ───
     if (sessionComplete) {

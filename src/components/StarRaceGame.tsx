@@ -16,8 +16,6 @@ import {
     broadcastAnswer,
     broadcastQuestionResults,
     broadcastRaceFinished,
-    broadcastJoinRequest,
-    broadcastJoinAccepted,
     broadcastJoinRejected,
     updateRoomStatus,
     saveRaceResult,
@@ -25,7 +23,6 @@ import {
     type RacePlayer,
     type AnswerEvent,
     type RaceRoom,
-    type JoinRequest,
 } from "@/lib/services/race-service";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import type { GameLevel } from "@/lib/services/db";
@@ -130,7 +127,7 @@ function RaceTrack({ players, totalScores, maxScore, currentPlayerId }: {
     );
 }
 
-type GamePhase = "ship-select" | "lobby" | "waiting-approval" | "countdown" | "racing" | "question-result" | "podium";
+type GamePhase = "ship-select" | "lobby" | "countdown" | "racing" | "question-result" | "podium";
 
 interface StarRaceGameProps {
     levels: GameLevel[];
