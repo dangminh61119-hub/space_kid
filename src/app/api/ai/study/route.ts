@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { STUDY_AI_SYSTEM_PROMPT } from "@/lib/ai/prompts";
 import { isResponseSafe } from "@/lib/ai/guardrails";
-import { requireAuth, unauthorizedResponse, checkRateLimit, rateLimitResponse } from "@/lib/services/api-auth";
+import { requireAuth, checkRateLimit, rateLimitResponse } from "@/lib/services/api-auth";
 
 interface ChatMessage {
     role: "user" | "assistant";
@@ -17,12 +17,12 @@ interface ChatMessage {
 
 export async function POST(request: NextRequest) {
     try {
-        // Auth check
+        // Soft auth: use userId if logged in, otherwise fall back to IP
         const auth = await requireAuth(request);
-        if (!auth.authenticated) return unauthorizedResponse(auth.error);
+        const rateLimitKey = auth.authenticated ? auth.userId! : (request.headers.get("x-forwarded-for") || "anon");
 
-        // Rate limit: 20 study requests per minute (more generous responses)
-        if (!checkRateLimit(auth.userId!, 20, 60_000)) return rateLimitResponse();
+        // Rate limit: 20 study requests per minute
+        if (!checkRateLimit(rateLimitKey, 20, 60_000)) return rateLimitResponse();
 
         const body = await request.json();
         const {
