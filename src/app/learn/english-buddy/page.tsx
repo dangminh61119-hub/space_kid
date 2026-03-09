@@ -6,6 +6,22 @@ import { useGame } from "@/lib/game-context";
 import { useAuth } from "@/lib/services/auth-context";
 import LunaChatSession from "@/components/learn/LunaChatSession";
 
+/* ─── Voice options ─── */
+const VOICES = [
+    // Female
+    { id: "en-US-Studio-O", name: "Olivia", gender: "female", tier: "Studio", desc: "Ấm áp, tự nhiên nhất" },
+    { id: "en-US-Chirp3-HD-Aoede", name: "Aria", gender: "female", tier: "Chirp3", desc: "Sáng, thân thiện" },
+    { id: "en-US-Chirp3-HD-Kore", name: "Kira", gender: "female", tier: "Chirp3", desc: "Nhẹ nhàng, dịu dàng" },
+    { id: "en-US-Chirp3-HD-Leda", name: "Leah", gender: "female", tier: "Chirp3", desc: "Rõ ràng, chuyên nghiệp" },
+    { id: "en-US-Chirp3-HD-Zephyr", name: "Zoe", gender: "female", tier: "Chirp3", desc: "Vui tươi, trẻ trung" },
+    // Male
+    { id: "en-US-Studio-Q", name: "Quinn", gender: "male", tier: "Studio", desc: "Trầm ấm, tự nhiên nhất" },
+    { id: "en-US-Chirp3-HD-Fenrir", name: "Felix", gender: "male", tier: "Chirp3", desc: "Tự tin, mạnh mẽ" },
+    { id: "en-US-Chirp3-HD-Puck", name: "Parker", gender: "male", tier: "Chirp3", desc: "Vui, playful" },
+    { id: "en-US-Chirp3-HD-Charon", name: "Charlie", gender: "male", tier: "Chirp3", desc: "Ấm áp, tự nhiên" },
+    { id: "en-US-Chirp3-HD-Orus", name: "Owen", gender: "male", tier: "Chirp3", desc: "Điềm tĩnh, rõ ràng" },
+];
+
 /* ─── Duration options ─── */
 const DURATIONS = [
     { minutes: 15, label: "15 phút", desc: "Buổi ngắn, nhanh gọn", emoji: "⚡" },
@@ -48,6 +64,7 @@ export default function EnglishBuddyPage() {
 
     const [phase, setPhase] = useState<"setup" | "session">("setup");
     const [selectedDuration, setSelectedDuration] = useState(30);
+    const [selectedVoice, setSelectedVoice] = useState(VOICES[0].id);
     const [topicInput, setTopicInput] = useState("");
     const [pastSessions, setPastSessions] = useState<PastSession[]>([]);
     const [loadingSessions, setLoadingSessions] = useState(false);
@@ -119,6 +136,7 @@ export default function EnglishBuddyPage() {
                     topic={activeTopic}
                     durationMinutes={selectedDuration}
                     playerId={playerDbId}
+                    voice={selectedVoice}
                     onSessionEnd={handleSessionEnd}
                 />
             </div>
@@ -202,6 +220,31 @@ export default function EnglishBuddyPage() {
                             </button>
                         ))}
                     </div>
+                </div>
+            </motion.div>
+
+            {/* ─── Voice Selector ─── */}
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                <h2 className="luna-section-title">🎙️ Chọn giọng nói</h2>
+                <div className="luna-voice-grid">
+                    {["female", "male"].map(g => (
+                        <div key={g} className="luna-voice-group">
+                            <div className="luna-voice-gender-label">{g === "female" ? "👩 Nữ" : "👨 Nam"}</div>
+                            <div className="luna-voice-row">
+                                {VOICES.filter(v => v.gender === g).map(v => (
+                                    <button
+                                        key={v.id}
+                                        className={`luna-voice-chip ${selectedVoice === v.id ? "selected" : ""}`}
+                                        onClick={() => setSelectedVoice(v.id)}
+                                    >
+                                        <span className="luna-voice-name">{v.name}</span>
+                                        <span className="luna-voice-tier">{v.tier}</span>
+                                        <span className="luna-voice-desc">{v.desc}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </motion.div>
 
@@ -317,6 +360,18 @@ export default function EnglishBuddyPage() {
               .luna-hist-phrase-chip { background:rgba(13,148,136,0.12); border:1px solid rgba(13,148,136,0.25); border-radius:10px; padding:5px 12px; font-size:12px; }
               .luna-hist-en { color:#5EEAD4; font-weight:700; }
               .luna-hist-vi { color:var(--learn-text-secondary); }
+              /* Voice picker */
+              .luna-voice-grid { display:flex; flex-direction:column; gap:14px; }
+              .luna-voice-group { display:flex; flex-direction:column; gap:8px; }
+              .luna-voice-gender-label { font-size:12px; font-weight:800; color:var(--learn-text-secondary); text-transform:uppercase; letter-spacing:1px; }
+              .luna-voice-row { display:flex; gap:10px; flex-wrap:wrap; }
+              .luna-voice-chip { display:flex; flex-direction:column; align-items:flex-start; gap:2px; padding:11px 16px; border-radius:16px; border:1.5px solid var(--learn-card-border); background:var(--learn-card); cursor:pointer; transition:all 0.2s; min-width:100px; }
+              .luna-voice-chip:hover { border-color:rgba(13,148,136,0.4); transform:translateY(-2px); }
+              .luna-voice-chip.selected { border-color:rgba(13,148,136,0.7); background:rgba(13,148,136,0.1); box-shadow:0 0 0 3px rgba(13,148,136,0.12); }
+              .luna-voice-name { font-family:var(--font-heading); font-size:15px; font-weight:900; color:#fff; }
+              .luna-voice-tier { font-size:9px; font-weight:800; color:#5EEAD4; text-transform:uppercase; letter-spacing:1px; background:rgba(13,148,136,0.15); border-radius:6px; padding:2px 6px; }
+              .luna-voice-desc { font-size:11px; color:var(--learn-text-secondary); margin-top:2px; }
+
               .luna-replay-btn { font-size:13px; padding:9px 18px; }
 
               @media (max-width: 768px) {

@@ -10,6 +10,7 @@ interface KeyPhrase { phrase: string; translation: string; }
 interface Props {
     studentName: string; grade: number; topic: string;
     durationMinutes: number; playerId: string | null;
+    voice?: string;
     onSessionEnd?: () => void;
 }
 type OwlMood = "idle" | "listening" | "speaking" | "happy" | "correcting" | "thinking";
@@ -107,7 +108,7 @@ function LunaOwl({ mood, isSpeaking }: { mood: OwlMood; isSpeaking: boolean }) {
 }
 
 /* ═══════════════════ MAIN SESSION ═══════════════════ */
-export default function LunaChatSession({ studentName, grade, topic, durationMinutes, playerId, onSessionEnd }: Props) {
+export default function LunaChatSession({ studentName, grade, topic, durationMinutes, playerId, voice = "en-US-Studio-O", onSessionEnd }: Props) {
     const { session } = useAuth();
     const token = session?.access_token;
 
@@ -160,7 +161,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                 const res = await fetch("/api/ai/english-tts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-                    body: JSON.stringify({ text }),
+                    body: JSON.stringify({ text, voice }),
                 });
                 if (!res.ok) throw new Error("TTS failed");
                 const blob = await res.blob();

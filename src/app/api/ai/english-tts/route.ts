@@ -12,9 +12,6 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-const VOICE_NAME = "en-US-Studio-O";
-const LANGUAGE_CODE = "en-US";
-
 const SPEED_RATES: Record<string, number> = {
     slow: 0.82,    // Clear for beginners — every word distinct
     normal: 0.95,  // Near-native when student is fluent
@@ -23,7 +20,7 @@ const SPEED_RATES: Record<string, number> = {
 
 export async function POST(request: NextRequest) {
     try {
-        const { text, speed = "slow" } = await request.json() as { text: string; speed?: string };
+        const { text, speed = "slow", voice = "en-US-Studio-O" } = await request.json() as { text: string; speed?: string; voice?: string };
         if (!text?.trim()) return NextResponse.json({ error: "Missing text" }, { status: 400 });
 
         const apiKey = process.env.GOOGLE_TTS_API_KEY;
@@ -31,14 +28,21 @@ export async function POST(request: NextRequest) {
 
         const speakingRate = SPEED_RATES[speed] ?? SPEED_RATES.slow;
 
+        // Determine language code from voice name
+        const languageCode = voice.startsWith("vi-") ? "vi-VN" : "en-US";
+        // Studio voices use SSML gender; Chirp3-HD voices ignore it
+        const ssmlGender = voice.includes("-Studio-O") ? "FEMALE"
+            : voice.includes("-Studio-Q") ? "MALE"
+                : "NEUTRAL";
+
         const ttsUrl = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`;
 
         const payload = {
             input: { text: text.trim() },
             voice: {
-                languageCode: LANGUAGE_CODE,
-                name: VOICE_NAME,
-                ssmlGender: "FEMALE",
+                languageCode,
+                name: voice,
+                ssmlGender,
             },
             audioConfig: {
                 audioEncoding: "MP3",
