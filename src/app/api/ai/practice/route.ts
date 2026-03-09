@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
         // Step 2: AI generates practice questions
         const apiKey = process.env.GEMINI_API_KEY;
         const apiUrl = process.env.AI_API_URL || "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-        const modelName = process.env.AI_MODEL || "gemini-2.5-flash";
+        const modelName = process.env.AI_MODEL || "gemini-2.0-flash";
 
         if (!apiKey) {
             return NextResponse.json({ questions: [], message: "AI không khả dụng", hasSGK: true });
