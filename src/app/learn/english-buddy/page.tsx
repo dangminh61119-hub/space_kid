@@ -61,8 +61,6 @@ export default function EnglishBuddyPage() {
         return TOPIC_SUGGESTIONS[g] ?? TOPIC_SUGGESTIONS["2"];
     }, [player.grade]);
 
-    /* Past session summaries for personalisation */
-    const pastSummaries = useMemo(() => pastSessions.map(s => `"${s.topic}": ${s.summary}`), [pastSessions]);
 
     /* Load recent sessions */
     useEffect(() => {
@@ -121,7 +119,6 @@ export default function EnglishBuddyPage() {
                     topic={activeTopic}
                     durationMinutes={selectedDuration}
                     playerId={playerDbId}
-                    pastSummaries={pastSummaries}
                     onSessionEnd={handleSessionEnd}
                 />
             </div>

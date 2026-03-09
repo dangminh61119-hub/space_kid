@@ -10,7 +10,7 @@ interface KeyPhrase { phrase: string; translation: string; }
 interface Props {
     studentName: string; grade: number; topic: string;
     durationMinutes: number; playerId: string | null;
-    pastSummaries?: string[]; onSessionEnd?: () => void;
+    onSessionEnd?: () => void;
 }
 type OwlMood = "idle" | "listening" | "speaking" | "happy" | "correcting" | "thinking";
 type ConvState = "ready" | "luna-speaking" | "user-speaking" | "processing" | "ended";
@@ -107,7 +107,7 @@ function LunaOwl({ mood, isSpeaking }: { mood: OwlMood; isSpeaking: boolean }) {
 }
 
 /* ═══════════════════ MAIN SESSION ═══════════════════ */
-export default function LunaChatSession({ studentName, grade, topic, durationMinutes, playerId, pastSummaries = [], onSessionEnd }: Props) {
+export default function LunaChatSession({ studentName, grade, topic, durationMinutes, playerId, onSessionEnd }: Props) {
     const { session } = useAuth();
     const token = session?.access_token;
 
@@ -117,7 +117,6 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     const [convState, setConvState] = useState<ConvState>("ready");
     const [owlMood, setOwlMood] = useState<OwlMood>("idle");
     const [isSpeaking, setIsSpeaking] = useState(false);
-    const [statusLabel, setStatusLabel] = useState("Bấm Start để bắt đầu");
     const [liveTranscript, setLiveTranscript] = useState("");
     const [isSummaryLoading, setIsSummaryLoading] = useState(false);
     const [summaryText, setSummaryText] = useState("");
@@ -126,7 +125,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     const bottomRef = useRef<HTMLDivElement>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const recognitionRef = useRef<SpeechRecognition | null>(null);
-    const sessionCtx = useRef({ studentName, grade, topic, durationMinutes, pastSummaries });
+    const sessionCtx = useRef({ studentName, grade, topic, durationMinutes });
     const isEndedRef = useRef(false);
     const convStateRef = useRef<ConvState>("ready");
 
@@ -190,7 +189,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
             rec.interimResults = true;
             let finalText = "";
             recognitionRef.current = rec;
-            rec.onstart = () => { setConvState("user-speaking"); setOwlMood("listening"); setStatusLabel("Đang nghe..."); };
+            rec.onstart = () => { setConvState("user-speaking"); setOwlMood("listening"); };
             rec.onresult = (e: SpeechRecognitionEvent) => {
                 const text = Array.from(Array(e.results.length), (_, i) => e.results[i][0].transcript).join("");
                 setLiveTranscript(text);
@@ -206,11 +205,12 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     const callLunaAPI = useCallback(async (userText: string, currentMessages: ChatMessage[]): Promise<{ reply: string; mood: OwlMood }> => {
         setConvState("processing");
         setOwlMood("thinking");
-        setStatusLabel("Luna đang suy nghĩ...");
+        // Cap history to last 4 messages to save tokens
+        const recentHistory = currentMessages.slice(-4).map(m => ({ role: m.role, content: m.content }));
         const res = await fetch("/api/ai/english-practice", {
             method: "POST",
             headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-            body: JSON.stringify({ message: userText.trim(), history: currentMessages.map(m => ({ role: m.role, content: m.content })), sessionContext: sessionCtx.current }),
+            body: JSON.stringify({ message: userText.trim(), history: recentHistory, sessionContext: sessionCtx.current }),
         });
         const data = await res.json();
         const reply = data.response || "Keep going!";
@@ -225,37 +225,27 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
         msgs = [{ role: "assistant", content: initialLunaText }];
         setMessages(msgs);
         setConvState("luna-speaking");
-        setStatusLabel("Luna đang nói...");
         await lunaSpeak(initialLunaText, "happy");
         if (isEndedRef.current) return;
 
         // Conversation loop
         while (!isEndedRef.current) {
-            // User speaks
-            setStatusLabel("Đến lượt bạn nói...");
             const userText = await startListening();
             if (isEndedRef.current) return;
             if (!userText.trim()) {
-                // Silence — prompt gently
-                setStatusLabel("Luna đang nói...");
-                await lunaSpeak("I'm listening — take your time! What would you like to say?", "idle");
+                await lunaSpeak("I'm here — take your time! What would you like to say?", "idle");
                 continue;
             }
 
-            // Add user message
             msgs = [...msgs, { role: "user", content: userText.trim() }];
             setMessages([...msgs]);
 
-            // Get Luna's reply
             const { reply, mood } = await callLunaAPI(userText, msgs);
 
-            // Add Luna's reply
             msgs = [...msgs, { role: "assistant", content: reply }];
             setMessages([...msgs]);
 
-            // Luna speaks
             setConvState("luna-speaking");
-            setStatusLabel("Luna đang nói...");
             await lunaSpeak(reply, mood);
             if (isEndedRef.current) return;
         }
@@ -265,12 +255,9 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     const handleStart = useCallback(async () => {
         if (convState !== "ready") return;
         isEndedRef.current = false;
-        const isFirst = !pastSummaries?.length;
-        const opening = isFirst
-            ? `Hi ${studentName}! I'm Luna, your English buddy! Today we'll chat about "${topic}" for ${durationMinutes} minutes. I'll gently correct your mistakes as we go. What do you know about "${topic}"?`
-            : `Hey ${studentName}! Great to see you again! Today's topic is "${topic}". Let's go — what's on your mind?`;
+        const opening = `Hi ${studentName}! I'm Luna, your English buddy! Today we'll chat about "${topic}" for ${durationMinutes} minutes. I'll help correct your sentences as we go. What do you already know about "${topic}"?`;
         await runConversation(opening);
-    }, [convState, pastSummaries, studentName, topic, durationMinutes, runConversation]);
+    }, [convState, studentName, topic, durationMinutes, runConversation]);
 
     /* ─── End session ─── */
     const endSession = useCallback(async () => {
