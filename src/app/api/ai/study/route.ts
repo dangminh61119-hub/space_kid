@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
 
         const apiKey = process.env.GEMINI_API_KEY;
         const apiUrl = process.env.AI_API_URL || "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-        const modelName = process.env.AI_MODEL || "gemini-2.0-flash";
+        const modelName = process.env.AI_MODEL || "gemini-2.5-flash";
 
         if (!apiKey) {
             return NextResponse.json({
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "x-goog-api-key": apiKey,
+                "Authorization": `Bearer ${apiKey}`,
             },
             body: JSON.stringify({
                 model: modelName,
