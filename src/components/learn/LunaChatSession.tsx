@@ -255,7 +255,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     const handleStart = useCallback(async () => {
         if (convState !== "ready") return;
         isEndedRef.current = false;
-        const opening = `Hi ${studentName}! I'm Luna, your English buddy! Today we'll chat about "${topic}" for ${durationMinutes} minutes. I'll help correct your sentences as we go. What do you already know about "${topic}"?`;
+        const opening = `Hi ${studentName}! Let's chat about "${topic}" — what do you know about it?`;
         await runConversation(opening);
     }, [convState, studentName, topic, durationMinutes, runConversation]);
 

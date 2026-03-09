@@ -12,7 +12,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-const VOICE_NAME = "en-US-Neural2-F";
+const VOICE_NAME = "en-US-Studio-O";
 const LANGUAGE_CODE = "en-US";
 
 const SPEED_RATES: Record<string, number> = {
