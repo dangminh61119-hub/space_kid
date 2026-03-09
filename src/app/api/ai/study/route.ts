@@ -101,7 +101,8 @@ export async function POST(request: NextRequest) {
         });
 
         if (!aiRes.ok) {
-            console.error("[study/route] AI error:", aiRes.status);
+            const errBody = await aiRes.text();
+            console.error("[study/route] AI error:", aiRes.status, errBody);
             return NextResponse.json({
                 response: "Cú Mèo bị mất sóng! Thử lại nhé! 🦉",
                 isFallback: true,
