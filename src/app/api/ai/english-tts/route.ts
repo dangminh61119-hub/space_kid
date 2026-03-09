@@ -35,7 +35,7 @@ function buildWavHeader(pcmLength: number, sampleRate = 24000, numChannels = 1, 
 
 export async function POST(request: NextRequest) {
     try {
-        const { text, voice = "Kore" } = await request.json() as { text: string; voice?: string };
+        const { text, voice = "Kore", speed = "slow" } = await request.json() as { text: string; voice?: string; speed?: "slow" | "normal" | "fast" };
         if (!text?.trim()) return NextResponse.json({ error: "Missing text" }, { status: 400 });
 
         const apiKey = process.env.GEMINI_API_KEY;
@@ -44,8 +44,13 @@ export async function POST(request: NextRequest) {
         // Use Gemini TTS model — generates natural expressive speech
         const ttsUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
 
+        // Prepend speaking style instruction for EFL learners — Gemini TTS honours natural language pacing hints.
+        const styledText = speed === "slow"
+            ? `Say the following slowly, clearly, and with natural pauses between sentences, as if speaking to an English language learner: ${text.trim()}`
+            : text.trim();
+
         const payload = {
-            contents: [{ parts: [{ text: text.trim() }] }],
+            contents: [{ parts: [{ text: styledText }] }],
             generationConfig: {
                 responseModalities: ["AUDIO"],
                 speechConfig: {
