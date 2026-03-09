@@ -174,47 +174,49 @@ export default function LearnReviewPage() {
                 )}
 
                 <style jsx>{`
-          .review-session { max-width: 500px; margin: 0 auto; }
-          .review-progress-bar { height: 6px; background: var(--learn-border); border-radius: 3px; margin-bottom: 8px; overflow: hidden; }
-          .review-progress-fill { height: 100%; background: linear-gradient(90deg, var(--learn-accent), var(--learn-success)); border-radius: 3px; }
+          .review-session { max-width: 520px; margin: 0 auto; }
+          .review-progress-bar { height: 8px; background: var(--learn-border); border-radius: 4px; margin-bottom: 10px; overflow: hidden; }
+          .review-progress-fill { height: 100%; background: linear-gradient(90deg, var(--learn-accent), var(--learn-success)); border-radius: 4px; box-shadow: 0 0 8px rgba(245,158,11,0.3); }
 
           .review-card {
-            position: relative; width: 100%; min-height: 260px; cursor: pointer;
-            transform-style: preserve-3d; transition: transform 0.5s cubic-bezier(0.4,0,0.2,1);
-            border-radius: 20px; margin-bottom: 20px;
+            position: relative; width: 100%; min-height: 280px; cursor: pointer;
+            transform-style: preserve-3d; transition: transform 0.6s cubic-bezier(0.4,0,0.2,1);
+            border-radius: 24px; margin-bottom: 24px;
           }
           .review-card.flipped { transform: rotateY(180deg); }
 
           .review-face {
             position: absolute; inset: 0; backface-visibility: hidden;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            padding: 32px 24px; border-radius: 20px; text-align: center;
+            padding: 36px 28px; border-radius: 24px; text-align: center;
           }
           .review-front {
-            background: linear-gradient(135deg, #FFFFFF, #F0F2FF);
-            border: 2px solid var(--learn-border);
-            box-shadow: 0 8px 32px rgba(99,102,241,0.08);
+            background: linear-gradient(135deg, #FFFFFF, var(--learn-bg-alt));
+            border: 1.5px solid var(--learn-card-border);
+            box-shadow: 0 12px 40px rgba(245,158,11,0.08), 0 2px 4px rgba(0,0,0,0.04);
           }
           .review-back {
-            background: linear-gradient(135deg, #10B981, #059669);
+            background: linear-gradient(135deg, var(--learn-accent), var(--learn-accent-dark));
             color: white; transform: rotateY(180deg);
-            box-shadow: 0 8px 32px rgba(16,185,129,0.2);
+            box-shadow: 0 12px 40px rgba(245,158,11,0.2), 0 2px 4px rgba(0,0,0,0.08);
           }
-          .review-card-text { font-family: var(--font-heading); font-size: 22px; font-weight: 700; line-height: 1.4; }
+          .review-card-text { font-family: var(--font-heading); font-size: 24px; font-weight: 800; line-height: 1.4; }
           .review-answer { color: white; }
-          .review-tap { position: absolute; bottom: 16px; font-size: 12px; color: var(--learn-text-secondary); opacity: 0.7; }
+          .review-tap { position: absolute; bottom: 18px; font-size: 12px; color: var(--learn-text-secondary); opacity: 0.7; font-weight: 600; }
 
-          .review-quality-row { margin-top: 4px; }
+          .review-quality-row { margin-top: 8px; }
           .review-quality-btn {
-            flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
-            padding: 10px 8px; border-radius: 12px; border: none;
-            cursor: pointer; font-weight: 700; font-size: 12px;
-            font-family: var(--font-heading); transition: all 0.2s;
+            flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+            padding: 12px 10px; border-radius: 16px; border: 1.5px solid transparent;
+            cursor: pointer; font-weight: 800; font-size: 13px;
+            font-family: var(--font-heading); transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
           }
+          .review-quality-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.08); }
 
           @media (max-width: 768px) {
-            .review-card { min-height: 220px; }
-            .review-card-text { font-size: 18px; }
+            .review-card { min-height: 240px; }
+            .review-card-text { font-size: 20px; }
           }
         `}</style>
             </div>

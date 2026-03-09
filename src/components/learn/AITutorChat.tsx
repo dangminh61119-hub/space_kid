@@ -2,213 +2,221 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/lib/services/supabase";
 
 /* ─── Types ─── */
 interface ChatMessage {
-    role: "user" | "assistant";
-    content: string;
-    timestamp: number;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: number;
 }
 
 interface AITutorChatProps {
-    studentContext: {
-        name: string;
-        grade: number;
-        profileContext: string;
-        currentSubject?: string;
-    };
-    suggestedTopics?: string[];
-    onSessionEnd?: (messageCount: number) => void;
+  studentContext: {
+    name: string;
+    grade: number;
+    profileContext: string;
+    currentSubject?: string;
+  };
+  suggestedTopics?: string[];
+  onSessionEnd?: (messageCount: number) => void;
 }
 
 /* ─── Component ─── */
 export default function AITutorChat({ studentContext, suggestedTopics, onSessionEnd }: AITutorChatProps) {
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [input, setInput] = useState("");
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
-    const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
-    // Auto-scroll to bottom
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages]);
+  // Auto-scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-    // Auto-resize textarea
-    const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        setInput(e.target.value);
-        e.target.style.height = "auto";
-        e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
-    }, []);
+  // Auto-resize textarea
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    e.target.style.height = "auto";
+    e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+  }, []);
 
-    const sendMessage = useCallback(async (text?: string) => {
-        const messageText = (text || input).trim();
-        if (!messageText || isLoading) return;
+  const sendMessage = useCallback(async (text?: string) => {
+    const messageText = (text || input).trim();
+    if (!messageText || isLoading) return;
 
-        setInput("");
-        setError(null);
-        if (inputRef.current) inputRef.current.style.height = "auto";
+    setInput("");
+    setError(null);
+    if (inputRef.current) inputRef.current.style.height = "auto";
 
-        const userMsg: ChatMessage = { role: "user", content: messageText, timestamp: Date.now() };
-        setMessages(prev => [...prev, userMsg]);
-        setIsLoading(true);
+    const userMsg: ChatMessage = { role: "user", content: messageText, timestamp: Date.now() };
+    setMessages(prev => [...prev, userMsg]);
+    setIsLoading(true);
 
-        try {
-            const res = await fetch("/api/ai/study", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    message: messageText,
-                    history: messages.map(m => ({ role: m.role, content: m.content })),
-                    studentContext,
-                }),
-            });
+    try {
+      // Get JWT token for API auth
+      const session = supabase ? (await supabase.auth.getSession()).data.session : null;
+      const authToken = session?.access_token;
 
-            if (!res.ok) throw new Error("API error");
+      const res = await fetch("/api/ai/study", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
+        },
+        body: JSON.stringify({
+          message: messageText,
+          history: messages.map(m => ({ role: m.role, content: m.content })),
+          studentContext,
+        }),
+      });
 
-            const data = await res.json();
-            const assistantMsg: ChatMessage = {
-                role: "assistant",
-                content: data.response || "Cú Mèo đang suy nghĩ... 🤔",
-                timestamp: Date.now(),
-            };
-            setMessages(prev => [...prev, assistantMsg]);
-        } catch (err) {
-            console.error("AI Tutor error:", err);
-            setError("Không thể kết nối Cú Mèo. Thử lại nhé!");
-            setMessages(prev => [...prev, {
-                role: "assistant",
-                content: "Oops! Cú Mèo bị mất tín hiệu vũ trụ! Thử lại nhé bạn! 🦉💫",
-                timestamp: Date.now(),
-            }]);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [input, isLoading, messages, studentContext]);
+      if (!res.ok) throw new Error("API error");
 
-    const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    }, [sendMessage]);
+      const data = await res.json();
+      const assistantMsg: ChatMessage = {
+        role: "assistant",
+        content: data.response || "Cú Mèo đang suy nghĩ... 🤔",
+        timestamp: Date.now(),
+      };
+      setMessages(prev => [...prev, assistantMsg]);
+    } catch (err) {
+      console.error("AI Tutor error:", err);
+      setError("Không thể kết nối Cú Mèo. Thử lại nhé!");
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: "Oops! Cú Mèo bị mất tín hiệu vũ trụ! Thử lại nhé bạn! 🦉💫",
+        timestamp: Date.now(),
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [input, isLoading, messages, studentContext]);
 
-    return (
-        <div className="tutor-chat">
-            {/* Messages area */}
-            <div className="tutor-messages">
-                {/* Welcome message */}
-                {messages.length === 0 && (
-                    <motion.div
-                        className="tutor-welcome"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                    >
-                        <div className="tutor-welcome-owl">🦉</div>
-                        <h3 className="tutor-welcome-title">Chào {studentContext.name}!</h3>
-                        <p className="tutor-welcome-text">
-                            Cú Mèo sẵn sàng giúp bạn học bài. Hãy hỏi bất cứ điều gì nhé!
-                        </p>
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }, [sendMessage]);
 
-                        {/* Suggested topics */}
-                        {suggestedTopics && suggestedTopics.length > 0 && (
-                            <div className="tutor-suggestions">
-                                <p className="tutor-suggestions-label">💡 Gợi ý hỏi:</p>
-                                <div className="tutor-suggestions-list">
-                                    {suggestedTopics.map((topic, i) => (
-                                        <motion.button
-                                            key={i}
-                                            className="tutor-suggestion-btn"
-                                            whileHover={{ scale: 1.03 }}
-                                            whileTap={{ scale: 0.97 }}
-                                            onClick={() => sendMessage(topic)}
-                                        >
-                                            {topic}
-                                        </motion.button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </motion.div>
-                )}
+  return (
+    <div className="tutor-chat">
+      {/* Messages area */}
+      <div className="tutor-messages">
+        {/* Welcome message */}
+        {messages.length === 0 && (
+          <motion.div
+            className="tutor-welcome"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="tutor-welcome-owl">🦉</div>
+            <h3 className="tutor-welcome-title">Chào {studentContext.name}!</h3>
+            <p className="tutor-welcome-text">
+              Cú Mèo sẵn sàng giúp bạn học bài. Hãy hỏi bất cứ điều gì nhé!
+            </p>
 
-                {/* Chat messages */}
-                <AnimatePresence>
-                    {messages.map((msg, idx) => (
-                        <motion.div
-                            key={idx}
-                            className={`tutor-msg ${msg.role === "user" ? "tutor-msg-user" : "tutor-msg-owl"}`}
-                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            {msg.role === "assistant" && (
-                                <div className="tutor-msg-avatar">🦉</div>
-                            )}
-                            <div className={`tutor-msg-bubble ${msg.role === "user" ? "tutor-bubble-user" : "tutor-bubble-owl"}`}>
-                                <p className="tutor-msg-text">{msg.content}</p>
-                            </div>
-                            {msg.role === "user" && (
-                                <div className="tutor-msg-avatar">
-                                    {studentContext.name.charAt(0).toUpperCase()}
-                                </div>
-                            )}
-                        </motion.div>
-                    ))}
-                </AnimatePresence>
-
-                {/* Typing indicator */}
-                {isLoading && (
-                    <motion.div
-                        className="tutor-msg tutor-msg-owl"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                    >
-                        <div className="tutor-msg-avatar">🦉</div>
-                        <div className="tutor-bubble-owl tutor-typing">
-                            <span className="tutor-dot" />
-                            <span className="tutor-dot" />
-                            <span className="tutor-dot" />
-                        </div>
-                    </motion.div>
-                )}
-
-                <div ref={messagesEndRef} />
-            </div>
-
-            {/* Input area */}
-            <div className="tutor-input-area">
-                {error && (
-                    <p className="tutor-error">{error}</p>
-                )}
-                <div className="tutor-input-row">
-                    <textarea
-                        ref={inputRef}
-                        className="tutor-input"
-                        placeholder="Hỏi Cú Mèo bất cứ điều gì..."
-                        value={input}
-                        onChange={handleInputChange}
-                        onKeyDown={handleKeyDown}
-                        rows={1}
-                        disabled={isLoading}
-                    />
+            {/* Suggested topics */}
+            {suggestedTopics && suggestedTopics.length > 0 && (
+              <div className="tutor-suggestions">
+                <p className="tutor-suggestions-label">💡 Gợi ý hỏi:</p>
+                <div className="tutor-suggestions-list">
+                  {suggestedTopics.map((topic, i) => (
                     <motion.button
-                        className="tutor-send-btn"
-                        onClick={() => sendMessage()}
-                        disabled={!input.trim() || isLoading}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
+                      key={i}
+                      className="tutor-suggestion-btn"
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => sendMessage(topic)}
                     >
-                        <span>🚀</span>
+                      {topic}
                     </motion.button>
+                  ))}
                 </div>
-                <p className="tutor-hint">
-                    Enter để gửi • Shift+Enter để xuống dòng
-                </p>
-            </div>
+              </div>
+            )}
+          </motion.div>
+        )}
 
-            <style jsx>{`
+        {/* Chat messages */}
+        <AnimatePresence>
+          {messages.map((msg, idx) => (
+            <motion.div
+              key={idx}
+              className={`tutor-msg ${msg.role === "user" ? "tutor-msg-user" : "tutor-msg-owl"}`}
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.2 }}
+            >
+              {msg.role === "assistant" && (
+                <div className="tutor-msg-avatar">🦉</div>
+              )}
+              <div className={`tutor-msg-bubble ${msg.role === "user" ? "tutor-bubble-user" : "tutor-bubble-owl"}`}>
+                <p className="tutor-msg-text">{msg.content}</p>
+              </div>
+              {msg.role === "user" && (
+                <div className="tutor-msg-avatar">
+                  {studentContext.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+
+        {/* Typing indicator */}
+        {isLoading && (
+          <motion.div
+            className="tutor-msg tutor-msg-owl"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <div className="tutor-msg-avatar">🦉</div>
+            <div className="tutor-bubble-owl tutor-typing">
+              <span className="tutor-dot" />
+              <span className="tutor-dot" />
+              <span className="tutor-dot" />
+            </div>
+          </motion.div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input area */}
+      <div className="tutor-input-area">
+        {error && (
+          <p className="tutor-error">{error}</p>
+        )}
+        <div className="tutor-input-row">
+          <textarea
+            ref={inputRef}
+            className="tutor-input"
+            placeholder="Hỏi Cú Mèo bất cứ điều gì..."
+            value={input}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            rows={1}
+            disabled={isLoading}
+          />
+          <motion.button
+            className="tutor-send-btn"
+            onClick={() => sendMessage()}
+            disabled={!input.trim() || isLoading}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <span>🚀</span>
+          </motion.button>
+        </div>
+        <p className="tutor-hint">
+          Enter để gửi • Shift+Enter để xuống dòng
+        </p>
+      </div>
+
+      <style jsx>{`
         .tutor-chat {
           display: flex;
           flex-direction: column;
@@ -427,6 +435,6 @@ export default function AITutorChat({ studentContext, suggestedTopics, onSession
           .tutor-welcome { padding: 20px 12px; }
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 }

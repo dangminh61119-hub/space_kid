@@ -625,56 +625,72 @@ function PracticeContent() {
         .practice-drills-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-          gap: 10px;
+          gap: 12px;
         }
-        .practice-drill-card { padding: 14px 16px; }
+        .practice-drill-card { padding: 16px 18px; }
 
         .practice-modes-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-          gap: 16px;
+          gap: 18px;
         }
-        .practice-mode-card { padding: 20px; }
+        .practice-mode-card { 
+          padding: 24px; 
+          border-left: 4px solid var(--learn-accent-light);
+          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .practice-mode-card:hover {
+          border-left-color: var(--learn-accent);
+        }
 
         .practice-mode-header {
           display: flex;
           align-items: center;
-          gap: 10px;
-          margin-bottom: 8px;
+          gap: 12px;
+          margin-bottom: 10px;
         }
-        .practice-mode-emoji { font-size: 28px; }
+        .practice-mode-emoji { 
+          font-size: 32px; 
+          background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(217,119,6,0.05));
+          width: 52px; height: 52px;
+          display: flex; align-items: center; justify-content: center;
+          border-radius: 16px;
+          border: 1px solid var(--learn-card-border);
+        }
         .practice-mode-title {
           font-family: var(--font-heading);
-          font-size: 18px;
-          font-weight: 700;
+          font-size: 19px;
+          font-weight: 800;
           color: var(--learn-text);
         }
         .practice-mode-desc {
           font-size: 13px;
           color: var(--learn-text-secondary);
-          margin-bottom: 14px;
-          line-height: 1.4;
+          margin-bottom: 16px;
+          line-height: 1.5;
         }
 
         .practice-mode-subjects {
           display: flex;
           flex-wrap: wrap;
-          gap: 6px;
+          gap: 8px;
         }
         .practice-subject-btn {
-          padding: 6px 12px;
-          border-radius: 8px;
-          border: 2px solid;
-          background: white;
-          font-size: 12px;
+          padding: 8px 16px;
+          border-radius: 12px;
+          border: 1.5px solid;
+          background: var(--learn-card-solid);
+          font-size: 13px;
           font-weight: 700;
+          font-family: var(--font-heading);
           cursor: pointer;
-          transition: all 0.2s;
+          transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
           color: var(--learn-text);
+          box-shadow: 0 2px 6px rgba(0,0,0,0.04);
         }
         .practice-subject-btn:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+          transform: translateY(-2px);
+          box-shadow: 0 4px 14px rgba(0,0,0,0.08);
         }
 
         @media (max-width: 768px) {

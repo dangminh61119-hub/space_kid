@@ -34,44 +34,42 @@
   --dash-eng: #FB923C;
   --dash-hist: #A78BFA;
 
-  /* === LEARN MODULE (Student Learning Hub) === */
-  /* Creative, vibrant, and soft colors for kids */
-  --learn-bg: #F0F4FF;
-  /* Soft pastel blue instead of gray-blue */
-  --learn-bg-alt: #E3E9FE;
-  --learn-card: #FFFFFF;
-  --learn-card-hover: #FEFBFF;
-  --learn-text: #1E293B;
-  --learn-text-secondary: #64748B;
-  --learn-accent: #7C3AED;
-  /* Vibrant purple */
-  --learn-accent-light: #C4B5FD;
+  /* === LEARN MODULE (Galactic Bento - Amber Glow) === */
+  --learn-bg: #0A0612;
+  --learn-bg-alt: #130924;
+  --learn-bg-pattern: rgba(245, 158, 11, 0.03);
+  --learn-card: rgba(255, 255, 255, 0.03);
+  --learn-card-solid: #1A112C;
+  --learn-card-hover: rgba(255, 255, 255, 0.05);
+  --learn-card-border: rgba(255, 255, 255, 0.08);
+  --learn-card-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  --learn-card-shadow-hover: 0 12px 48px rgba(245, 158, 11, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  --learn-text: #F9FAFB;
+  --learn-text-secondary: #9CA3AF;
+  --learn-accent: #F59E0B;
+  --learn-accent-dark: #D97706;
+  --learn-accent-light: #FDE68A;
+  --learn-accent-glow: rgba(245, 158, 11, 0.3);
   --learn-success: #10B981;
-  /* Vibrant green */
-  --learn-success-bg: #D1FAE5;
+  --learn-success-bg: rgba(16, 185, 129, 0.1);
   --learn-warning: #F59E0B;
-  /* Vibrant amber */
-  --learn-warning-bg: #FEF3C7;
+  --learn-warning-bg: rgba(245, 158, 11, 0.1);
   --learn-error: #EF4444;
-  /* Vibrant red */
-  --learn-error-bg: #FEE2E2;
+  --learn-error-bg: rgba(239, 68, 68, 0.1);
   --learn-streak: #F97316;
-  --learn-border: #E2E8F0;
-  --learn-sidebar: #4F46E5;
-  /* Deep vibrant indigo */
-  --learn-sidebar-text: #FFFFFF;
-  --learn-math: #3B82F6;
-  /* Bright Blue */
-  --learn-vietnamese: #10B981;
-  /* Emerald Green */
-  --learn-english: #F43F5E;
-  /* Rose Red */
-  --learn-science: #8B5CF6;
-  /* Violet */
-  --learn-geography: #06B6D4;
-  /* Cyan */
-  --learn-history: #D946EF;
-  /* Fuchsia */
+  --learn-border: rgba(255, 255, 255, 0.05);
+  --learn-border-strong: rgba(245, 158, 11, 0.2);
+  --learn-sidebar: #0F091A;
+  --learn-sidebar-dark: #0A0612;
+  --learn-sidebar-text: #E5E7EB;
+
+  /* Neon Subject Colors for Bento Grid */
+  --learn-math: #06B6D4;
+  --learn-vietnamese: #A3E635;
+  --learn-english: #F59E0B;
+  --learn-science: #A855F7;
+  --learn-geography: #3B82F6;
+  --learn-history: #EC4899;
 
   /* === TYPOGRAPHY === */
   --font-heading: 'Baloo 2', cursive, sans-serif;

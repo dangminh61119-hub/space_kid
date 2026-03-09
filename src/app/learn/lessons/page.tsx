@@ -304,60 +304,68 @@ export default function LearnLessonsPage() {
             )}
 
             <style jsx>{`
-        .lessons-filters { margin-bottom: 16px; }
+        .lessons-filters { margin-bottom: 20px; }
 
         .lessons-filter-row {
-          display: flex; gap: 6px; margin-bottom: 8px; overflow-x: auto;
+          display: flex; gap: 8px; margin-bottom: 10px; overflow-x: auto;
           padding-bottom: 2px; -ms-overflow-style: none; scrollbar-width: none;
         }
         .lessons-filter-row::-webkit-scrollbar { display: none; }
 
         .lessons-filter-btn {
-          display: flex; align-items: center; gap: 4px;
-          padding: 7px 12px; border-radius: 99px;
-          border: 1px solid var(--learn-border); background: var(--learn-card);
-          color: var(--learn-text-secondary); font-size: 12px; font-weight: 600;
-          white-space: nowrap; cursor: pointer; transition: all 0.2s;
+          display: flex; align-items: center; gap: 5px;
+          padding: 8px 16px; border-radius: 99px;
+          border: 1.5px solid var(--learn-border); background: var(--learn-card);
+          color: var(--learn-text-secondary); font-size: 13px; font-weight: 700;
+          font-family: var(--font-heading);
+          white-space: nowrap; cursor: pointer; transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+          backdrop-filter: blur(8px);
+          box-shadow: 0 2px 6px rgba(0,0,0,0.04);
         }
-        .lessons-filter-btn:hover { border-color: var(--learn-accent-light); }
+        .lessons-filter-btn:hover { border-color: var(--learn-accent-light); transform: translateY(-1px); }
         .lessons-filter-btn.active {
-          background: var(--learn-accent); color: white; border-color: var(--learn-accent);
+          background: linear-gradient(135deg, var(--learn-accent), var(--learn-accent-dark)); color: white; border-color: var(--learn-accent);
+          box-shadow: 0 4px 12px rgba(245,158,11,0.25);
         }
         .lessons-grade-btn.active {
           background: var(--learn-success); border-color: var(--learn-success);
+          box-shadow: 0 4px 12px rgba(16,185,129,0.25);
         }
 
         .lessons-grid {
-          display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px;
+          display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px;
         }
 
-        .lessons-card { padding: 0; overflow: hidden; }
-        .lessons-card-active { border-color: var(--learn-accent); box-shadow: 0 0 0 2px var(--learn-accent-light); }
+        .lessons-card { padding: 0; overflow: hidden; cursor: pointer; }
+        .lessons-card-active { border-color: var(--learn-accent); box-shadow: 0 0 0 3px rgba(245,158,11,0.1), var(--learn-card-shadow); }
 
         .lessons-thumbnail {
-          position: relative; width: 100%; height: 130px;
+          position: relative; width: 100%; height: 140px;
           background: linear-gradient(135deg, var(--learn-bg-alt), var(--learn-border));
           display: flex; align-items: center; justify-content: center;
           border-bottom: 3px solid;
         }
         .lessons-thumbnail-play {
-          width: 42px; height: 42px; background: var(--learn-accent); color: white;
+          width: 48px; height: 48px; background: linear-gradient(135deg, var(--learn-accent), var(--learn-accent-dark)); color: white;
           border-radius: 50%; display: flex; align-items: center; justify-content: center;
-          font-size: 15px; box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+          font-size: 16px; box-shadow: 0 6px 20px rgba(245,158,11,0.35);
+          transition: all 0.25s;
         }
+        .lessons-card:hover .lessons-thumbnail-play { transform: scale(1.1); box-shadow: 0 8px 28px rgba(245,158,11,0.4); }
         .lessons-thumbnail-duration {
-          position: absolute; bottom: 6px; right: 6px;
-          background: rgba(0,0,0,0.75); color: white;
-          padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 600;
+          position: absolute; bottom: 8px; right: 8px;
+          background: rgba(0,0,0,0.8); color: white;
+          padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 700;
+          backdrop-filter: blur(4px);
         }
         .lessons-thumbnail-watched {
-          position: absolute; top: 6px; right: 6px; font-size: 18px;
-          background: white; border-radius: 50%; width: 24px; height: 24px;
+          position: absolute; top: 8px; right: 8px; font-size: 18px;
+          background: white; border-radius: 50%; width: 28px; height: 28px;
           display: flex; align-items: center; justify-content: center; font-size: 14px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+          box-shadow: 0 2px 10px rgba(0,0,0,0.15);
         }
 
-        .lessons-card-content { padding: 10px 12px; }
+        .lessons-card-content { padding: 14px 16px; }
 
         @media (max-width: 768px) {
           .lessons-grid { grid-template-columns: 1fr 1fr; }

@@ -40,7 +40,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
       {!isMobile && (
         <motion.aside
           className="learn-sidebar"
-          animate={{ width: sidebarOpen ? 240 : 72 }}
+          animate={{ width: sidebarOpen ? 260 : 76 }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
         >
           {/* Logo / Brand */}
@@ -120,7 +120,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
       )}
 
       {/* Main Content */}
-      <main className="learn-main" style={{ marginLeft: isMobile ? 0 : sidebarOpen ? 240 : 72 }}>
+      <main className="learn-main" style={{ marginLeft: isMobile ? 0 : sidebarOpen ? 260 : 76 }}>
         <AnimatePresence mode="wait">
           <motion.div
             key={pathname}
@@ -158,13 +158,23 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
       <style jsx global>{`
         .learn-layout {
           min-height: 100vh;
-          background-color: var(--learn-bg);
-          background-image: radial-gradient(var(--learn-accent-light) 1px, transparent 1px);
-          background-size: 24px 24px;
-          background-position: 0 0;
+          background: var(--learn-bg);
+          background-image: radial-gradient(circle at 15% 50%, rgba(245, 158, 11, 0.08), transparent 25%),
+                            radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.08), transparent 25%);
+          background-attachment: fixed;
           color: var(--learn-text);
           font-family: var(--font-body);
           display: flex;
+          position: relative;
+        }
+        .learn-layout::before {
+          content: '';
+          position: fixed;
+          inset: 0;
+          background-image: radial-gradient(var(--learn-bg-pattern) 1.2px, transparent 1.2px);
+          background-size: 32px 32px;
+          pointer-events: none;
+          z-index: 0;
         }
 
         /* ─── Sidebar ─── */
@@ -173,88 +183,121 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           top: 0;
           left: 0;
           height: 100vh;
-          background: linear-gradient(135deg, var(--learn-sidebar) 0%, #7C3AED 100%);
+          background: linear-gradient(180deg, #180F2A 0%, var(--learn-sidebar) 50%, var(--learn-sidebar-dark) 100%);
           color: var(--learn-sidebar-text);
           display: flex;
           flex-direction: column;
-          padding: 16px 12px;
+          padding: 20px 14px;
           z-index: 50;
           overflow: hidden;
-          box-shadow: 4px 0 24px rgba(124, 58, 237, 0.2);
+          box-shadow: 4px 0 32px rgba(0, 0, 0, 0.6);
+          border-right: 1px solid var(--learn-card-border);
           border-radius: 0 24px 24px 0;
+        }
+        .learn-sidebar::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 40%);
+          pointer-events: none;
+          border-radius: inherit;
         }
 
         .learn-sidebar-header {
+          position: relative;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 24px;
+          margin-bottom: 28px;
           padding: 4px;
         }
 
         .learn-sidebar-back {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
           text-decoration: none;
-          color: rgba(255,255,255,0.9);
+          color: rgba(255,255,255,0.8);
           font-size: 14px;
           font-weight: 700;
-          padding: 8px 12px;
-          border-radius: 12px;
-          transition: all 0.2s;
-          background: rgba(255,255,255,0.1);
+          padding: 10px 14px;
+          border-radius: 14px;
+          transition: all 0.25s;
+          background: var(--learn-card);
+          border: 1px solid var(--learn-card-border);
         }
         .learn-sidebar-back:hover { 
-          background: rgba(255,255,255,0.25); 
-          transform: translateY(-1px);
+          background: rgba(255,255,255,0.08); 
+          color: white;
+          border-color: rgba(255,255,255,0.15);
+          box-shadow: 0 0 12px rgba(245, 158, 11, 0.15);
         }
 
         .learn-sidebar-icon { font-size: 20px; }
         .learn-sidebar-back-text { white-space: nowrap; font-family: var(--font-heading); letter-spacing: 0.5px; }
 
         .learn-sidebar-toggle {
-          background: rgba(255,255,255,0.15);
-          border: none;
-          color: white;
-          width: 32px;
-          height: 32px;
-          border-radius: 10px;
+          background: var(--learn-card);
+          border: 1px solid var(--learn-card-border);
+          color: rgba(255,255,255,0.6);
+          width: 34px;
+          height: 34px;
+          border-radius: 12px;
           cursor: pointer;
-          font-size: 14px;
+          font-size: 13px;
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: all 0.2s;
+          transition: all 0.25s;
         }
-        .learn-sidebar-toggle:hover { background: rgba(255,255,255,0.3); transform: scale(1.05); }
+        .learn-sidebar-toggle:hover { 
+          background: rgba(255,255,255,0.1); 
+          color: white;
+          border-color: rgba(255,255,255,0.2);
+          box-shadow: 0 0 12px rgba(245, 158, 11, 0.2);
+        }
 
         /* Player mini card */
         .learn-player-mini {
+          position: relative;
           display: flex;
           align-items: center;
           gap: 12px;
-          padding: 12px;
-          background: rgba(255,255,255,0.15);
-          backdrop-filter: blur(8px);
-          border: 1px solid rgba(255,255,255,0.1);
+          padding: 14px;
+          background: var(--learn-card);
+          backdrop-filter: blur(12px);
+          border: 1px solid var(--learn-card-border);
           border-radius: 16px;
-          margin-bottom: 24px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+          margin-bottom: 28px;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
         }
         .learn-player-avatar { 
-          font-size: 32px; 
-          background: rgba(255,255,255,0.2);
+          font-size: 28px; 
+          background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.05));
           width: 48px;
           height: 48px;
           display: flex;
           align-items: center;
           justify-content: center;
           border-radius: 14px;
+          border: 1px solid rgba(245, 158, 11, 0.3);
+          box-shadow: 0 0 12px rgba(245, 158, 11, 0.2);
         }
-        .learn-player-info { display: flex; flex-direction: column; gap: 2px; }
-        .learn-player-name { font-weight: 800; font-size: 15px; font-family: var(--font-heading); }
-        .learn-player-grade { font-size: 12px; opacity: 0.9; font-weight: 600; background: rgba(0,0,0,0.2); padding: 2px 8px; border-radius: 8px; display: inline-block; width: max-content; }
+        .learn-player-info { display: flex; flex-direction: column; gap: 3px; }
+        .learn-player-name { font-weight: 800; font-size: 15px; font-family: var(--font-heading); letter-spacing: -0.2px; color: #FFF; }
+        .learn-player-grade { 
+          font-size: 11px; 
+          opacity: 0.9; 
+          font-weight: 700; 
+          background: rgba(245, 158, 11, 0.15); 
+          color: var(--learn-accent-light);
+          padding: 3px 10px; 
+          border-radius: 20px; 
+          display: inline-block; 
+          width: max-content; 
+          letter-spacing: 0.3px;
+          text-transform: uppercase;
+        }
 
         /* Nav items */
         .learn-sidebar-nav {
@@ -262,6 +305,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           flex-direction: column;
           gap: 6px;
           flex: 1;
+          position: relative;
         }
 
         .learn-nav-item {
@@ -272,30 +316,38 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           padding: 14px 16px;
           border-radius: 14px;
           text-decoration: none;
-          color: rgba(255,255,255,0.8);
-          font-weight: 700;
+          color: rgba(255,255,255,0.6);
+          font-weight: 600;
           font-family: var(--font-heading);
-          font-size: 16px;
-          transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+          font-size: 15px;
+          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
           overflow: hidden;
+          border: 1px solid transparent;
         }
         .learn-nav-item:hover { 
-          background: rgba(255,255,255,0.15); 
+          background: rgba(255,255,255,0.05); 
           color: white; 
           transform: translateX(4px);
         }
         .learn-nav-item.active { 
-          background: rgba(255,255,255,0.25); 
+          background: linear-gradient(90deg, rgba(245, 158, 11, 0.1) 0%, transparent 100%); 
           color: white; 
-          box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1);
+          font-weight: 800;
         }
 
         .learn-nav-icon { 
-          font-size: 22px; 
+          font-size: 20px; 
           flex-shrink: 0; 
-          transition: transform 0.2s;
+          transition: all 0.25s;
+          filter: grayscale(0.5) opacity(0.8);
         }
-        .learn-nav-item:hover .learn-nav-icon { transform: scale(1.15) rotate(5deg); }
+        .learn-nav-item.active .learn-nav-icon {
+          filter: grayscale(0) drop-shadow(0 0 8px rgba(245, 158, 11, 0.6));
+        }
+        .learn-nav-item:hover .learn-nav-icon { 
+          transform: scale(1.15) rotate(5deg); 
+          filter: grayscale(0) opacity(1);
+        }
         .learn-nav-label { white-space: nowrap; }
 
         .learn-nav-active-indicator {
@@ -303,10 +355,10 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           left: 0;
           top: 15%;
           height: 70%;
-          width: 5px;
-          background: var(--neon-gold);
+          width: 4px;
+          background: linear-gradient(180deg, var(--learn-accent-light), var(--learn-accent));
           border-radius: 0 6px 6px 0;
-          box-shadow: 0 0 8px var(--neon-gold);
+          box-shadow: 0 0 12px var(--learn-accent), 0 0 4px var(--learn-accent-light);
         }
 
         /* Streak */
@@ -315,28 +367,34 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           align-items: center;
           gap: 10px;
           padding: 14px 16px;
-          background: rgba(0,0,0,0.15);
-          border: 1px solid rgba(255,255,255,0.1);
+          background: var(--learn-card);
+          border: 1px solid var(--learn-card-border);
           border-radius: 16px;
           font-family: var(--font-heading);
           font-weight: 800;
           font-size: 15px;
-          color: var(--neon-gold);
-          box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+          color: var(--learn-accent-light);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
         }
-        .learn-streak-fire { font-size: 22px; filter: drop-shadow(0 0 4px rgba(255,213,79,0.5)); animation: bounce 2s infinite; }
+        .learn-streak-fire { 
+          font-size: 22px; 
+          filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.6)); 
+          animation: bounce 2s infinite; 
+        }
 
         /* ─── Main Content ─── */
         .learn-main {
           flex: 1;
           min-height: 100vh;
           transition: margin-left 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+          position: relative;
+          z-index: 1;
         }
 
         .learn-content {
-          max-width: 1100px;
+          max-width: 1200px;
           margin: 0 auto;
-          padding: 32px 28px 100px;
+          padding: 40px 32px 100px;
         }
 
         /* ─── Mobile Bottom Nav ─── */
@@ -345,16 +403,17 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           bottom: 0;
           left: 0;
           right: 0;
-          background: rgba(255, 255, 255, 0.9);
-          backdrop-filter: blur(12px);
-          border-top: 1px solid var(--learn-border);
+          background: rgba(10, 6, 18, 0.9);
+          backdrop-filter: blur(24px);
+          -webkit-backdrop-filter: blur(24px);
+          border-top: 1px solid var(--learn-card-border);
           display: flex;
           justify-content: space-around;
-          padding: 12px 6px;
-          padding-bottom: max(12px, env(safe-area-inset-bottom));
+          padding: 10px 6px;
+          padding-bottom: max(10px, env(safe-area-inset-bottom));
           z-index: 50;
-          box-shadow: 0 -8px 24px rgba(124, 58, 237, 0.08);
-          border-radius: 24px 24px 0 0;
+          box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.8);
+          border-radius: 20px 20px 0 0;
         }
 
         .learn-mobile-nav-item {
@@ -364,47 +423,56 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           gap: 4px;
           text-decoration: none;
           color: var(--learn-text-secondary);
-          font-size: 11px;
+          font-size: 10px;
           font-family: var(--font-heading);
-          font-weight: 700;
-          padding: 6px 12px;
+          font-weight: 600;
+          padding: 6px 10px;
           border-radius: 12px;
           transition: all 0.2s;
         }
         .learn-mobile-nav-item.active { 
-          color: var(--learn-sidebar); 
-          background: var(--learn-bg-alt);
+          color: var(--learn-accent-light); 
+          background: rgba(245, 158, 11, 0.1);
+          box-shadow: inset 0 0 12px rgba(245, 158, 11, 0.05);
         }
         .learn-mobile-nav-item:active { transform: scale(0.95); }
-        .learn-mobile-nav-icon { font-size: 24px; transition: transform 0.2s; }
-        .learn-mobile-nav-item.active .learn-mobile-nav-icon { transform: translateY(-2px) scale(1.1); }
-        .learn-mobile-nav-label { white-space: nowrap; }
+        .learn-mobile-nav-icon { 
+          font-size: 22px; 
+          transition: all 0.2s; 
+          filter: grayscale(0.8); 
+        }
+        .learn-mobile-nav-item.active .learn-mobile-nav-icon { 
+          transform: translateY(-2px) scale(1.1); 
+          filter: grayscale(0) drop-shadow(0 0 6px var(--learn-accent));
+        }
+        .learn-mobile-nav-label { white-space: nowrap; letter-spacing: 0.2px; }
 
-        /* ─── Shared Learn Components ─── */
+        /* ─── Shared Bento Components ─── */
         .learn-page-title {
           font-family: var(--font-heading);
-          font-size: 36px;
+          font-size: 34px;
           font-weight: 900;
-          color: var(--learn-sidebar);
-          margin-bottom: 6px;
+          color: #FFF;
+          margin-bottom: 8px;
           letter-spacing: -0.5px;
-          text-shadow: 0 2px 4px rgba(79, 70, 229, 0.1);
+          text-shadow: 0 2px 12px rgba(0,0,0,0.5);
         }
 
         .learn-page-subtitle {
           color: var(--learn-text-secondary);
           font-size: 16px;
-          font-weight: 600;
-          margin-bottom: 32px;
+          font-weight: 500;
+          margin-bottom: 36px;
         }
 
         .learn-card {
           background: var(--learn-card);
-          border: 2px solid white;
-          border-radius: 24px;
-          padding: 24px;
+          backdrop-filter: blur(16px);
+          border: 1px solid var(--learn-card-border);
+          border-radius: 28px; /* Bigger radius for Bento */
+          padding: 28px;
           transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-          box-shadow: 0 8px 24px rgba(124, 58, 237, 0.06), inset 0 0 0 1px var(--learn-border);
+          box-shadow: var(--learn-card-shadow);
           position: relative;
           overflow: hidden;
         }
@@ -412,94 +480,122 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           content: '';
           position: absolute;
           top: 0; left: 0; width: 100%; height: 100%;
-          background: linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0));
+          background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 60%);
           pointer-events: none;
         }
-        .learn-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 12px 32px rgba(124, 58, 237, 0.12), inset 0 0 0 2px var(--learn-accent-light);
+        .learn-card-glow {
+          position: absolute;
+          top: -50%; left: -50%; width: 200%; height: 200%;
+          background: radial-gradient(circle at center, var(--learn-accent-glow) 0%, transparent 50%);
+          opacity: 0;
+          transition: opacity 0.5s;
+          pointer-events: none;
+          z-index: -1;
         }
+        .learn-card:hover {
+          transform: translateY(-4px) scale(1.02);
+          box-shadow: var(--learn-card-shadow-hover);
+          border-color: var(--learn-border-strong);
+        }
+        .learn-card:hover .learn-card-glow { opacity: 1; }
 
         .learn-card-title {
           font-family: var(--font-heading);
           font-size: 20px;
           font-weight: 800;
-          color: var(--learn-text);
+          color: #FFF;
           margin-bottom: 12px;
+          letter-spacing: 0.2px;
         }
 
         .learn-badge {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          padding: 6px 12px;
+          padding: 6px 14px;
           border-radius: 12px;
           font-family: var(--font-heading);
-          font-size: 13px;
+          font-size: 12px;
           font-weight: 800;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
         }
 
         .learn-badge-success {
           background: var(--learn-success-bg);
-          color: #047857;
-          border: 1px solid rgba(16, 185, 129, 0.3);
+          color: var(--learn-success);
+          border: 1px solid rgba(16, 185, 129, 0.2);
+          box-shadow: 0 0 12px rgba(16, 185, 129, 0.1);
         }
         .learn-badge-warning {
           background: var(--learn-warning-bg);
-          color: #B45309;
-          border: 1px solid rgba(245, 158, 11, 0.3);
+          color: var(--learn-warning);
+          border: 1px solid rgba(245, 158, 11, 0.2);
+          box-shadow: 0 0 12px rgba(245, 158, 11, 0.1);
         }
         .learn-badge-error {
           background: var(--learn-error-bg);
-          color: #B91C1C;
-          border: 1px solid rgba(239, 68, 68, 0.3);
+          color: var(--learn-error);
+          border: 1px solid rgba(239, 68, 68, 0.2);
+          box-shadow: 0 0 12px rgba(239, 68, 68, 0.1);
         }
 
         .learn-btn {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 8px;
-          padding: 12px 24px;
+          gap: 10px;
+          padding: 14px 28px;
           border-radius: 16px;
           font-family: var(--font-heading);
           font-weight: 800;
           font-size: 16px;
           border: none;
           cursor: pointer;
-          transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
           position: relative;
           overflow: hidden;
+          letter-spacing: 0.5px;
         }
         .learn-btn-primary {
-          background: linear-gradient(135deg, var(--learn-accent), #6366F1);
-          color: white;
-          box-shadow: 0 4px 16px rgba(124, 58, 237, 0.3), inset 0 -3px 0 rgba(0,0,0,0.1);
+          background: linear-gradient(135deg, var(--learn-accent) 0%, var(--learn-accent-dark) 100%);
+          color: #0A0612;
+          box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3), inset 0 1px 0 rgba(255,255,255,0.4);
+          text-shadow: 0 1px 2px rgba(255,255,255,0.3);
         }
+        .learn-btn-primary::before {
+          content: '';
+          position: absolute;
+          top: 0; left: -100%; width: 200%; height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+          transition: left 0.5s;
+        }
+        .learn-btn-primary:hover::before { left: 100%; }
         .learn-btn-primary:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4), inset 0 -3px 0 rgba(0,0,0,0.1);
-          filter: brightness(1.05);
+          transform: translateY(-2px) scale(1.02);
+          box-shadow: 0 8px 24px rgba(245, 158, 11, 0.5), inset 0 1px 0 rgba(255,255,255,0.5);
+          color: #000;
         }
         .learn-btn-primary:active {
           transform: translateY(1px);
-          box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3), inset 0 2px 4px rgba(0,0,0,0.2);
+          box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4), inset 0 2px 4px rgba(0,0,0,0.2);
         }
         .learn-btn-secondary {
-          background: white;
-          color: var(--learn-sidebar);
-          border: 2px solid var(--learn-bg-alt);
-          box-shadow: 0 2px 8px rgba(0,0,0,0.04), inset 0 -3px 0 var(--learn-bg-alt);
+          background: var(--learn-card);
+          color: #FFF;
+          border: 1px solid var(--learn-border-strong);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
         .learn-btn-secondary:hover {
-          background: var(--learn-bg-alt);
+          background: rgba(245, 158, 11, 0.1);
           transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.06), inset 0 -3px 0 rgba(0,0,0,0.05);
+          box-shadow: 0 8px 24px rgba(245, 158, 11, 0.15);
+          border-color: var(--learn-accent);
+          color: var(--learn-accent-light);
         }
         .learn-btn-secondary:active {
           transform: translateY(1px);
-          box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+          box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
         }
 
         /* Progress wheel */
@@ -508,7 +604,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          filter: drop-shadow(0 4px 8px rgba(0,0,0,0.05));
+          filter: drop-shadow(0 0 12px rgba(245,158,11,0.2));
         }
         .learn-progress-wheel svg {
           transform: rotate(-90deg);
@@ -517,7 +613,15 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           position: absolute;
           font-family: var(--font-heading);
           font-weight: 900;
-          color: var(--learn-text);
+          color: #FFF;
+          font-size: 1.2rem;
+          text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        /* ─── Animations ─── */
+        @keyframes bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-4px); }
         }
       `}</style>
     </div>

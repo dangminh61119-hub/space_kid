@@ -258,77 +258,83 @@ export default function LearnPathPage() {
 
             <style jsx>{`
         .path-tabs {
-          display: flex; gap: 6px; margin-bottom: 16px;
+          display: flex; gap: 8px; margin-bottom: 20px;
           overflow-x: auto; padding-bottom: 4px;
           -ms-overflow-style: none; scrollbar-width: none;
         }
         .path-tabs::-webkit-scrollbar { display: none; }
         .path-tab {
-          padding: 8px 16px; border-radius: 12px;
-          border: 2px solid var(--learn-border); background: var(--learn-card);
-          font-size: 13px; font-weight: 700; cursor: pointer;
-          white-space: nowrap; transition: all 0.2s;
+          padding: 10px 20px; border-radius: 14px;
+          border: 1.5px solid var(--learn-border); background: var(--learn-card);
+          font-size: 14px; font-weight: 800; cursor: pointer;
+          white-space: nowrap; transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
           color: var(--learn-text-secondary);
+          font-family: var(--font-heading);
+          box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+          backdrop-filter: blur(8px);
         }
-        .path-tab:hover { border-color: var(--learn-accent-light); }
-        .path-tab.active { background: white; }
+        .path-tab:hover { border-color: var(--learn-accent-light); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+        .path-tab.active { background: var(--learn-card-solid); box-shadow: var(--learn-card-shadow); }
 
-        .path-overview { padding: 16px 20px; margin-bottom: 20px; }
+        .path-overview { padding: 20px 24px; margin-bottom: 24px; }
         .path-overview-stats {
-          display: flex; gap: 24px; margin-bottom: 10px;
+          display: flex; gap: 28px; margin-bottom: 14px;
         }
         .path-stat { display: flex; flex-direction: column; }
         .path-stat-value {
-          font-family: var(--font-heading); font-size: 20px; font-weight: 800;
+          font-family: var(--font-heading); font-size: 22px; font-weight: 900;
           color: var(--learn-text);
         }
         .path-stat-label {
-          font-size: 11px; color: var(--learn-text-secondary); font-weight: 600;
+          font-size: 11px; color: var(--learn-text-secondary); font-weight: 700;
+          text-transform: uppercase; letter-spacing: 0.5px;
         }
         .path-progress-bar {
-          height: 6px; background: var(--learn-border); border-radius: 3px; overflow: hidden;
+          height: 8px; background: var(--learn-border); border-radius: 4px; overflow: hidden;
         }
-        .path-progress-fill { height: 100%; border-radius: 3px; }
+        .path-progress-fill { height: 100%; border-radius: 4px; box-shadow: 0 0 8px rgba(245,158,11,0.3); }
 
         .path-tree {
           display: flex; flex-direction: column; align-items: center;
-          gap: 8px; padding: 24px 0; margin-bottom: 16px;
+          gap: 10px; padding: 28px 0; margin-bottom: 20px;
         }
         .path-tier {
           position: relative; display: flex; flex-direction: column; align-items: center;
         }
         .path-tier-nodes {
-          display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+          display: flex; gap: 18px; justify-content: center; flex-wrap: wrap;
         }
         .path-connector {
-          width: 2px; height: 20px; background: var(--learn-border);
-          margin: 4px auto;
+          width: 3px; height: 24px; 
+          background: linear-gradient(180deg, var(--learn-accent-light), var(--learn-border));
+          margin: 6px auto; border-radius: 2px;
         }
 
-        .path-detail { padding: 18px; margin-bottom: 16px; }
+        .path-detail { padding: 22px; margin-bottom: 20px; border-left: 4px solid var(--learn-accent); }
         .path-detail-header {
-          display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+          display: flex; align-items: center; gap: 14px; margin-bottom: 16px;
         }
         .path-detail-title {
-          font-family: var(--font-heading); font-size: 18px; font-weight: 700;
+          font-family: var(--font-heading); font-size: 20px; font-weight: 800;
         }
         .path-detail-mastery {
-          font-size: 13px; font-weight: 700;
+          font-size: 13px; font-weight: 800;
         }
-        .path-detail-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .path-detail-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
         .path-legend {
-          display: flex; flex-wrap: wrap; gap: 12px;
-          padding: 12px 16px; border-radius: 12px;
-          background: var(--learn-bg-alt); font-size: 11px;
-          color: var(--learn-text-secondary); font-weight: 600;
+          display: flex; flex-wrap: wrap; gap: 14px;
+          padding: 14px 20px; border-radius: 16px;
+          background: var(--learn-bg-alt); font-size: 12px;
+          color: var(--learn-text-secondary); font-weight: 700;
+          border: 1px solid var(--learn-card-border);
         }
-        .path-legend-item { display: flex; align-items: center; gap: 4px; }
-        .path-legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .path-legend-item { display: flex; align-items: center; gap: 6px; }
+        .path-legend-dot { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,0.1); }
 
         @media (max-width: 768px) {
-          .path-overview-stats { gap: 16px; }
-          .path-tier-nodes { gap: 10px; }
+          .path-overview-stats { gap: 18px; }
+          .path-tier-nodes { gap: 12px; }
         }
       `}</style>
         </motion.div>

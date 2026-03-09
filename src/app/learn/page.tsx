@@ -63,6 +63,7 @@ function ProgressWheel({ value, size = 64, stroke = 6, color }: { value: number;
                     animate={{ strokeDashoffset: offset }}
                     transition={{ duration: 1, delay: 0.3 }}
                     strokeDasharray={circumference}
+                    style={value >= 70 ? { filter: `drop-shadow(0 0 4px ${color})` } : {}}
                 />
             </svg>
             <span className="learn-progress-wheel-text" style={{ fontSize: size * 0.24 }}>
@@ -153,123 +154,113 @@ export default function LearnHomePage() {
     }
 
     return (
-        <motion.div variants={stagger} initial="hidden" animate="visible">
-            {/* Gamified Hero Banner */}
-            <motion.div variants={fadeUp} className="learn-hero-banner">
-                <div style={{ flex: 1 }}>
-                    <h1 className="learn-hero-title">
-                        {player.mascot === "cat" ? "🐱" : player.mascot === "dog" ? "🐶" : "👋"} Xin chào, {player.name}!
-                    </h1>
-                    <p className="learn-hero-subtitle">
-                        <span className="learn-badge" style={{ background: "rgba(255,255,255,0.2)", color: "white" }}>Lớp {player.grade}</span>
-                        <span className="learn-badge" style={{ background: "rgba(255,255,255,0.2)", color: "white" }}>Level {player.level}</span>
-                    </p>
-                    <div className="learn-hero-speech">
-                        <span style={{ fontSize: 24, marginRight: 8 }}>🦉</span>
-                        <span>{greeting}</span>
+        <motion.div variants={stagger} initial="hidden" animate="visible" className="learn-bento-grid">
+            {/* ─── Hero Banner (spans 8) ─── */}
+            <motion.div variants={fadeUp} className="learn-bento-item learn-bento-hero">
+                <div className="learn-hero-banner">
+                    <div className="learn-hero-mesh-1" />
+                    <div className="learn-hero-mesh-2" />
+                    <div style={{ flex: 1, position: "relative", zIndex: 2 }}>
+                        <h1 className="learn-hero-title">
+                            {player.mascot === "cat" ? "🐱" : player.mascot === "dog" ? "🐶" : "👋"} Xin chào, {player.name}!
+                        </h1>
+                        <p className="learn-hero-subtitle">
+                            <span className="learn-hero-badge">Lớp {player.grade}</span>
+                            <span className="learn-hero-badge">Level {player.level}</span>
+                        </p>
+                        <div className="learn-hero-speech">
+                            <span style={{ fontSize: 24, marginRight: 10 }}>🦉</span>
+                            <span>{greeting}</span>
+                        </div>
+                    </div>
+                    <div className="learn-hero-graphic">🚀</div>
+                </div>
+            </motion.div>
+
+            {/* ─── Stats Mini-Grid (spans 4) ─── */}
+            <motion.div variants={fadeUp} className="learn-bento-item learn-bento-stats">
+                <div className="learn-stats-grid">
+                    <div className="learn-stat-card learn-stat-streak">
+                        <div className="learn-stat-icon-wrap"><span className="learn-stat-icon">🔥</span></div>
+                        <span className="learn-stat-value">{player.streak}</span>
+                        <span className="learn-stat-label">Streak</span>
+                    </div>
+                    <div className="learn-stat-card learn-stat-questions">
+                        <div className="learn-stat-icon-wrap"><span className="learn-stat-icon">📝</span></div>
+                        <span className="learn-stat-value">{stats?.totalQuestions || 0}</span>
+                        <span className="learn-stat-label">Câu đã làm</span>
+                    </div>
+                    <div className="learn-stat-card learn-stat-accuracy">
+                        <div className="learn-stat-icon-wrap"><span className="learn-stat-icon">🎯</span></div>
+                        <span className="learn-stat-value">{stats?.averageAccuracy || 0}%</span>
+                        <span className="learn-stat-label">Chính xác</span>
+                    </div>
+                    <div className="learn-stat-card learn-stat-time">
+                        <div className="learn-stat-icon-wrap"><span className="learn-stat-icon">⏱️</span></div>
+                        <span className="learn-stat-value">{stats?.totalMinutes || 0}</span>
+                        <span className="learn-stat-label">Phút học</span>
                     </div>
                 </div>
-                <div className="learn-hero-graphic">
-                    🚀
-                </div>
             </motion.div>
 
-            {/* Quick Stats Row */}
-            <motion.div variants={fadeUp} className="learn-stats-row">
-                <div className="learn-stat-card">
-                    <span className="learn-stat-icon">🔥</span>
-                    <span className="learn-stat-value">{player.streak}</span>
-                    <span className="learn-stat-label">Streak</span>
-                </div>
-                <div className="learn-stat-card">
-                    <span className="learn-stat-icon">📝</span>
-                    <span className="learn-stat-value">{stats?.totalQuestions || 0}</span>
-                    <span className="learn-stat-label">Câu đã làm</span>
-                </div>
-                <div className="learn-stat-card">
-                    <span className="learn-stat-icon">🎯</span>
-                    <span className="learn-stat-value">{stats?.averageAccuracy || 0}%</span>
-                    <span className="learn-stat-label">Chính xác</span>
-                </div>
-                <div className="learn-stat-card">
-                    <span className="learn-stat-icon">⏱️</span>
-                    <span className="learn-stat-value">{stats?.totalMinutes || 0}</span>
-                    <span className="learn-stat-label">Phút học</span>
-                </div>
-            </motion.div>
-
-            {/* Tiếp tục học — from recent báo bài */}
-            {recentStudy.length > 0 && (
-                <motion.div variants={fadeUp} style={{ marginBottom: 24 }}>
-                    <h2 className="learn-card-title" style={{ marginBottom: 12 }}>📋 Tiếp tục học</h2>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                        {recentStudy.map((s) => {
-                            const subjectInfo = SUBJECTS.find(sub => sub.id === s.subject);
-                            const ago = getTimeAgo(s.created_at);
-                            return (
-                                <div key={s.id} className="learn-card" style={{ borderLeft: `4px solid ${subjectInfo?.color || "var(--learn-accent)"}` }}>
-                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                                        <div style={{ fontWeight: 700, fontSize: 14 }}>
-                                            {subjectInfo?.emoji || "📚"} {s.query}
+            {/* ─── Main Column (spans 8) ─── */}
+            <div className="learn-bento-item learn-bento-main">
+                {/* Tiệp tục học / Gợi ý */}
+                {recentStudy.length > 0 ? (
+                    <motion.div variants={fadeUp}>
+                        <h2 className="learn-card-title" style={{ marginBottom: 12 }}>📋 Tiếp tục học</h2>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                            {recentStudy.map((s) => {
+                                const subjectInfo = SUBJECTS.find(sub => sub.id === s.subject);
+                                const ago = getTimeAgo(s.created_at);
+                                return (
+                                    <div key={s.id} className="learn-card" style={{ borderLeft: `6px solid ${subjectInfo?.color || "var(--learn-accent)"}` }}>
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                                            <div style={{ fontWeight: 800, fontSize: 16 }}>
+                                                {subjectInfo?.emoji || "📚"} {s.query}
+                                            </div>
+                                            <span style={{ fontSize: 12, color: "var(--learn-text-secondary)", fontWeight: 600 }}>{ago}</span>
                                         </div>
-                                        <span style={{ fontSize: 11, color: "var(--learn-text-secondary)" }}>{ago}</span>
-                                    </div>
-                                    <div style={{ display: "flex", gap: 8 }}>
-                                        <Link href={`/learn/tutor?topic=${encodeURIComponent(s.query)}&subject=${s.subject || ""}&from=bao-bai`} style={{ textDecoration: "none" }}>
-                                            <button className="learn-btn learn-btn-primary" style={{ fontSize: 12, padding: "6px 14px" }}>
-                                                🦉 Gia sư
-                                            </button>
-                                        </Link>
-                                        {!s.practiced && (
-                                            <Link href={`/learn/practice?topic=${encodeURIComponent(s.query)}&subject=${s.subject || ""}&from=bao-bai&session=${s.id}`} style={{ textDecoration: "none" }}>
-                                                <button className="learn-btn learn-btn-secondary" style={{ fontSize: 12, padding: "6px 14px" }}>
-                                                    📝 Luyện tập
+                                        <div style={{ display: "flex", gap: 8 }}>
+                                            <Link href={`/learn/tutor?topic=${encodeURIComponent(s.query)}&subject=${s.subject || ""}&from=bao-bai`} style={{ textDecoration: "none" }}>
+                                                <button className="learn-btn learn-btn-primary" style={{ fontSize: 13, padding: "8px 16px" }}>
+                                                    🦉 Gia sư
                                                 </button>
                                             </Link>
-                                        )}
-                                        {s.practiced && (
-                                            <span className="learn-badge learn-badge-success">✅ Đã luyện</span>
-                                        )}
+                                            {!s.practiced && (
+                                                <Link href={`/learn/practice?topic=${encodeURIComponent(s.query)}&subject=${s.subject || ""}&from=bao-bai&session=${s.id}`} style={{ textDecoration: "none" }}>
+                                                    <button className="learn-btn learn-btn-secondary" style={{ fontSize: 13, padding: "8px 16px" }}>
+                                                        📝 Luyện tập
+                                                    </button>
+                                                </Link>
+                                            )}
+                                            {s.practiced && (
+                                                <span className="learn-badge learn-badge-success">✅ Đã luyện</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </motion.div>
+                ) : (
+                    <motion.div variants={fadeUp}>
+                        <Link href="/learn/bao-bai" style={{ textDecoration: "none" }}>
+                            <motion.div className="learn-card" whileHover={{ scale: 1.01 }} style={{ borderLeft: "6px solid var(--learn-accent)", cursor: "pointer", display: "flex", alignItems: "center", gap: 16 }}>
+                                <span style={{ fontSize: 40 }}>📋</span>
+                                <div>
+                                    <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 4, color: "#fff" }}>Hôm nay em học gì?</div>
+                                    <div style={{ fontSize: 14, color: "var(--learn-text-secondary)" }}>
+                                        Cho Cú Mèo biết bài tập về nhà → AI tìm bài học + tạo bài tập từ SGK
                                     </div>
                                 </div>
-                            );
-                        })}
-                    </div>
-                </motion.div>
-            )}
+                            </motion.div>
+                        </Link>
+                    </motion.div>
+                )}
 
-            {/* Gợi ý khi chưa có báo bài */}
-            {recentStudy.length === 0 && (
-                <motion.div variants={fadeUp} style={{ marginBottom: 24 }}>
-                    <Link href="/learn/bao-bai" style={{ textDecoration: "none" }}>
-                        <motion.div className="learn-card" whileHover={{ scale: 1.01 }} style={{ borderLeft: "4px solid var(--learn-accent)", cursor: "pointer", display: "flex", alignItems: "center", gap: 14 }}>
-                            <span style={{ fontSize: 36 }}>📋</span>
-                            <div>
-                                <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Hôm nay em học gì?</div>
-                                <div style={{ fontSize: 13, color: "var(--learn-text-secondary)" }}>
-                                    Cho Cú Mèo biết bài tập về nhà → AI tìm bài học + tạo bài tập từ SGK
-                                </div>
-                            </div>
-                        </motion.div>
-                    </Link>
-                </motion.div>
-            )}
-
-            {/* Smart Recommendations from Curriculum */}
-            {playerDbId && (
-                <motion.div variants={fadeUp}>
-                    <SmartRecommendations
-                        playerId={playerDbId}
-                        grade={player.grade}
-                        token={token}
-                    />
-                </motion.div>
-            )}
-
-            {/* Two-Column Layout */}
-            <div className="learn-two-col">
-                {/* Left: Subject Progress */}
-                <motion.div variants={fadeUp}>
+                {/* Subject Progress */}
+                <motion.div variants={fadeUp} style={{ marginTop: 8 }}>
                     <h2 className="learn-card-title" style={{ marginBottom: 12 }}>📊 Tiến trình các môn</h2>
                     <div className="learn-subjects-grid">
                         {SUBJECTS.map((subject) => {
@@ -282,10 +273,10 @@ export default function LearnHomePage() {
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
                                     >
-                                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                                            <ProgressWheel value={mastery} size={52} color={subject.color} />
+                                        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                                            <ProgressWheel value={mastery} size={60} stroke={6} color={subject.color} />
                                             <div>
-                                                <div style={{ fontWeight: 700, fontSize: 15, color: "var(--learn-text)" }}>
+                                                <div style={{ fontWeight: 800, fontSize: 16, color: "#FFF", marginBottom: 2 }}>
                                                     {subject.emoji} {subject.label}
                                                 </div>
                                                 {isWeak ? (
@@ -293,98 +284,101 @@ export default function LearnHomePage() {
                                                 ) : mastery >= 70 ? (
                                                     <span className="learn-badge learn-badge-success">✅ Nắm vững</span>
                                                 ) : (
-                                                    <span style={{ fontSize: 12, color: "var(--learn-text-secondary)" }}>Đang học</span>
+                                                    <span style={{ fontSize: 12, color: "var(--learn-text-secondary)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>Đang học</span>
                                                 )}
                                             </div>
                                         </div>
+                                        <div className="learn-card-glow" />
                                     </motion.div>
                                 </Link>
                             );
                         })}
                     </div>
                 </motion.div>
+            </div>
 
-                {/* Right: Error Focus + Quick Actions */}
-                <div>
-                    {/* Error Focus */}
-                    {topErrors.length > 0 && (
-                        <motion.div variants={fadeUp}>
-                            <h2 className="learn-card-title" style={{ marginBottom: 12 }}>🎯 Lỗi cần khắc phục</h2>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                                {topErrors.map(({ type, pattern }) => {
-                                    const advice = getRemediationAdvice(type);
-                                    return (
-                                        <div key={type} className="learn-card" style={{ borderLeft: "4px solid var(--learn-warning)" }}>
-                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                                                <span style={{ fontWeight: 700, fontSize: 14 }}>{formatErrorType(type)}</span>
-                                                <span className="learn-badge learn-badge-error">Sai {pattern.count} lần</span>
-                                            </div>
-                                            <p style={{ fontSize: 13, color: "var(--learn-text-secondary)", marginBottom: 8 }}>
-                                                {advice.tips[0]}
-                                            </p>
-                                            <Link href={`/learn/practice?focus=${type}`}>
-                                                <button className="learn-btn learn-btn-primary" style={{ fontSize: 12, padding: "6px 14px" }}>
-                                                    Luyện ngay →
-                                                </button>
-                                            </Link>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {/* Streak Widget */}
-                    <motion.div variants={fadeUp} style={{ marginTop: 16 }}>
-                        <StreakWidget currentStreak={player.streak} />
+            {/* ─── Side Column (spans 4) ─── */}
+            <div className="learn-bento-item learn-bento-side">
+                {/* Smart Recommendations */}
+                {playerDbId && (
+                    <motion.div variants={fadeUp}>
+                        <SmartRecommendations
+                            playerId={playerDbId}
+                            grade={player.grade}
+                            token={token}
+                        />
                     </motion.div>
+                )}
 
-                    {/* Quick Actions */}
-                    <motion.div variants={fadeUp} style={{ marginTop: 20 }}>
-                        <h2 className="learn-card-title" style={{ marginBottom: 12 }}>⚡ Hành động nhanh</h2>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            <Link href="/learn/review" style={{ textDecoration: "none" }}>
-                                <motion.div className="learn-card" whileHover={{ scale: 1.01 }} style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", borderLeft: "4px solid var(--learn-accent)" }}>
-                                    <span style={{ fontSize: 28 }}>🔄</span>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 700, fontSize: 14 }}>Ôn tập SRS</div>
-                                        <div style={{ fontSize: 12, color: "var(--learn-text-secondary)" }}>Spaced Repetition — nhớ lâu hơn</div>
+                {/* Streak Widget */}
+                <motion.div variants={fadeUp}>
+                    <StreakWidget currentStreak={player.streak} />
+                </motion.div>
+
+                {/* Error Focus */}
+                {topErrors.length > 0 && (
+                    <motion.div variants={fadeUp}>
+                        <h2 className="learn-card-title" style={{ marginBottom: 12 }}>🎯 Lỗi hay gặp</h2>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                            {topErrors.map(({ type, pattern }) => {
+                                const advice = getRemediationAdvice(type);
+                                return (
+                                    <div key={type} className="learn-card" style={{ borderLeft: "4px solid var(--learn-warning)", padding: "20px" }}>
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                                            <span style={{ fontWeight: 800, fontSize: 15, color: "#fff" }}>{formatErrorType(type)}</span>
+                                            <span className="learn-badge learn-badge-error">Sai {pattern.count} lần</span>
+                                        </div>
+                                        <p style={{ fontSize: 13, color: "var(--learn-text-secondary)", marginBottom: 12, lineHeight: 1.5 }}>
+                                            {advice.tips[0]}
+                                        </p>
+                                        <Link href={`/learn/practice?focus=${type}`}>
+                                            <button className="learn-btn learn-btn-primary" style={{ fontSize: 13, padding: "8px 16px", width: "100%" }}>
+                                                Khắc phục lỗi →
+                                            </button>
+                                        </Link>
                                     </div>
-                                    {srsCount > 0 && (
-                                        <span className="learn-badge learn-badge-warning">{srsCount} thẻ</span>
-                                    )}
-                                </motion.div>
-                            </Link>
-                            <Link href="/learn/practice" style={{ textDecoration: "none" }}>
-                                <motion.div className="learn-card" whileHover={{ scale: 1.01 }} style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
-                                    <span style={{ fontSize: 28 }}>📝</span>
-                                    <div>
-                                        <div style={{ fontWeight: 700, fontSize: 14 }}>Luyện tập ngay</div>
-                                        <div style={{ fontSize: 12, color: "var(--learn-text-secondary)" }}>Flashcard, Quiz, Error Drill</div>
-                                    </div>
-                                </motion.div>
-                            </Link>
-                            <Link href="/learn/lessons" style={{ textDecoration: "none" }}>
-                                <motion.div className="learn-card" whileHover={{ scale: 1.01 }} style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
-                                    <span style={{ fontSize: 28 }}>📺</span>
-                                    <div>
-                                        <div style={{ fontWeight: 700, fontSize: 14 }}>Xem bài giảng</div>
-                                        <div style={{ fontSize: 12, color: "var(--learn-text-secondary)" }}>Video bài giảng theo chương trình SGK</div>
-                                    </div>
-                                </motion.div>
-                            </Link>
-                            <Link href="/learn/tutor" style={{ textDecoration: "none" }}>
-                                <motion.div className="learn-card" whileHover={{ scale: 1.01 }} style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
-                                    <span style={{ fontSize: 28 }}>🤖</span>
-                                    <div>
-                                        <div style={{ fontWeight: 700, fontSize: 14 }}>Hỏi Cú Mèo</div>
-                                        <div style={{ fontSize: 12, color: "var(--learn-text-secondary)" }}>AI Tutor cá nhân hoá</div>
-                                    </div>
-                                </motion.div>
-                            </Link>
+                                );
+                            })}
                         </div>
                     </motion.div>
-                </div>
+                )}
+
+                {/* Quick Actions */}
+                <motion.div variants={fadeUp}>
+                    <h2 className="learn-card-title" style={{ marginBottom: 12 }}>⚡ Lối tắt</h2>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        <Link href="/learn/review" style={{ textDecoration: "none" }}>
+                            <motion.div className="learn-card learn-action-card" whileHover={{ scale: 1.02 }} style={{ borderLeftColor: "#A855F7" }}>
+                                <span className="learn-action-icon">🔄</span>
+                                <div style={{ flex: 1 }}>
+                                    <div className="learn-action-title">Ôn tập thẻ ghi nhớ</div>
+                                    <div className="learn-action-desc">Spaced Repetition</div>
+                                </div>
+                                {srsCount > 0 && (
+                                    <span className="learn-badge learn-badge-warning">{srsCount}</span>
+                                )}
+                            </motion.div>
+                        </Link>
+                        <Link href="/learn/lessons" style={{ textDecoration: "none" }}>
+                            <motion.div className="learn-card learn-action-card" whileHover={{ scale: 1.02 }} style={{ borderLeftColor: "#3B82F6" }}>
+                                <span className="learn-action-icon">📺</span>
+                                <div>
+                                    <div className="learn-action-title">Xem bài giảng</div>
+                                    <div className="learn-action-desc">Video theo SGK</div>
+                                </div>
+                            </motion.div>
+                        </Link>
+                        <Link href="/learn/tutor" style={{ textDecoration: "none" }}>
+                            <motion.div className="learn-card learn-action-card" whileHover={{ scale: 1.02 }} style={{ borderLeftColor: "#06B6D4" }}>
+                                <span className="learn-action-icon">🤖</span>
+                                <div>
+                                    <div className="learn-action-title">Hỏi AI Tutor</div>
+                                    <div className="learn-action-desc">Cú Mèo giải đáp</div>
+                                </div>
+                            </motion.div>
+                        </Link>
+                    </div>
+                </motion.div>
             </div>
 
             {/* Scoped styles */}
@@ -397,37 +391,73 @@ export default function LearnHomePage() {
           min-height: 60vh;
         }
 
+        /* ─── Bento Grid Layout ─── */
+        .learn-bento-grid {
+          display: grid;
+          grid-template-columns: repeat(12, 1fr);
+          gap: 24px;
+        }
+
+        .learn-bento-item {
+          min-width: 0; /* prevent blowout */
+        }
+
+        /* Span assignments for desktop */
+        @media (min-width: 1024px) {
+          .learn-bento-hero { grid-column: span 8; }
+          .learn-bento-stats { grid-column: span 4; }
+          .learn-bento-main { grid-column: span 8; display: flex; flex-direction: column; gap: 24px; }
+          .learn-bento-side { grid-column: span 4; display: flex; flex-direction: column; gap: 24px; }
+        }
+        /* Mobile fallback */
+        @media (max-width: 1023px) {
+          .learn-bento-hero, .learn-bento-stats, .learn-bento-main, .learn-bento-side { 
+            grid-column: span 12; 
+          }
+          .learn-bento-main, .learn-bento-side { gap: 24px; display: flex; flex-direction: column; margin-top: 24px; }
+        }
+
+        /* ─── Hero Banner (Aurora Amber) ─── */
         .learn-hero-banner {
-          background: linear-gradient(135deg, var(--learn-accent), #4F46E5);
-          border-radius: 28px;
-          padding: 32px 36px;
+          background: linear-gradient(135deg, #1A0B2E 0%, #7C3AED 40%, #D97706 100%);
+          border-radius: 32px;
+          padding: 40px;
           color: white;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 32px;
-          box-shadow: 0 12px 32px rgba(124, 58, 237, 0.25), inset 0 2px 0 rgba(255,255,255,0.2);
+          height: 100%;
+          box-shadow: 0 16px 40px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.2);
           position: relative;
           overflow: hidden;
         }
-
-        .learn-hero-banner::after {
-          content: '';
+        .learn-hero-mesh-1 {
           position: absolute;
-          top: -50%; right: -10%;
-          width: 300px; height: 300px;
-          background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+          top: -30%; right: -10%;
+          width: 400px; height: 400px;
+          background: radial-gradient(circle, rgba(245, 158, 11, 0.4) 0%, transparent 70%);
           border-radius: 50%;
           pointer-events: none;
+          mix-blend-mode: screen;
+        }
+        .learn-hero-mesh-2 {
+          position: absolute;
+          bottom: -50%; left: 10%;
+          width: 500px; height: 500px;
+          background: radial-gradient(circle, rgba(168, 85, 247, 0.4) 0%, transparent 60%);
+          border-radius: 50%;
+          pointer-events: none;
+          mix-blend-mode: color-dodge;
         }
 
         .learn-hero-title {
           font-family: var(--font-heading);
-          font-size: 36px;
+          font-size: 38px;
           font-weight: 900;
-          margin-bottom: 12px;
-          text-shadow: 0 2px 4px rgba(0,0,0,0.15);
+          margin-bottom: 16px;
+          text-shadow: 0 4px 12px rgba(0,0,0,0.4);
           letter-spacing: -0.5px;
+          color: #FFF;
         }
 
         .learn-hero-subtitle {
@@ -435,76 +465,132 @@ export default function LearnHomePage() {
           gap: 12px;
           margin-bottom: 24px;
         }
+        .learn-hero-badge {
+          display: inline-flex;
+          align-items: center;
+          padding: 6px 16px;
+          border-radius: 20px;
+          font-size: 13px;
+          font-weight: 800;
+          font-family: var(--font-heading);
+          background: rgba(0,0,0,0.3);
+          backdrop-filter: blur(12px);
+          color: var(--learn-accent-light);
+          border: 1px solid rgba(245, 158, 11, 0.4);
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+        }
 
         .learn-hero-speech {
-          background: rgba(255, 255, 255, 0.15);
-          backdrop-filter: blur(8px);
-          padding: 12px 20px;
+          background: rgba(255, 255, 255, 0.08);
+          backdrop-filter: blur(16px);
+          padding: 16px 24px;
           border-radius: 20px 20px 20px 4px;
           display: inline-flex;
           align-items: center;
           font-weight: 600;
           font-size: 15px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-          border: 1px solid rgba(255,255,255,0.2);
+          box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+          border: 1px solid rgba(255,255,255,0.1);
+          max-width: 500px;
+          line-height: 1.5;
         }
 
         .learn-hero-graphic {
           font-size: 120px;
-          filter: drop-shadow(0 8px 16px rgba(0,0,0,0.2));
+          filter: drop-shadow(0 12px 32px rgba(0,0,0,0.6));
           animation: float-slow 6s ease-in-out infinite;
           margin-right: 20px;
+          position: relative;
+          z-index: 2;
         }
 
-        .learn-stats-row {
+        /* ─── Stats Grid (Bento mini) ─── */
+        .learn-stats-grid {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(2, 1fr);
+          grid-template-rows: repeat(2, 1fr);
           gap: 16px;
-          margin-bottom: 32px;
+          height: 100%;
         }
 
         .learn-stat-card {
           background: var(--learn-card);
-          padding: 20px;
-          border-radius: 24px;
+          backdrop-filter: blur(16px);
+          padding: 24px 16px;
+          border-radius: 28px;
           display: flex;
           flex-direction: column;
           align-items: center;
+          justify-content: center;
           text-align: center;
-          border: 2px solid white;
-          box-shadow: 0 8px 24px rgba(124, 58, 237, 0.05), inset 0 0 0 1px var(--learn-border);
-          transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+          border: 1px solid var(--learn-card-border);
+          box-shadow: var(--learn-card-shadow);
+          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+          position: relative;
+          overflow: hidden;
         }
-        .learn-stat-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(124, 58, 237, 0.1); }
+        .learn-stat-card::before {
+          content: '';
+          position: absolute;
+          top: 0; left: 0; width: 100%; height: 100%;
+          opacity: 0.8;
+          pointer-events: none;
+        }
+        .learn-stat-streak::before { background: radial-gradient(circle at top right, rgba(249,115,22,0.15), transparent 70%); }
+        .learn-stat-questions::before { background: radial-gradient(circle at top right, rgba(6,182,212,0.15), transparent 70%); }
+        .learn-stat-accuracy::before { background: radial-gradient(circle at top right, rgba(168,85,247,0.15), transparent 70%); }
+        .learn-stat-time::before { background: radial-gradient(circle at top right, rgba(245,158,11,0.15), transparent 70%); }
+
+        .learn-stat-card:hover { 
+          transform: translateY(-4px) scale(1.02); 
+          box-shadow: var(--learn-card-shadow-hover); 
+          border-color: var(--learn-border-strong);
+        }
+
+        .learn-stat-icon-wrap {
+          width: 48px;
+          height: 48px;
+          border-radius: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 12px;
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.1);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+          position: relative;
+          z-index: 1;
+        }
 
         .learn-stat-icon {
-          font-size: 32px;
-          margin-bottom: 8px;
-          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+          font-size: 26px;
+          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
         }
 
         .learn-stat-value {
           font-family: var(--font-heading);
-          font-size: 28px;
+          font-size: 32px;
           font-weight: 900;
-          color: var(--learn-text);
+          color: #FFF;
           line-height: 1;
-          margin-bottom: 4px;
+          margin-bottom: 6px;
+          position: relative;
+          z-index: 1;
+          text-shadow: 0 2px 8px rgba(0,0,0,0.5);
         }
 
         .learn-stat-label {
-          font-size: 13px;
+          font-size: 12px;
           color: var(--learn-text-secondary);
-          font-weight: 700;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          position: relative;
+          z-index: 1;
         }
 
-        .learn-two-col {
-          display: grid;
-          grid-template-columns: 1.5fr 1fr;
-          gap: 32px;
-          align-items: start;
-        }
-
+        /* ─── Subjects Grid ─── */
         .learn-subjects-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
@@ -513,22 +599,47 @@ export default function LearnHomePage() {
 
         .learn-subject-card {
           cursor: pointer;
-          border-width: 2px;
+          padding: 20px;
+          border-radius: 24px;
         }
 
-        @media (max-width: 1024px) {
-          .learn-two-col { grid-template-columns: 1fr; }
-          .learn-hero-title { font-size: 28px; }
-          .learn-hero-graphic { font-size: 80px; }
+        /* ─── Quick Action Cards ─── */
+        .learn-action-card {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          cursor: pointer;
+          padding: 20px 24px;
+          border-left: 4px solid rgba(255,255,255,0.1); /* Replace with neon subject colored left borders via React styles later */
+        }
+        .learn-action-card:hover {
+          background: rgba(245, 158, 11, 0.05); /* Amber hover bg */
+        }
+        .learn-action-icon {
+          font-size: 28px;
+          flex-shrink: 0;
+          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+        }
+        .learn-action-title {
+          font-weight: 800;
+          font-size: 15px;
+          color: #FFF;
+          margin-bottom: 2px;
+        }
+        .learn-action-desc {
+          font-size: 13px;
+          color: var(--learn-text-secondary);
         }
 
         @media (max-width: 768px) {
-          .learn-stats-row { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-          .learn-subjects-grid { grid-template-columns: 1fr; }
-          .learn-hero-banner { flex-direction: column; text-align: center; padding: 24px; gap: 24px; }
+          .learn-hero-banner { flex-direction: column; text-align: center; padding: 32px 24px; gap: 24px; border-radius: 28px; }
           .learn-hero-subtitle { justify-content: center; }
-          .learn-hero-speech { border-radius: 20px; }
+          .learn-hero-speech { border-radius: 20px; font-size: 14px; }
           .learn-hero-graphic { margin-right: 0; display: none; }
+          .learn-hero-title { font-size: 28px; }
+          
+          .learn-stats-grid { grid-template-columns: 1fr 1fr; }
+          .learn-subjects-grid { grid-template-columns: 1fr; }
         }
       `}</style>
         </motion.div>

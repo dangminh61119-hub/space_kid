@@ -10,6 +10,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { supabase } from "@/lib/services/supabase";
 
 export type VoiceTier = "hd" | "neural" | "fast";
 export type VoiceLang = "vi" | "en";
@@ -151,10 +152,17 @@ export function useVoice({
         const cleanText = stripEmoji(text);
 
         try {
+            // Get JWT token for API auth
+            const session = supabase ? (await supabase.auth.getSession()).data.session : null;
+            const authToken = session?.access_token;
+
             // Try Google Cloud TTS first
             const res = await fetch("/api/ai/tts", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
+                },
                 body: JSON.stringify({ text: cleanText, lang, tier }),
             });
 

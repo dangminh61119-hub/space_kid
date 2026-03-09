@@ -6,6 +6,7 @@ import { useGame, MASCOT_INFO } from "@/lib/game-context";
 import { logAIFeedback } from "@/lib/analytics/learning-events";
 import { useAuth } from "@/lib/services/auth-context";
 import { useVoice } from "@/hooks/useVoice";
+import { supabase } from "@/lib/services/supabase";
 
 /* ─── Types ─── */
 interface MascotMessage {
@@ -379,9 +380,16 @@ export default function MascotAI({ hidden = false }: MascotAIProps) {
         setExpression("thinking");
         const startTime = Date.now();
         try {
+            // Get JWT token for API auth
+            const session = supabase ? (await supabase.auth.getSession()).data.session : null;
+            const authToken = session?.access_token;
+
             const res = await fetch("/api/ai", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
+                },
                 body: JSON.stringify(params),
             });
             const data = await res.json();
@@ -424,9 +432,16 @@ export default function MascotAI({ hidden = false }: MascotAIProps) {
         } : undefined;
 
         try {
+            // Get JWT token for API auth
+            const session = supabase ? (await supabase.auth.getSession()).data.session : null;
+            const authToken = session?.access_token;
+
             const res = await fetch("/api/ai/chat", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
+                },
                 body: JSON.stringify({
                     message: userMessage,
                     mode,

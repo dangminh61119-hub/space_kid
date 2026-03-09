@@ -183,46 +183,51 @@ function TutorContent() {
                 </motion.button>
 
                 <style jsx>{`
-          .tutor-intro-card { padding: 24px; margin-bottom: 24px; }
-          .tutor-intro-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px; }
-          .tutor-intro-owl { font-size: 44px; display: inline-block; }
-          .tutor-intro-title { font-family: var(--font-heading); font-size: 20px; font-weight: 800; margin-bottom: 4px; }
-          .tutor-intro-desc { font-size: 14px; color: var(--learn-text-secondary); line-height: 1.5; }
+          .tutor-intro-card { padding: 28px; margin-bottom: 28px; border-left: 4px solid var(--learn-accent); }
+          .tutor-intro-header { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
+          .tutor-intro-owl { font-size: 48px; display: inline-block; filter: drop-shadow(0 4px 12px rgba(245,158,11,0.2)); }
+          .tutor-intro-title { font-family: var(--font-heading); font-size: 22px; font-weight: 900; margin-bottom: 6px; color: var(--learn-accent-dark); }
+          .tutor-intro-desc { font-size: 14px; color: var(--learn-text-secondary); line-height: 1.6; }
 
           .tutor-capabilities {
-            display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
           }
           .tutor-cap-item {
-            display: flex; align-items: center; gap: 8px; padding: 10px 14px;
-            background: var(--learn-bg-alt); border-radius: 10px;
-            font-size: 13px; font-weight: 600;
+            display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+            background: var(--learn-bg-alt); border-radius: 14px;
+            font-size: 13px; font-weight: 700;
+            border: 1px solid var(--learn-card-border);
+            transition: all 0.2s;
           }
+          .tutor-cap-item:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
 
           .tutor-section-title {
-            font-family: var(--font-heading); font-size: 16px; font-weight: 700;
-            margin-bottom: 12px;
+            font-family: var(--font-heading); font-size: 17px; font-weight: 800;
+            margin-bottom: 14px; color: var(--learn-text);
           }
 
           .tutor-subject-grid {
             display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 8px; margin-bottom: 24px;
+            gap: 10px; margin-bottom: 28px;
           }
           .tutor-subject-btn {
-            display: flex; flex-direction: column; align-items: center; gap: 4px;
-            padding: 16px 12px; border-radius: 14px;
-            border: 2px solid var(--learn-border); background: var(--learn-card);
-            cursor: pointer; transition: all 0.2s;
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
+            padding: 18px 14px; border-radius: 18px;
+            border: 1.5px solid var(--learn-border); background: var(--learn-card);
+            cursor: pointer; transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
           }
-          .tutor-subject-btn:hover { border-color: var(--learn-accent-light); }
+          .tutor-subject-btn:hover { border-color: var(--learn-accent-light); transform: translateY(-3px); box-shadow: 0 6px 18px rgba(0,0,0,0.06); }
           .tutor-subject-btn.selected {
-            border-color: var(--learn-accent); background: var(--learn-accent-light);
-            box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+            border-color: var(--learn-accent); background: rgba(245,158,11,0.06);
+            box-shadow: 0 0 0 3px rgba(245,158,11,0.08), 0 6px 18px rgba(245,158,11,0.1);
           }
-          .tutor-subject-emoji { font-size: 28px; }
-          .tutor-subject-label { font-size: 13px; font-weight: 700; color: var(--learn-text); }
+          .tutor-subject-emoji { font-size: 30px; }
+          .tutor-subject-label { font-size: 13px; font-weight: 800; font-family: var(--font-heading); color: var(--learn-text); }
 
           .tutor-start-btn {
-            width: 100%; padding: 16px; font-size: 17px;
+            width: 100%; padding: 18px; font-size: 18px;
             display: flex; justify-content: center;
           }
 

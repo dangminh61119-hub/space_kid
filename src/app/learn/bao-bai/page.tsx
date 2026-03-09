@@ -584,65 +584,73 @@ export default function BaoBaiPage() {
 
             <style jsx>{`
                 .bao-bai-subjects {
-                    display: flex; gap: 8px; flex-wrap: wrap;
+                    display: flex; gap: 10px; flex-wrap: wrap;
                 }
                 .bao-bai-subject-btn {
                     display: flex; flex-direction: column; align-items: center; gap: 4px;
-                    padding: 12px 16px; border-radius: 12px;
-                    border: 2px solid var(--learn-border); background: var(--learn-card);
-                    cursor: pointer; transition: all 0.2s; min-width: 80px;
+                    padding: 14px 18px; border-radius: 16px;
+                    border: 1.5px solid var(--learn-border); background: var(--learn-card);
+                    cursor: pointer; transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); min-width: 80px;
+                    backdrop-filter: blur(8px);
+                    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
                 }
                 .bao-bai-subject-btn:hover {
                     border-color: var(--subject-color, var(--learn-accent));
-                    transform: translateY(-1px);
+                    transform: translateY(-2px);
+                    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
                 }
                 .bao-bai-subject-btn.selected {
                     border-color: var(--subject-color, var(--learn-accent));
-                    background: color-mix(in srgb, var(--subject-color, var(--learn-accent)) 15%, transparent);
-                    box-shadow: 0 0 12px color-mix(in srgb, var(--subject-color, var(--learn-accent)) 20%, transparent);
+                    background: color-mix(in srgb, var(--subject-color, var(--learn-accent)) 10%, transparent);
+                    box-shadow: 0 0 0 3px color-mix(in srgb, var(--subject-color, var(--learn-accent)) 10%, transparent), 0 6px 18px rgba(0,0,0,0.06);
                 }
 
                 .bao-bai-input-row {
-                    display: flex; gap: 10px; align-items: flex-end;
+                    display: flex; gap: 12px; align-items: flex-end;
                 }
                 .bao-bai-textarea {
-                    flex: 1; padding: 12px; border-radius: 10px;
-                    border: 2px solid var(--learn-border); background: var(--learn-bg-alt);
+                    flex: 1; padding: 14px 16px; border-radius: 16px;
+                    border: 1.5px solid var(--learn-border); background: var(--learn-bg-alt);
                     color: var(--learn-text); font-size: 15px; resize: none;
                     font-family: inherit; line-height: 1.5;
-                    transition: border-color 0.2s;
+                    transition: all 0.25s;
+                    backdrop-filter: blur(8px);
                 }
                 .bao-bai-textarea:focus {
                     outline: none; border-color: var(--learn-accent);
-                    box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+                    box-shadow: 0 0 0 3px rgba(245,158,11,0.1);
+                    background: var(--learn-card-solid);
                 }
                 .bao-bai-submit {
-                    padding: 12px 24px !important; white-space: nowrap;
+                    padding: 14px 28px !important; white-space: nowrap;
                     font-size: 15px !important; height: fit-content;
                 }
 
                 .bao-bai-quick-prompts {
-                    display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px;
+                    display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px;
                 }
                 .bao-bai-quick-btn {
-                    padding: 6px 12px; border-radius: 20px;
-                    border: 1px solid var(--learn-border); background: var(--learn-bg-alt);
+                    padding: 8px 16px; border-radius: 24px;
+                    border: 1px solid var(--learn-border); background: var(--learn-card);
                     color: var(--learn-text-secondary); font-size: 12px;
-                    cursor: pointer; transition: all 0.2s;
+                    cursor: pointer; transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+                    font-weight: 600;
                 }
                 .bao-bai-quick-btn:hover {
-                    background: var(--learn-accent-light); 
-                    border-color: var(--learn-accent);
-                    color: var(--learn-text);
+                    background: rgba(245,158,11,0.06);
+                    border-color: var(--learn-accent-light);
+                    color: var(--learn-accent-dark);
+                    transform: translateY(-1px);
                 }
 
                 .bao-bai-loading-bar {
-                    width: 200px; height: 4px; background: var(--learn-border);
-                    border-radius: 2px; margin: 16px auto 0; overflow: hidden;
+                    width: 200px; height: 5px; background: var(--learn-border);
+                    border-radius: 3px; margin: 16px auto 0; overflow: hidden;
                 }
                 .bao-bai-loading-fill {
-                    height: 100%; background: linear-gradient(90deg, var(--learn-accent), #8b5cf6);
-                    border-radius: 2px;
+                    height: 100%; background: linear-gradient(90deg, var(--learn-accent), var(--learn-accent-dark));
+                    border-radius: 3px;
+                    box-shadow: 0 0 8px rgba(245,158,11,0.3);
                 }
 
                 .bao-bai-result {
@@ -653,7 +661,7 @@ export default function BaoBaiPage() {
                 }
                 .bao-bai-heading {
                     font-family: var(--font-heading); font-weight: 800;
-                    font-size: 17px; margin: 16px 0 8px; color: var(--learn-accent);
+                    font-size: 17px; margin: 16px 0 8px; color: var(--learn-accent-dark);
                 }
                 .bao-bai-list-item {
                     margin-left: 20px; margin-bottom: 4px;
@@ -665,90 +673,98 @@ export default function BaoBaiPage() {
 
                 .bao-bai-sources-toggle {
                     display: flex; justify-content: space-between; align-items: center;
-                    width: 100%; padding: 8px 4px; background: none; border: none;
+                    width: 100%; padding: 10px 4px; background: none; border: none;
                     color: var(--learn-text-secondary); cursor: pointer;
-                    font-size: 14px; font-weight: 600;
+                    font-size: 14px; font-weight: 700;
+                    transition: color 0.2s;
                 }
+                .bao-bai-sources-toggle:hover { color: var(--learn-accent-dark); }
                 .bao-bai-source-item {
-                    padding: 12px; margin-top: 8px; border-radius: 8px;
-                    background: var(--learn-bg-alt); border: 1px solid var(--learn-border);
+                    padding: 14px; margin-top: 10px; border-radius: 14px;
+                    background: var(--learn-bg-alt); border: 1px solid var(--learn-card-border);
                 }
                 .bao-bai-source-header {
                     display: flex; justify-content: space-between; align-items: center;
-                    margin-bottom: 4px;
+                    margin-bottom: 6px;
                 }
                 .bao-bai-source-title {
-                    font-weight: 700; font-size: 13px;
+                    font-weight: 800; font-size: 13px;
                 }
                 .bao-bai-source-score {
-                    font-size: 11px; padding: 2px 8px; border-radius: 4px;
-                    background: rgba(34,197,94,0.15); color: #86efac;
+                    font-size: 11px; padding: 3px 10px; border-radius: 8px;
+                    background: rgba(16,185,129,0.12); color: #059669;
+                    font-weight: 700;
                 }
                 .bao-bai-source-section {
                     font-size: 12px; color: var(--learn-text-secondary); margin-bottom: 6px;
                 }
                 .bao-bai-source-content {
                     font-size: 12px; color: var(--learn-text-secondary);
-                    line-height: 1.4; white-space: pre-wrap;
+                    line-height: 1.5; white-space: pre-wrap;
                 }
 
                 .bao-bai-history-item {
                     display: flex; justify-content: space-between; align-items: center;
-                    width: 100%; padding: 10px 12px; margin-bottom: 6px;
-                    border-radius: 8px; border: 1px solid var(--learn-border);
-                    background: var(--learn-bg-alt); cursor: pointer;
-                    transition: all 0.2s; text-align: left;
+                    width: 100%; padding: 12px 14px; margin-bottom: 8px;
+                    border-radius: 14px; border: 1px solid var(--learn-border);
+                    background: var(--learn-card); cursor: pointer;
+                    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); text-align: left;
+                    backdrop-filter: blur(8px);
                 }
                 .bao-bai-history-item:hover {
-                    border-color: var(--learn-accent);
-                    background: var(--learn-accent-light);
+                    border-color: var(--learn-accent-light);
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 16px rgba(245,158,11,0.08);
                 }
                 .bao-bai-history-query {
-                    font-size: 13px; font-weight: 600; color: var(--learn-text);
+                    font-size: 13px; font-weight: 700; color: var(--learn-text);
                 }
                 .bao-bai-history-time {
-                    font-size: 11px; color: var(--learn-text-secondary);
+                    font-size: 11px; color: var(--learn-text-secondary); font-weight: 600;
                 }
 
                 .bao-bai-actions {
-                    display: flex; gap: 10px; margin-top: 16px;
+                    display: flex; gap: 12px; margin-top: 20px;
                 }
                 .bao-bai-action-btn {
-                    flex: 1; padding: 14px 16px !important; font-size: 15px !important;
-                    border-radius: 16px !important;
+                    flex: 1; padding: 16px 18px !important; font-size: 15px !important;
+                    border-radius: 18px !important;
                 }
                 .bao-bai-practice-btn {
                     background: linear-gradient(135deg, #10B981, #059669);
                     color: white;
-                    box-shadow: 0 4px 16px rgba(16,185,129,0.3), inset 0 -3px 0 rgba(0,0,0,0.1);
+                    box-shadow: 0 4px 16px rgba(16,185,129,0.25), inset 0 1px 0 rgba(255,255,255,0.15);
                 }
                 .bao-bai-practice-btn:hover {
                     filter: brightness(1.05);
-                    box-shadow: 0 6px 20px rgba(16,185,129,0.4);
+                    box-shadow: 0 6px 24px rgba(16,185,129,0.35);
+                    transform: translateY(-2px);
                 }
 
                 .bao-bai-topic-card {
                     display: flex; align-items: center; justify-content: space-between;
-                    padding: 10px 14px; border-radius: 12px;
-                    border: 1.5px solid var(--learn-border); background: var(--learn-bg-alt);
-                    cursor: pointer; transition: all 0.15s;
+                    padding: 14px 18px; border-radius: 16px;
+                    border: 1.5px solid var(--learn-border); background: var(--learn-card);
+                    cursor: pointer; transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+                    backdrop-filter: blur(8px);
                 }
                 .bao-bai-topic-card:hover {
-                    border-color: var(--learn-accent);
-                    box-shadow: 0 2px 8px rgba(124,58,237,0.1);
+                    border-color: var(--learn-accent-light);
+                    box-shadow: 0 4px 16px rgba(245,158,11,0.08);
+                    transform: translateY(-2px);
                 }
 
                 .bao-bai-lesson-link {
                     text-decoration: none; flex-shrink: 0;
-                    transition: transform 0.15s;
+                    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
                 }
-                .bao-bai-lesson-link:hover { transform: translateY(-2px); }
+                .bao-bai-lesson-link:hover { transform: translateY(-3px); }
 
                 @media (max-width: 768px) {
                     .bao-bai-input-row { flex-direction: column; }
                     .bao-bai-submit { width: 100%; }
-                    .bao-bai-subjects { gap: 6px; }
-                    .bao-bai-subject-btn { min-width: 60px; padding: 8px 10px; }
+                    .bao-bai-subjects { gap: 8px; }
+                    .bao-bai-subject-btn { min-width: 60px; padding: 10px 12px; }
                     .bao-bai-actions { flex-direction: column; }
                 }
             `}</style>
