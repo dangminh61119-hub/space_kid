@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { href: "/learn/review", icon: "🔄", label: "Ôn tập", id: "review" },
   { href: "/learn/tutor", icon: "🤖", label: "AI Tutor", id: "tutor" },
   { href: "/learn/bao-bai", icon: "📋", label: "Báo bài", id: "bao-bai" },
+  { href: "/learn/english-buddy", icon: "🦅", label: "Luyện tiếng Anh", id: "english-buddy" },
 ];
 
 export default function LearnLayout({ children }: { children: React.ReactNode }) {

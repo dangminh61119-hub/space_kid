@@ -377,6 +377,16 @@ export default function LearnHomePage() {
                                 </div>
                             </motion.div>
                         </Link>
+                        <Link href="/learn/english-buddy" style={{ textDecoration: "none" }}>
+                            <motion.div className="learn-card learn-action-card" whileHover={{ scale: 1.02 }} style={{ borderLeftColor: "#0D9488" }}>
+                                <span className="learn-action-icon">🦅</span>
+                                <div style={{ flex: 1 }}>
+                                    <div className="learn-action-title">Luyện tiếng Anh với Luna</div>
+                                    <div className="learn-action-desc">Hội thoại thực tế mỗi ngày</div>
+                                </div>
+                                <span style={{ fontSize: 10, fontWeight: 800, color: "#5EEAD4", background: "rgba(13,148,136,0.15)", border: "1px solid rgba(13,148,136,0.3)", borderRadius: 8, padding: "3px 8px", letterSpacing: "0.5px" }}>NEW</span>
+                            </motion.div>
+                        </Link>
                     </div>
                 </motion.div>
             </div>

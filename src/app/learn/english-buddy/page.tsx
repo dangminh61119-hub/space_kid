@@ -1,0 +1,338 @@
+"use client";
+
+import { useState, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useGame } from "@/lib/game-context";
+import { useAuth } from "@/lib/services/auth-context";
+import LunaChatSession from "@/components/learn/LunaChatSession";
+
+/* ─── Duration options ─── */
+const DURATIONS = [
+    { minutes: 15, label: "15 phút", desc: "Buổi ngắn, nhanh gọn", emoji: "⚡" },
+    { minutes: 30, label: "30 phút", desc: "Chuẩn nhất", emoji: "⭐", popular: true },
+    { minutes: 45, label: "45 phút", desc: "Luyện sâu, có thời gian ôn từ", emoji: "🔥" },
+];
+
+/* ─── Suggested topics by grade ─── */
+const TOPIC_SUGGESTIONS: Record<string, string[]> = {
+    "1": ["Animals 🐶", "Colors 🎨", "Numbers 1–20 🔢", "Family 👨‍👩‍👧", "My classroom 📚"],
+    "2": ["My day 🌅", "Food I like 🍕", "Weather ☀️🌧️", "Hobbies 🎮", "My friends 🤝"],
+    "3": ["School life 🏫", "Sports ⚽", "Wild animals 🦁", "Seasons 🍂", "Going shopping 🛒"],
+    "4": ["Travel & places ✈️", "My dream job 👩‍🚀", "Environment 🌍", "Technology 💻", "Celebrations 🎉"],
+    "5": ["Vietnamese culture 🇻🇳", "Science & nature 🔬", "What I learned this week 📖", "Future plans 🚀", "Social media 📱"],
+};
+
+interface PastSession {
+    id: string;
+    topic: string;
+    duration_minutes: number;
+    summary: string;
+    key_phrases: Array<{ phrase: string; translation: string }>;
+    created_at: string;
+}
+
+function formatAgo(dateStr: string): string {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins} phút trước`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours} giờ trước`;
+    return `${Math.floor(hours / 24)} ngày trước`;
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+export default function EnglishBuddyPage() {
+    const { player } = useGame();
+    const { playerDbId, session } = useAuth();
+    const token = session?.access_token;
+
+    const [phase, setPhase] = useState<"setup" | "session">("setup");
+    const [selectedDuration, setSelectedDuration] = useState(30);
+    const [topicInput, setTopicInput] = useState("");
+    const [pastSessions, setPastSessions] = useState<PastSession[]>([]);
+    const [loadingSessions, setLoadingSessions] = useState(false);
+
+    /* The active topic used for the session */
+    const activeTopic = topicInput.trim() || null;
+
+    /* Suggestions based on grade */
+    const suggestions = useMemo(() => {
+        const g = String(player.grade ?? 2);
+        return TOPIC_SUGGESTIONS[g] ?? TOPIC_SUGGESTIONS["2"];
+    }, [player.grade]);
+
+    /* Past session summaries for personalisation */
+    const pastSummaries = useMemo(() => pastSessions.map(s => `"${s.topic}": ${s.summary}`), [pastSessions]);
+
+    /* Load recent sessions */
+    useEffect(() => {
+        if (!playerDbId || !token) return;
+        setLoadingSessions(true);
+        fetch(`/api/english-sessions?player_id=${playerDbId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+            .then(r => r.json())
+            .then(d => setPastSessions(d.sessions ?? []))
+            .catch(() => { /* silent */ })
+            .finally(() => setLoadingSessions(false));
+    }, [playerDbId, token]);
+
+    /* ─── Start session ─── */
+    function handleStart() {
+        if (!activeTopic) {
+            // Pick random suggestion
+            const pick = suggestions[Math.floor(Math.random() * suggestions.length)];
+            setTopicInput(pick.replace(/\s*[^\w\s].*/u, "").trim()); // strip emoji
+            // Use setTimeout to let state settle
+            setTimeout(() => setPhase("session"), 50);
+            return;
+        }
+        setPhase("session");
+    }
+
+    /* ─── Session ended: back to setup ─── */
+    function handleSessionEnd() {
+        setPhase("setup");
+        setTopicInput("");
+        // Refresh sessions
+        if (playerDbId && token) {
+            fetch(`/api/english-sessions?player_id=${playerDbId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            })
+                .then(r => r.json())
+                .then(d => setPastSessions(d.sessions ?? []))
+                .catch(() => { /* silent */ });
+        }
+    }
+
+    /* ════════ SESSION VIEW ════════ */
+    if (phase === "session" && activeTopic) {
+        return (
+            <div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                    <h1 className="learn-page-title" style={{ marginBottom: 0 }}>🦅 Luna</h1>
+                    <button className="learn-btn learn-btn-secondary" style={{ fontSize: 13 }} onClick={() => setPhase("setup")}>
+                        ← Quay lại
+                    </button>
+                </div>
+                <LunaChatSession
+                    studentName={player.name}
+                    grade={player.grade ?? 2}
+                    topic={activeTopic}
+                    durationMinutes={selectedDuration}
+                    playerId={playerDbId}
+                    pastSummaries={pastSummaries}
+                    onSessionEnd={handleSessionEnd}
+                />
+            </div>
+        );
+    }
+
+    /* ════════ SETUP VIEW ════════ */
+    return (
+        <div className="luna-setup-page">
+            {/* ─── Hero ─── */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="luna-hero-card">
+                <div className="luna-hero-bg-1" />
+                <div className="luna-hero-bg-2" />
+                <div className="luna-hero-content">
+                    <motion.div
+                        className="luna-hero-owl"
+                        animate={{ y: [0, -12, 0], rotate: [-2, 2, -2] }}
+                        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                    >
+                        🦅
+                    </motion.div>
+                    <div className="luna-hero-text">
+                        <div className="luna-hero-tag">✨ NEW — English Buddy</div>
+                        <h1 className="luna-hero-title">Luna</h1>
+                        <p className="luna-hero-desc">
+                            Người bạn ngoại quốc giỏi tiếng Anh của {player.name}.<br />
+                            Luna sẽ <strong>chủ động sửa lỗi</strong> và giúp bạn nói tiếng Anh tự nhiên hơn mỗi ngày! 🌟
+                        </p>
+                        <div className="luna-hero-badges">
+                            <span className="luna-badge-chip">🔠 Sửa lỗi ngữ pháp</span>
+                            <span className="luna-badge-chip">💬 Hội thoại tự nhiên</span>
+                            <span className="luna-badge-chip">📖 Từ vựng thực tế</span>
+                            <span className="luna-badge-chip">🎯 Theo dõi tiến trình</span>
+                        </div>
+                    </div>
+                </div>
+            </motion.div>
+
+            {/* ─── Duration Selector ─── */}
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                <h2 className="luna-section-title">⏱️ Chọn thời lượng luyện</h2>
+                <div className="luna-duration-grid">
+                    {DURATIONS.map(d => (
+                        <motion.button
+                            key={d.minutes}
+                            className={`luna-duration-btn ${selectedDuration === d.minutes ? "selected" : ""}`}
+                            onClick={() => setSelectedDuration(d.minutes)}
+                            whileHover={{ scale: 1.03 }}
+                            whileTap={{ scale: 0.97 }}
+                        >
+                            {d.popular && <span className="luna-popular-badge">PHỔ BIẾN</span>}
+                            <span className="luna-dur-emoji">{d.emoji}</span>
+                            <span className="luna-dur-label">{d.label}</span>
+                            <span className="luna-dur-desc">{d.desc}</span>
+                        </motion.button>
+                    ))}
+                </div>
+            </motion.div>
+
+            {/* ─── Topic Input ─── */}
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+                <h2 className="luna-section-title">💬 Chủ đề hội thoại</h2>
+                <div className="luna-topic-card">
+                    <input
+                        className="luna-topic-input"
+                        placeholder="Nhập chủ đề bạn muốn luyện, hoặc để Luna chọn cho bạn..."
+                        value={topicInput}
+                        onChange={e => setTopicInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter") handleStart(); }}
+                        maxLength={80}
+                    />
+                    <p className="luna-topic-hint">💡 Để trống → Luna sẽ gợi ý chủ đề phù hợp lớp {player.grade ?? 2}</p>
+                    <div className="luna-suggestions">
+                        {suggestions.map(s => (
+                            <button
+                                key={s}
+                                className={`luna-suggestion-chip ${topicInput === s.replace(/\s*[^\w\s\u00C0-\u024F].*/u, "").trim() ? "selected" : ""}`}
+                                onClick={() => setTopicInput(s.replace(/\s*\S*$/, "").trim() || s)}
+                            >
+                                {s}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </motion.div>
+
+            {/* ─── Start Button ─── */}
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                <motion.button
+                    className="learn-btn learn-btn-primary luna-start-btn"
+                    onClick={handleStart}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                >
+                    🚀 Bắt đầu luyện với Luna
+                    <span className="luna-start-meta">{selectedDuration} phút{activeTopic ? ` • ${activeTopic}` : " • Luna chọn chủ đề"}</span>
+                </motion.button>
+            </motion.div>
+
+            {/* ─── Past Sessions ─── */}
+            <AnimatePresence>
+                {pastSessions.length > 0 && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}>
+                        <h2 className="luna-section-title">📅 Buổi luyện gần đây</h2>
+                        <div className="luna-history-list">
+                            {pastSessions.slice(0, 3).map(s => (
+                                <div key={s.id} className="luna-history-card learn-card">
+                                    <div className="luna-hist-header">
+                                        <span className="luna-hist-topic">💬 {s.topic}</span>
+                                        <span className="luna-hist-meta">{s.duration_minutes}p • {formatAgo(s.created_at)}</span>
+                                    </div>
+                                    <p className="luna-hist-summary">{s.summary}</p>
+                                    {s.key_phrases?.length > 0 && (
+                                        <div className="luna-hist-phrases">
+                                            {s.key_phrases.slice(0, 3).map((kp, i) => (
+                                                <span key={i} className="luna-hist-phrase-chip">
+                                                    <span className="luna-hist-en">{kp.phrase}</span>
+                                                    {kp.translation && <span className="luna-hist-vi"> · {kp.translation}</span>}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <button
+                                        className="learn-btn learn-btn-secondary luna-replay-btn"
+                                        onClick={() => { setTopicInput(s.topic); setSelectedDuration(s.duration_minutes); setPhase("session"); }}
+                                    >
+                                        🔄 Luyện lại chủ đề này
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {loadingSessions && (
+                <div style={{ textAlign: "center", padding: 20, color: "var(--learn-text-secondary)" }}>
+                    <motion.span animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity }} style={{ display: "inline-block" }}>⏳</motion.span>
+                </div>
+            )}
+
+            {/* ─── Scoped Styles ─── */}
+            <style jsx>{`
+              .luna-setup-page { display:flex; flex-direction:column; gap:28px; }
+
+              /* Hero Card */
+              .luna-hero-card { background:linear-gradient(135deg, #042F2E 0%, #134E4A 40%, #0D9488 100%); border-radius:32px; padding:40px; position:relative; overflow:hidden; box-shadow:0 16px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1); border:1px solid rgba(13,148,136,0.3); }
+              .luna-hero-bg-1 { position:absolute; top:-30%; right:-5%; width:380px; height:380px; background:radial-gradient(circle, rgba(94,234,212,0.25) 0%, transparent 70%); border-radius:50%; pointer-events:none; }
+              .luna-hero-bg-2 { position:absolute; bottom:-40%; left:10%; width:500px; height:500px; background:radial-gradient(circle, rgba(20,184,166,0.15) 0%, transparent 60%); border-radius:50%; pointer-events:none; }
+              .luna-hero-content { position:relative; z-index:2; display:flex; align-items:center; gap:32px; }
+              .luna-hero-owl { font-size:100px; filter:drop-shadow(0 0 30px rgba(94,234,212,0.5)); flex-shrink:0; }
+              .luna-hero-text { flex:1; }
+              .luna-hero-tag { font-size:11px; font-weight:800; color:#5EEAD4; text-transform:uppercase; letter-spacing:1.5px; background:rgba(13,148,136,0.2); border:1px solid rgba(13,148,136,0.4); border-radius:20px; display:inline-block; padding:5px 14px; margin-bottom:12px; }
+              .luna-hero-title { font-family:var(--font-heading); font-size:48px; font-weight:900; color:#fff; margin:0 0 12px; text-shadow:0 4px 16px rgba(0,0,0,0.4); letter-spacing:-1px; }
+              .luna-hero-desc { font-size:15px; color:rgba(255,255,255,0.8); line-height:1.7; margin:0 0 18px; }
+              .luna-hero-desc strong { color:#5EEAD4; }
+              .luna-hero-badges { display:flex; flex-wrap:wrap; gap:8px; }
+              .luna-badge-chip { background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:20px; padding:6px 14px; font-size:13px; font-weight:700; color:rgba(255,255,255,0.85); backdrop-filter:blur(8px); }
+
+              /* Section title */
+              .luna-section-title { font-family:var(--font-heading); font-size:19px; font-weight:800; color:#fff; margin:0 0 14px; }
+
+              /* Duration grid */
+              .luna-duration-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; }
+              .luna-duration-btn { position:relative; display:flex; flex-direction:column; align-items:center; gap:6px; padding:22px 16px; border-radius:22px; border:1.5px solid var(--learn-card-border); background:var(--learn-card); cursor:pointer; transition:all 0.25s cubic-bezier(0.34,1.56,0.64,1); }
+              .luna-duration-btn:hover { border-color:rgba(13,148,136,0.4); transform:translateY(-3px); box-shadow:0 8px 20px rgba(0,0,0,0.15); }
+              .luna-duration-btn.selected { border-color:rgba(13,148,136,0.7); background:rgba(13,148,136,0.1); box-shadow:0 0 0 3px rgba(13,148,136,0.12), 0 8px 20px rgba(13,148,136,0.15); }
+              .luna-popular-badge { position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:linear-gradient(90deg, #0D9488, #14B8A6); color:#fff; font-size:9px; font-weight:900; letter-spacing:1px; padding:3px 10px; border-radius:10px; white-space:nowrap; }
+              .luna-dur-emoji { font-size:28px; }
+              .luna-dur-label { font-family:var(--font-heading); font-size:15px; font-weight:900; color:#fff; }
+              .luna-dur-desc { font-size:12px; color:var(--learn-text-secondary); font-weight:600; text-align:center; }
+
+              /* Topic card */
+              .luna-topic-card { background:var(--learn-card); border:1px solid var(--learn-card-border); border-radius:24px; padding:22px; }
+              .luna-topic-input { width:100%; background:rgba(255,255,255,0.04); border:1.5px solid var(--learn-card-border); border-radius:16px; padding:14px 18px; font-size:15px; color:#fff; font-family:var(--font-body); outline:none; transition:all 0.25s; box-sizing:border-box; }
+              .luna-topic-input:focus { border-color:rgba(13,148,136,0.5); box-shadow:0 0 0 3px rgba(13,148,136,0.12); }
+              .luna-topic-input::placeholder { color:var(--learn-text-secondary); }
+              .luna-topic-hint { font-size:13px; color:var(--learn-text-secondary); margin:10px 0 14px; }
+              .luna-suggestions { display:flex; flex-wrap:wrap; gap:8px; }
+              .luna-suggestion-chip { background:rgba(13,148,136,0.08); border:1px solid rgba(13,148,136,0.2); border-radius:20px; padding:7px 16px; font-size:13px; font-weight:700; color:#5EEAD4; cursor:pointer; transition:all 0.2s; }
+              .luna-suggestion-chip:hover { background:rgba(13,148,136,0.18); transform:translateY(-1px); }
+              .luna-suggestion-chip.selected { background:rgba(13,148,136,0.25); border-color:rgba(13,148,136,0.6); }
+
+              /* Start button */
+              .luna-start-btn { width:100%; padding:20px; font-size:18px; display:flex; flex-direction:column; align-items:center; gap:4px; border-radius:20px; }
+              .luna-start-meta { font-size:12px; font-weight:600; opacity:0.7; }
+
+              /* History */
+              .luna-history-list { display:flex; flex-direction:column; gap:14px; }
+              .luna-history-card { padding:20px; }
+              .luna-hist-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+              .luna-hist-topic { font-weight:800; font-size:15px; color:#fff; }
+              .luna-hist-meta { font-size:12px; color:var(--learn-text-secondary); font-weight:700; }
+              .luna-hist-summary { font-size:13px; color:rgba(255,255,255,0.7); line-height:1.6; margin:0 0 12px; }
+              .luna-hist-phrases { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:14px; }
+              .luna-hist-phrase-chip { background:rgba(13,148,136,0.12); border:1px solid rgba(13,148,136,0.25); border-radius:10px; padding:5px 12px; font-size:12px; }
+              .luna-hist-en { color:#5EEAD4; font-weight:700; }
+              .luna-hist-vi { color:var(--learn-text-secondary); }
+              .luna-replay-btn { font-size:13px; padding:9px 18px; }
+
+              @media (max-width: 768px) {
+                .luna-hero-content { flex-direction:column; text-align:center; gap:20px; }
+                .luna-hero-owl { font-size:70px; }
+                .luna-hero-title { font-size:38px; }
+                .luna-hero-badges { justify-content:center; }
+                .luna-duration-grid { grid-template-columns:repeat(3,1fr); gap:10px; }
+              }
+              @media (max-width: 480px) {
+                .luna-duration-grid { grid-template-columns:1fr; }
+              }
+            `}</style>
+        </div>
+    );
+}
