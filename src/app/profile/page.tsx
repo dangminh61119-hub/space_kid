@@ -31,6 +31,7 @@ export default function ProfilePage() {
 
     const [currentStep, setCurrentStep] = useState<Step>("child");
     const [childName, setChildName] = useState("");
+    const [englishName, setEnglishName] = useState("");
     const [grade, setGrade] = useState(3);
     const [birthday, setBirthday] = useState("");
     const [school, setSchool] = useState("");
@@ -118,7 +119,8 @@ export default function ProfilePage() {
                 parentEmail: data.parentEmail,
                 parentName: data.parentName,
                 parentPhone: data.parentPhone,
-                favoriteSubjects: data.favoriteSubjects
+                favoriteSubjects: data.favoriteSubjects,
+                englishName: englishName.trim() || undefined,
             });
             setProfileDone();
 
@@ -192,6 +194,20 @@ export default function ProfilePage() {
                                         value={childName}
                                         onChange={(e) => setChildName(e.target.value)}
                                         placeholder="Nhập tên của em..."
+                                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
+                                    />
+                                </div>
+
+                                {/* English name */}
+                                <div>
+                                    <label className="block text-white/60 text-xs mb-1.5 font-medium">
+                                        Tên tiếng Anh 🌍 <span className="text-white/30">(dùng khi luyện nói — không bắt buộc)</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={englishName}
+                                        onChange={(e) => setEnglishName(e.target.value)}
+                                        placeholder="VD: Tom, Alice, Michael..."
                                         className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all"
                                     />
                                 </div>

@@ -131,7 +131,7 @@ export default function EnglishBuddyPage() {
                     </button>
                 </div>
                 <LunaChatSession
-                    studentName={player.name}
+                    studentName={player.englishName?.trim() || player.name}
                     grade={player.grade ?? 2}
                     topic={activeTopic}
                     durationMinutes={selectedDuration}
@@ -174,6 +174,14 @@ export default function EnglishBuddyPage() {
                     </div>
                 </div>
             </motion.div>
+
+            {/* ─── English name missing banner ─── */}
+            {!player.englishName?.trim() && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="luna-name-banner">
+                    <span>🌍 Luna sẽ dùng tên tiếng Anh của bạn khi nói chuyện.</span>
+                    <a href="/profile" className="luna-name-banner-link">Thêm tên tiếng Anh trong Hồ sơ →</a>
+                </motion.div>
+            )}
 
             {/* ─── Duration Selector ─── */}
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
@@ -371,6 +379,11 @@ export default function EnglishBuddyPage() {
               .luna-voice-name { font-family:var(--font-heading); font-size:15px; font-weight:900; color:#fff; }
               .luna-voice-tier { font-size:9px; font-weight:800; color:#5EEAD4; text-transform:uppercase; letter-spacing:1px; background:rgba(13,148,136,0.15); border-radius:6px; padding:2px 6px; }
               .luna-voice-desc { font-size:11px; color:var(--learn-text-secondary); margin-top:2px; }
+
+              /* English name banner */
+              .luna-name-banner { display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:10px 16px; border-radius:14px; background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.25); font-size:13px; color:rgba(255,255,255,0.7); }
+              .luna-name-banner-link { color:#FCD34D; font-weight:700; text-decoration:none; white-space:nowrap; }
+              .luna-name-banner-link:hover { text-decoration:underline; }
 
               .luna-replay-btn { font-size:13px; padding:9px 18px; }
 

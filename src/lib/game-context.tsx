@@ -36,6 +36,7 @@ export interface PlayerData {
     profileCompleted: boolean;
     birthday?: string;
     school?: string;
+    englishName?: string;       // Tên tiếng Anh (dùng cho Luna English Practice)
     parentEmail?: string;
     parentName?: string;
     parentPhone?: string;
@@ -96,6 +97,7 @@ const DEFAULT_PLAYER: PlayerData = {
     profileCompleted: false,
     birthday: "",
     school: "",
+    englishName: "",
     parentEmail: "",
     parentName: "",
     parentPhone: "",
@@ -200,7 +202,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
                     // Fetch player details (level, xp, etc)
                     const { data: remotePlayer, error: pError } = await supabase
                         .from("players")
-                        .select("xp, grade, name, mascot, player_class, streak, onboarding_complete, onboarding_quiz_score, survey_completed, estimated_grade, profile_completed, lucky_stars, coins, crystals, total_crystals_earned, ability_charges")
+                        .select("xp, grade, name, mascot, player_class, streak, onboarding_complete, onboarding_quiz_score, survey_completed, estimated_grade, profile_completed, lucky_stars, coins, crystals, total_crystals_earned, ability_charges, english_name")
                         .eq("id", playerDbId)
                         .single();
 
@@ -252,6 +254,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
                                     crystals: remotePlayer.crystals ?? prev.crystals,
                                     totalCrystalsEarned: remotePlayer.total_crystals_earned ?? prev.totalCrystalsEarned,
                                     abilityCharges: remotePlayer.ability_charges ?? prev.abilityCharges,
+                                    englishName: remotePlayer.english_name ?? prev.englishName ?? "",
                                 });
                             }
 
@@ -354,6 +357,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
             if ('totalCrystalsEarned' in updates) dbUpdates.total_crystals_earned = updates.totalCrystalsEarned;
             if ('abilityCharges' in updates) dbUpdates.ability_charges = updates.abilityCharges;
             if ('luckyStars' in updates) dbUpdates.lucky_stars = updates.luckyStars;
+            if ('englishName' in updates) dbUpdates.english_name = updates.englishName;
 
             if (Object.keys(dbUpdates).length > 0) {
                 supabase.from("players").update(dbUpdates).eq("id", playerDbId).then(({ error }) => {

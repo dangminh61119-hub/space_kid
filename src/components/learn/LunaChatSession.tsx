@@ -220,10 +220,11 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
         setOwlMood("thinking");
         // Cap history to last 4 messages to save tokens
         const recentHistory = currentMessages.slice(-4).map(m => ({ role: m.role, content: m.content }));
+        const fluencyLevel = fluencyScore.current >= 66 ? "advanced" : fluencyScore.current >= 36 ? "intermediate" : "beginner";
         const res = await fetch("/api/ai/english-practice", {
             method: "POST",
             headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-            body: JSON.stringify({ message: userText.trim(), history: recentHistory, sessionContext: sessionCtx.current }),
+            body: JSON.stringify({ message: userText.trim(), history: recentHistory, sessionContext: { ...sessionCtx.current, fluencyLevel } }),
         });
         const data = await res.json();
         const reply = data.response || "Keep going!";
