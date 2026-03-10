@@ -300,7 +300,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     }, [token, voice]);
 
     /* ─── STT: Google Cloud STT (primary) → Web Speech API (fallback) ─── */
-    const googleSttFailed = useRef(false); // skip Google STT after first failure
+    const googleSttFailCount = useRef(0); // only fallback after 5 consecutive failures
 
     // Helper: stop any playing Luna audio and wait for echo to clear
     const stopAudioAndWait = useCallback(async () => {
@@ -421,14 +421,15 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                         });
                         if (!res.ok) throw new Error(`STT ${res.status}`);
                         const data = await res.json();
+                        googleSttFailCount.current = 0; // reset on success
                         setIsRecording(false);
                         resolve(data.transcript || "");
-                    } catch {
-                        // Google STT failed → mark as failed, don't retry next time
-                        console.warn("[Luna] Google STT failed, switching to browser Speech API");
-                        googleSttFailed.current = true;
+                    } catch (err) {
+                        // Count consecutive failures — only fallback after 5
+                        googleSttFailCount.current++;
+                        console.warn(`[Luna] Google STT failed (${googleSttFailCount.current}/5)`, err);
                         setIsRecording(false);
-                        resolve(""); // this turn lost, but next turn will use browser fallback
+                        resolve(""); // this turn lost, next turn may retry or fallback
                     }
                 };
 
@@ -439,16 +440,19 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                 checkSilence();
             } catch {
                 // MediaRecorder/mic failed → fallback to browser
-                googleSttFailed.current = true;
+                googleSttFailCount.current++;
                 setIsRecording(false);
                 resolve("");
             }
         });
     }, [token, stopAudioAndWait]);
 
-    // Main dispatcher: choose Google or browser STT
+    // Main dispatcher: choose Google (primary) or browser (fallback after 5 failures)
     const startListening = useCallback((): Promise<string> => {
-        if (googleSttFailed.current) return listenViaBrowser();
+        if (googleSttFailCount.current >= 5) {
+            console.warn("[Luna] Google STT disabled after 5 failures, using browser Speech API");
+            return listenViaBrowser();
+        }
         return listenViaGoogle();
     }, [listenViaBrowser, listenViaGoogle]);
 

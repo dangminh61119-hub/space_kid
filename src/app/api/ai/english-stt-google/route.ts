@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
         // Build Speech Adaptation phrases from topic
         const speechContexts = topic
-            ? [{ phrases: topic.split(/[\s,]+/).filter(Boolean), boost: 10 }]
+            ? [{ phrases: topic.split(/[\s,]+/).filter(Boolean).slice(0, 20), boost: 5 }]
             : [];
 
         const sttUrl = `https://speech.googleapis.com/v1/speech:recognize?key=${apiKey}`;
@@ -49,16 +49,18 @@ export async function POST(request: NextRequest) {
         const payload = {
             config: {
                 encoding: "WEBM_OPUS",
-                sampleRateHertz: 48000,
+                // sampleRateHertz omitted — WEBM_OPUS auto-detects from container
                 languageCode: "en-US",
                 model: "latest_short",
                 enableAutomaticPunctuation: true,
-                speechContexts,
+                ...(speechContexts.length ? { speechContexts } : {}),
             },
             audio: {
                 content: base64Audio,
             },
         };
+
+        console.log(`[english-stt-google] Sending ${Math.round(base64Audio.length / 1024)}KB audio to Google STT`);
 
         const res = await fetch(sttUrl, {
             method: "POST",
