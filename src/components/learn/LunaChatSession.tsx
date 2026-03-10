@@ -308,41 +308,63 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                 mediaRecorderRef.current = recorder;
                 const chunks: Blob[] = [];
 
-                // Silence detection via AudioContext
+                // Silence detection via AudioContext (amplitude-based)
                 const audioCtx = new AudioContext();
                 const source = audioCtx.createMediaStreamSource(stream);
                 const analyser = audioCtx.createAnalyser();
-                analyser.fftSize = 512;
+                analyser.fftSize = 256;
                 source.connect(analyser);
-                const dataArray = new Uint8Array(analyser.frequencyBinCount);
-                const SILENCE_THRESHOLD = 15; // volume level below which = silence
+                const dataArray = new Uint8Array(analyser.fftSize);
+                const SILENCE_THRESHOLD = 10; // amplitude deviation from 128 baseline
                 const SILENCE_MS = 2000;
+                const MAX_RECORD_MS = 30_000; // safety: max 30s recording
                 let silenceStart: number | null = null;
                 let hasSpeech = false;
                 let stopped = false;
+                let silenceCheckInterval: ReturnType<typeof setInterval> | null = null;
+                let maxTimeout: ReturnType<typeof setTimeout> | null = null;
+
+                const stopRecording = () => {
+                    if (stopped) return;
+                    stopped = true;
+                    if (silenceCheckInterval) clearInterval(silenceCheckInterval);
+                    if (maxTimeout) clearTimeout(maxTimeout);
+                    if (recorder.state === "recording") recorder.stop();
+                };
 
                 const checkSilence = () => {
                     if (stopped) return;
-                    analyser.getByteFrequencyData(dataArray);
-                    const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-                    if (avg > SILENCE_THRESHOLD) {
+                    // Use time-domain data (amplitude) — more reliable than frequency for voice detection
+                    analyser.getByteTimeDomainData(dataArray);
+                    // Calculate how far samples deviate from 128 (silence baseline)
+                    let maxDeviation = 0;
+                    for (let i = 0; i < dataArray.length; i++) {
+                        const dev = Math.abs(dataArray[i] - 128);
+                        if (dev > maxDeviation) maxDeviation = dev;
+                    }
+
+                    if (maxDeviation > SILENCE_THRESHOLD) {
                         hasSpeech = true;
                         silenceStart = null;
                     } else if (hasSpeech) {
-                        // Only start counting silence AFTER speech has been detected
                         if (!silenceStart) silenceStart = Date.now();
                         if (Date.now() - silenceStart >= SILENCE_MS) {
-                            stopped = true;
-                            recorder.stop();
+                            stopRecording();
                             return;
                         }
                     }
-                    requestAnimationFrame(checkSilence);
                 };
+
+                // Use setInterval (works even when tab is unfocused, unlike requestAnimationFrame)
+                silenceCheckInterval = setInterval(checkSilence, 100);
+                // Safety: force stop after MAX_RECORD_MS
+                maxTimeout = setTimeout(stopRecording, MAX_RECORD_MS);
 
                 recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
                 recorder.onstop = async () => {
-                    // Cleanup
+                    // Cleanup timers
+                    if (silenceCheckInterval) { clearInterval(silenceCheckInterval); silenceCheckInterval = null; }
+                    if (maxTimeout) { clearTimeout(maxTimeout); maxTimeout = null; }
                     stream.getTracks().forEach(t => t.stop());
                     streamRef.current = null;
                     mediaRecorderRef.current = null;
