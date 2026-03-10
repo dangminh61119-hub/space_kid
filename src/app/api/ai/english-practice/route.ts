@@ -49,13 +49,14 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const apiKey = process.env.GEMINI_API_KEY;
-        const apiUrl = process.env.AI_API_URL || "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-        const modelName = process.env.AI_MODEL || "gemini-2.5-flash";
+        // Use OpenAI GPT-4O Mini for Luna English Practice
+        const apiKey = process.env.OPENAI_API_KEY;
+        const apiUrl = "https://api.openai.com/v1/chat/completions";
+        const modelName = "gpt-4o-mini";
 
         if (!apiKey) {
             return NextResponse.json({
-                response: "Luna is taking a short break! Please try again in a moment. 🦅",
+                response: "Luna is taking a short break! Please try again in a moment.",
                 isFallback: true,
             });
         }
@@ -76,13 +77,12 @@ export async function POST(request: NextRequest) {
             headers: {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${apiKey}`,
-                "Referer": "https://learn.aiclick.vn/",
             },
             body: JSON.stringify({
                 model: modelName,
                 messages,
-                max_tokens: 500,    // Generous for natural filler-rich responses
-                temperature: 0.88,  // More varied, natural-sounding
+                max_tokens: 200,    // Keep responses short
+                temperature: 0.85,  // Natural but not too wild
             }),
         });
 
@@ -90,13 +90,13 @@ export async function POST(request: NextRequest) {
             const errBody = await aiRes.text();
             console.error("[english-practice] AI error:", aiRes.status, errBody);
             return NextResponse.json({
-                response: "Luna lost the signal! Try again? 🦅",
+                response: "Luna lost the signal! Try again?",
                 isFallback: true,
             });
         }
 
         const data = await aiRes.json() as { choices?: Array<{ message: { content: string } }> };
-        const aiText = data.choices?.[0]?.message?.content || "Great effort! What would you like to say? 🦅";
+        const aiText = data.choices?.[0]?.message?.content || "What would you like to say?";
 
         return NextResponse.json({
             response: aiText,
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
     } catch (error) {
         console.error("[english-practice] Error:", error);
         return NextResponse.json({
-            response: "Oops! Something went wrong. Let's try again! 🦅",
+            response: "Oops! Something went wrong. Let's try again!",
             isFallback: true,
         }, { status: 200 });
     }
