@@ -161,47 +161,12 @@ export default function EnglishBuddyPage() {
                     <div className="luna-hero-text">
                         <div className="luna-hero-tag">✨ NEW — English Buddy</div>
                         <h1 className="luna-hero-title">Luna</h1>
-                        <p className="luna-hero-desc">
-                            Người bạn tiếng Anh của {player.name} — chủ động <strong>sửa lỗi</strong> &amp; trò chuyện tự nhiên 🌟
-                        </p>
-                        <div className="luna-hero-badges">
-                            <span className="luna-badge-chip">🔠 Ngữ pháp</span>
-                            <span className="luna-badge-chip">💬 Hội thoại</span>
-                            <span className="luna-badge-chip">📖 Từ vựng</span>
-                            <span className="luna-badge-chip">🎯 Tiến trình</span>
-                        </div>
+
                     </div>
                 </div>
             </motion.div>
 
-            {/* ─── English name missing banner ─── */}
-            {!player.englishName?.trim() && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="luna-name-banner">
-                    <span>🌍 Luna sẽ dùng tên tiếng Anh của bạn khi nói chuyện.</span>
-                    <a href="/profile" className="luna-name-banner-link">Thêm tên tiếng Anh trong Hồ sơ →</a>
-                </motion.div>
-            )}
 
-            {/* ─── Duration Selector ─── */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-                <h2 className="luna-section-title">⏱️ Chọn thời lượng luyện</h2>
-                <div className="luna-duration-grid">
-                    {DURATIONS.map(d => (
-                        <motion.button
-                            key={d.minutes}
-                            className={`luna-duration-btn ${selectedDuration === d.minutes ? "selected" : ""}`}
-                            onClick={() => setSelectedDuration(d.minutes)}
-                            whileHover={{ scale: 1.03 }}
-                            whileTap={{ scale: 0.97 }}
-                        >
-                            {d.popular && <span className="luna-popular-badge">PHỔ BIẾN</span>}
-                            <span className="luna-dur-emoji">{d.emoji}</span>
-                            <span className="luna-dur-label">{d.label}</span>
-                            <span className="luna-dur-desc">{d.desc}</span>
-                        </motion.button>
-                    ))}
-                </div>
-            </motion.div>
 
             {/* ─── Topic Input ─── */}
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
