@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence, type TargetAndTransition } from "framer-motion";
 import Image from "next/image";
 import { useAuth } from "@/lib/services/auth-context";
+import { sfxCorrect, sfxCorrection, sfxEncourage, sfxStart, sfxEnd } from "@/lib/sfx";
 
 /* ─── Types ─── */
 interface ChatMessage { role: "user" | "assistant"; content: string; }
@@ -345,6 +346,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
         setMessages(msgs);
         setConvState("luna-speaking");
         await lunaSpeak(initialLunaText, "happy", "slow"); // always slow for opener
+        sfxStart();
         if (isEndedRef.current) return;
 
         while (!isEndedRef.current) {
@@ -372,7 +374,13 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
 
             // Score the turn based on Luna's response
             const hasCorrected = /(did you mean|do you mean|should be|try saying|try it|maybe try|the correct way|let me fix|instead of|rather than)/i.test(reply);
+            const hasPraise = /(great|amazing|well done|excellent|perfect|wonderful|awesome|nice|exactly|good job|bravo)/i.test(reply);
             const newTier = hasCorrected ? updateSpeed(-10) : updateSpeed(+10);
+
+            // Play appropriate SFX
+            if (hasCorrected) sfxCorrection();
+            else if (hasPraise) sfxCorrect();
+            else sfxEncourage();
 
             // Pre-arm typewriter BEFORE rendering message to avoid text flash
             setIsTyping(true); setTypingText("");
@@ -418,6 +426,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
         setIsSpeaking(false);
         setOwlMood("happy");
         setIsSummaryLoading(true);
+        sfxEnd();
 
         try {
             const res = await fetch("/api/ai/english-practice", {
@@ -551,12 +560,36 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                     </motion.button>
                 ) : (
                     <div className="lv-status-bar">
-                        {/* Visual indicator for who's turn it is */}
+                        {/* Sound wave orb */}
+                        <div className={`lv-wave-orb ${convState === "user-speaking" ? "lv-wave-user" : convState === "luna-speaking" ? "lv-wave-luna" : "lv-wave-idle"}`}>
+                            <div className="lv-wave-ring lv-ring-1" />
+                            <div className="lv-wave-ring lv-ring-2" />
+                            <div className="lv-wave-ring lv-ring-3" />
+                            <div className="lv-wave-bars">
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                    <motion.div
+                                        key={i}
+                                        className="lv-wave-bar"
+                                        animate={{
+                                            scaleY: (convState === "user-speaking" || convState === "luna-speaking")
+                                                ? [0.3, 0.7 + Math.random() * 0.3, 0.3]
+                                                : 0.15,
+                                        }}
+                                        transition={{
+                                            duration: 0.3 + i * 0.08,
+                                            repeat: Infinity,
+                                            ease: "easeInOut",
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                        {/* Turn label */}
                         <motion.div className={`lv-turn-indicator lv-turn-${convState === "user-speaking" ? "user" : "luna"}`}
                             animate={{ opacity: convState === "user-speaking" ? [0.6, 1, 0.6] : 1 }}
                             transition={{ duration: 0.8, repeat: convState === "user-speaking" ? Infinity : 0 }}>
-                            {convState === "user-speaking" && <><span className="lv-mic-dot" />Đang nghe...</>}
-                            {convState === "luna-speaking" && <><span className="lv-luna-dot" />Luna đang nói</>}
+                            {convState === "user-speaking" && <>🎤 Đang nghe...</>}
+                            {convState === "luna-speaking" && <>🔊 Luna đang nói</>}
                             {convState === "processing" && <><span className="lv-think-dot" />Đang xử lý...</>}
                         </motion.div>
                     </div>
@@ -642,14 +675,39 @@ const LV_STYLES = `
   .lv-start-btn { display:flex; align-items:center; gap:14px; padding:18px 48px; background:linear-gradient(135deg,#0D9488,#0F766E); border:none; border-radius:24px; color:#fff; font-size:18px; font-weight:900; font-family:var(--font-heading); cursor:pointer; box-shadow:0 6px 24px rgba(13,148,136,0.45); }
   .lv-start-icon { font-size:24px; }
 
-  /* Status bar */
-  .lv-status-bar { width:100%; display:flex; justify-content:center; }
-  .lv-turn-indicator { display:flex; align-items:center; gap:10px; padding:12px 28px; border-radius:20px; border:1px solid; font-size:15px; font-weight:800; backdrop-filter:blur(8px); }
+  /* Status bar & Sound Wave Orb */
+  .lv-status-bar { width:100%; display:flex; align-items:center; justify-content:center; gap:16px; }
+  .lv-turn-indicator { display:flex; align-items:center; gap:8px; padding:10px 22px; border-radius:20px; border:1px solid; font-size:14px; font-weight:800; backdrop-filter:blur(8px); }
   .lv-turn-user { background:rgba(124,58,237,0.12); border-color:rgba(124,58,237,0.3); color:#A78BFA; }
   .lv-turn-luna { background:rgba(13,148,136,0.12); border-color:rgba(13,148,136,0.3); color:#5EEAD4; }
-  .lv-mic-dot  { width:10px; height:10px; border-radius:50%; background:#A78BFA; display:inline-block; }
-  .lv-luna-dot { width:10px; height:10px; border-radius:50%; background:#5EEAD4; display:inline-block; }
-  .lv-think-dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.3); display:inline-block; }
+  .lv-think-dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.3); display:inline-block; animation:pulse-dot 1s infinite; }
+  @keyframes pulse-dot { 0%,100%{opacity:0.3} 50%{opacity:1} }
+
+  /* Wave Orb */
+  .lv-wave-orb { position:relative; width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all 0.4s ease; }
+  .lv-wave-user { background:radial-gradient(circle,rgba(124,58,237,0.25),rgba(124,58,237,0.05)); }
+  .lv-wave-luna { background:radial-gradient(circle,rgba(13,148,136,0.25),rgba(13,148,136,0.05)); }
+  .lv-wave-idle { background:radial-gradient(circle,rgba(255,255,255,0.08),transparent); }
+
+  .lv-wave-ring { position:absolute; inset:0; border-radius:50%; border:1.5px solid; opacity:0; }
+  .lv-wave-user .lv-wave-ring { border-color:rgba(167,139,250,0.4); }
+  .lv-wave-luna .lv-wave-ring { border-color:rgba(94,234,212,0.4); }
+  .lv-wave-idle .lv-wave-ring { border-color:rgba(255,255,255,0.1); }
+
+  .lv-wave-user .lv-ring-1, .lv-wave-luna .lv-ring-1 { animation: wave-ring 1.5s ease-out infinite; }
+  .lv-wave-user .lv-ring-2, .lv-wave-luna .lv-ring-2 { animation: wave-ring 1.5s ease-out 0.3s infinite; }
+  .lv-wave-user .lv-ring-3, .lv-wave-luna .lv-ring-3 { animation: wave-ring 1.5s ease-out 0.6s infinite; }
+
+  @keyframes wave-ring {
+    0% { transform:scale(1); opacity:0.6; }
+    100% { transform:scale(2.2); opacity:0; }
+  }
+
+  .lv-wave-bars { display:flex; align-items:center; gap:3px; height:24px; z-index:1; }
+  .lv-wave-bar { width:3px; height:100%; border-radius:3px; transform-origin:center; }
+  .lv-wave-user .lv-wave-bar { background:linear-gradient(to top,#A78BFA,#C4B5FD); }
+  .lv-wave-luna .lv-wave-bar { background:linear-gradient(to top,#14B8A6,#5EEAD4); }
+  .lv-wave-idle .lv-wave-bar { background:rgba(255,255,255,0.2); }
 
   /* End screen */
   .lv-end { display:flex; flex-direction:column; align-items:center; gap:24px; padding:40px 20px; }
