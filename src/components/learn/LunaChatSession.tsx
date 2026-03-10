@@ -126,6 +126,10 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     // Adaptive speed
     const [speedTier, setSpeedTier] = useState<"slow" | "normal" | "fast">("slow");
     const fluencyScore = useRef(20); // 0–100, starts at 20 (beginner)
+    // Typewriter
+    const [typingText, setTypingText] = useState("");
+    const [isTyping, setIsTyping] = useState(false);
+    const typingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -142,6 +146,30 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
         const tier = s >= 66 ? "fast" : s >= 36 ? "normal" : "slow";
         setSpeedTier(tier);
         return tier;
+    }
+
+    /* ─── Typewriter: reveal text in sync with audio ─── */
+    function startTypewriter(text: string, speed: string) {
+        if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
+        const wordsPerSec = speed === "fast" ? 3.2 : speed === "normal" ? 2.8 : 2.2;
+        const charsPerInterval = Math.max(1, Math.round(wordsPerSec * 5 * 0.1)); // per 100ms
+        let revealed = 0;
+        setIsTyping(true);
+        setTypingText("");
+        typingIntervalRef.current = setInterval(() => {
+            revealed += charsPerInterval;
+            if (revealed >= text.length) {
+                setTypingText(text);
+                setIsTyping(false);
+                if (typingIntervalRef.current) { clearInterval(typingIntervalRef.current); typingIntervalRef.current = null; }
+            } else {
+                setTypingText(text.slice(0, revealed));
+            }
+        }, 100);
+    }
+    function stopTypewriter(fullText: string) {
+        if (typingIntervalRef.current) { clearInterval(typingIntervalRef.current); typingIntervalRef.current = null; }
+        setTypingText(fullText); setIsTyping(false);
     }
 
     /* ─── Timer ─── */
@@ -182,14 +210,22 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                 audioRef.current = audio;
                 setIsSpeaking(true);
                 setOwlMood(mood === "idle" ? "speaking" : mood);
-                audio.onended = () => { URL.revokeObjectURL(url); setIsSpeaking(false); setOwlMood("idle"); resolve(); };
-                audio.onerror = () => { URL.revokeObjectURL(url); setIsSpeaking(false); setOwlMood("idle"); resolve(); };
+                startTypewriter(text, speed ?? "slow"); // ← start typewriter
+                audio.onended = () => {
+                    URL.revokeObjectURL(url);
+                    setIsSpeaking(false); setOwlMood("idle");
+                    stopTypewriter(text); // snap to full text
+                    resolve();
+                };
+                audio.onerror = () => { URL.revokeObjectURL(url); setIsSpeaking(false); setOwlMood("idle"); stopTypewriter(text); resolve(); };
                 await audio.play();
             } catch {
                 setIsSpeaking(false); setOwlMood("idle"); resolve();
             }
         });
-    }, [token]);
+
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [token, voice]);
 
     /* ─── STT: listen for user speech (auto-start, auto-end) ─── */
     const startListening = useCallback((): Promise<string> => {
@@ -257,7 +293,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
 
             // Score the turn based on Luna's response
             const hasCorrected = /did you mean|should be|try saying|try it/i.test(reply);
-            const newTier = hasCorrected ? updateSpeed(-8) : updateSpeed(+7);
+            const newTier = hasCorrected ? updateSpeed(-10) : updateSpeed(+10);
 
             msgs = [...msgs, { role: "assistant", content: reply }];
             setMessages([...msgs]);
@@ -374,7 +410,11 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                         {messages.map((m, i) => (
                             <motion.div key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className={`lv-msg lv-msg-${m.role}`}>
                                 {m.role === "assistant" && <span className="lv-msg-who">Luna</span>}
-                                <p className="lv-msg-text">{m.content}</p>
+                                <p className="lv-msg-text">
+                                    {m.role === "assistant" && isTyping && i === messages.length - 1
+                                        ? typingText
+                                        : m.content}
+                                </p>
                             </motion.div>
                         ))}
                     </AnimatePresence>
@@ -488,7 +528,7 @@ const LV_STYLES = `
   .lv-msg-user { align-self:flex-end; align-items:flex-end; }
   .lv-msg-live { opacity:0.55; }
   .lv-msg-who { font-size:10px; font-weight:800; color:rgba(94,234,212,0.5); text-transform:uppercase; letter-spacing:1px; padding:0 4px; }
-  .lv-msg-text { margin:0; padding:10px 15px; border-radius:18px; font-size:13.5px; line-height:1.65; color:rgba(255,255,255,0.9); }
+  .lv-msg-text { margin:0; padding:10px 15px; border-radius:18px; font-size:27px; line-height:1.65; color:rgba(255,255,255,0.9); }
   .lv-msg-text-live { font-style:italic; }
   .lv-msg-assistant .lv-msg-text { background:rgba(13,148,136,0.16); border:1px solid rgba(13,148,136,0.2); border-bottom-left-radius:4px; }
   .lv-msg-user .lv-msg-text { background:rgba(124,58,237,0.2); border:1px solid rgba(124,58,237,0.2); border-bottom-right-radius:4px; }
