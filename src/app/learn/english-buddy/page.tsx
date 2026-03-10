@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/game-context";
 import { useAuth } from "@/lib/services/auth-context";
@@ -156,7 +157,14 @@ export default function EnglishBuddyPage() {
                         animate={{ y: [0, -12, 0], rotate: [-2, 2, -2] }}
                         transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                     >
-                        🦅
+                        <Image
+                            src="/images/luna_owl_avatar.png"
+                            alt="Luna Mascot"
+                            width={160}
+                            height={160}
+                            style={{ objectFit: 'contain' }}
+                            priority
+                        />
                     </motion.div>
                     <div className="luna-hero-text">
                         <div className="luna-hero-tag">✨ NEW — English Buddy</div>
@@ -164,12 +172,13 @@ export default function EnglishBuddyPage() {
 
                     </div>
                 </div>
-            </motion.div>
+            </motion.div >
 
 
 
             {/* ─── Topic Input ─── */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+            < motion.div initial={{ opacity: 0, y: 16 }
+            } animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
                 <h2 className="luna-section-title">💬 Chủ đề hội thoại</h2>
                 <div className="luna-topic-card">
                     <input
@@ -193,10 +202,10 @@ export default function EnglishBuddyPage() {
                         ))}
                     </div>
                 </div>
-            </motion.div>
+            </motion.div >
 
             {/* ─── Voice Selector ─── */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+            < motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
                 <h2 className="luna-section-title">🎙️ Chọn giọng nói</h2>
                 <div className="luna-voice-dropdown-wrap">
                     <select
@@ -217,10 +226,10 @@ export default function EnglishBuddyPage() {
                     </select>
                     <span className="luna-voice-arrow">▾</span>
                 </div>
-            </motion.div>
+            </motion.div >
 
             {/* ─── Start Button ─── */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+            < motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
                 <motion.button
                     className="learn-btn learn-btn-primary luna-start-btn"
                     onClick={handleStart}
@@ -230,43 +239,45 @@ export default function EnglishBuddyPage() {
                     🚀 Bắt đầu luyện với Luna
                     <span className="luna-start-meta">{selectedDuration} phút{activeTopic ? ` • ${activeTopic}` : " • Luna chọn chủ đề"}</span>
                 </motion.button>
-            </motion.div>
+            </motion.div >
 
             {/* ─── Past Sessions ─── */}
             <AnimatePresence>
-                {pastSessions.length > 0 && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}>
-                        <h2 className="luna-section-title">📅 Buổi luyện gần đây</h2>
-                        <div className="luna-history-list">
-                            {pastSessions.slice(0, 3).map(s => (
-                                <div key={s.id} className="luna-history-card learn-card">
-                                    <div className="luna-hist-header">
-                                        <span className="luna-hist-topic">💬 {s.topic}</span>
-                                        <span className="luna-hist-meta">{s.duration_minutes}p • {formatAgo(s.created_at)}</span>
-                                    </div>
-                                    <p className="luna-hist-summary">{s.summary}</p>
-                                    {s.key_phrases?.length > 0 && (
-                                        <div className="luna-hist-phrases">
-                                            {s.key_phrases.slice(0, 3).map((kp, i) => (
-                                                <span key={i} className="luna-hist-phrase-chip">
-                                                    <span className="luna-hist-en">{kp.phrase}</span>
-                                                    {kp.translation && <span className="luna-hist-vi"> · {kp.translation}</span>}
-                                                </span>
-                                            ))}
+                {
+                    pastSessions.length > 0 && (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}>
+                            <h2 className="luna-section-title">📅 Buổi luyện gần đây</h2>
+                            <div className="luna-history-list">
+                                {pastSessions.slice(0, 3).map(s => (
+                                    <div key={s.id} className="luna-history-card learn-card">
+                                        <div className="luna-hist-header">
+                                            <span className="luna-hist-topic">💬 {s.topic}</span>
+                                            <span className="luna-hist-meta">{s.duration_minutes}p • {formatAgo(s.created_at)}</span>
                                         </div>
-                                    )}
-                                    <button
-                                        className="learn-btn learn-btn-secondary luna-replay-btn"
-                                        onClick={() => { setTopicInput(s.topic); setSelectedDuration(s.duration_minutes); setPhase("session"); }}
-                                    >
-                                        🔄 Luyện lại chủ đề này
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                                        <p className="luna-hist-summary">{s.summary}</p>
+                                        {s.key_phrases?.length > 0 && (
+                                            <div className="luna-hist-phrases">
+                                                {s.key_phrases.slice(0, 3).map((kp, i) => (
+                                                    <span key={i} className="luna-hist-phrase-chip">
+                                                        <span className="luna-hist-en">{kp.phrase}</span>
+                                                        {kp.translation && <span className="luna-hist-vi"> · {kp.translation}</span>}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <button
+                                            className="learn-btn learn-btn-secondary luna-replay-btn"
+                                            onClick={() => { setTopicInput(s.topic); setSelectedDuration(s.duration_minutes); setPhase("session"); }}
+                                        >
+                                            🔄 Luyện lại chủ đề này
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )
+                }
+            </AnimatePresence >
 
             {loadingSessions && (
                 <div style={{ textAlign: "center", padding: 20, color: "var(--learn-text-secondary)" }}>
@@ -283,7 +294,7 @@ export default function EnglishBuddyPage() {
               .luna-hero-bg-1 { position:absolute; top:-30%; right:-5%; width:380px; height:380px; background:radial-gradient(circle, rgba(94,234,212,0.25) 0%, transparent 70%); border-radius:50%; pointer-events:none; }
               .luna-hero-bg-2 { position:absolute; bottom:-40%; left:10%; width:500px; height:500px; background:radial-gradient(circle, rgba(20,184,166,0.15) 0%, transparent 60%); border-radius:50%; pointer-events:none; }
               .luna-hero-content { position:relative; z-index:2; display:flex; align-items:center; gap:32px; }
-              .luna-hero-owl { font-size:100px; filter:drop-shadow(0 0 30px rgba(94,234,212,0.5)); flex-shrink:0; }
+              .luna-hero-owl { filter:drop-shadow(0 0 30px rgba(94,234,212,0.4)); flex-shrink:0; display:flex; align-items:center; justify-content:center; margin-right:10px; }
               .luna-hero-text { flex:1; }
               .luna-hero-tag { font-size:11px; font-weight:800; color:#5EEAD4; text-transform:uppercase; letter-spacing:1.5px; background:rgba(13,148,136,0.2); border:1px solid rgba(13,148,136,0.4); border-radius:20px; display:inline-block; padding:5px 14px; margin-bottom:12px; }
               .luna-hero-title { font-family:var(--font-heading); font-size:48px; font-weight:900; color:#fff; margin:0 0 12px; text-shadow:0 4px 16px rgba(0,0,0,0.4); letter-spacing:-1px; }
@@ -352,7 +363,7 @@ export default function EnglishBuddyPage() {
 
               @media (max-width: 768px) {
                 .luna-hero-content { flex-direction:column; text-align:center; gap:20px; }
-                .luna-hero-owl { font-size:70px; }
+                .luna-hero-owl > img { width: 110px; height: 110px; }
                 .luna-hero-title { font-size:38px; }
                 .luna-hero-badges { justify-content:center; }
                 .luna-duration-grid { grid-template-columns:repeat(3,1fr); gap:10px; }
@@ -361,6 +372,6 @@ export default function EnglishBuddyPage() {
                 .luna-duration-grid { grid-template-columns:1fr; }
               }
             `}</style>
-        </div>
+        </div >
     );
 }
