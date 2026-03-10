@@ -170,7 +170,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     const [convState, setConvState] = useState<ConvState>("ready");
     const [owlMood, setOwlMood] = useState<OwlMood>("idle");
     const [isSpeaking, setIsSpeaking] = useState(false);
-    const [liveTranscript, setLiveTranscript] = useState("");
+    const [isRecording, setIsRecording] = useState(false);
     const [isSummaryLoading, setIsSummaryLoading] = useState(false);
     const [summaryText, setSummaryText] = useState("");
     const [keyPhrases, setKeyPhrases] = useState<KeyPhrase[]>([]);
@@ -188,7 +188,8 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     const [pastSummaries, setPastSummaries] = useState<string[]>([]);
     const bottomRef = useRef<HTMLDivElement>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
-    const recognitionRef = useRef<SpeechRecognition | null>(null);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const streamRef = useRef<MediaStream | null>(null);
     const sessionCtx = useRef({ studentName, grade, topic, durationMinutes });
     const isEndedRef = useRef(false);
     const convStateRef = useRef<ConvState>("ready");
@@ -254,7 +255,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     }, [playerId, token]);
 
     /* ─── Auto-scroll ─── */
-    useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, liveTranscript]);
+    useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isRecording]);
 
     /* ─── Detect mood from Luna's text ─── */
     function detectMood(text: string): OwlMood {
@@ -297,37 +298,91 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [token, voice]);
 
-    /* ─── STT: listen for user speech (continuous + silence auto-stop) ─── */
+    /* ─── STT: record audio + Google Cloud STT (high accuracy) ─── */
     const startListening = useCallback((): Promise<string> => {
-        return new Promise((resolve) => {
-            const SR = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
-            if (!SR) { resolve(""); return; }
-            const rec = new SR();
-            rec.lang = "en-US";
-            rec.continuous = true;        // ← keep listening through pauses
-            rec.interimResults = true;
-            let finalText = "";
-            let silenceTimer: ReturnType<typeof setTimeout> | null = null;
-            const SILENCE_MS = 2000; // auto-stop after 2s of silence
+        return new Promise(async (resolve) => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                streamRef.current = stream;
+                const recorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
+                mediaRecorderRef.current = recorder;
+                const chunks: Blob[] = [];
 
-            const resetSilenceTimer = () => {
-                if (silenceTimer) clearTimeout(silenceTimer);
-                silenceTimer = setTimeout(() => { rec.stop(); }, SILENCE_MS);
-            };
+                // Silence detection via AudioContext
+                const audioCtx = new AudioContext();
+                const source = audioCtx.createMediaStreamSource(stream);
+                const analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 512;
+                source.connect(analyser);
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                const SILENCE_THRESHOLD = 15; // volume level below which = silence
+                const SILENCE_MS = 2000;
+                let silenceStart: number | null = null;
+                let hasSpeech = false;
+                let stopped = false;
 
-            recognitionRef.current = rec;
-            rec.onstart = () => { setConvState("user-speaking"); setOwlMood("listening"); resetSilenceTimer(); };
-            rec.onresult = (e: SpeechRecognitionEvent) => {
-                const text = Array.from(Array(e.results.length), (_, i) => e.results[i][0].transcript).join("");
-                setLiveTranscript(text);
-                if (e.results[e.results.length - 1].isFinal) finalText = text;
-                resetSilenceTimer(); // reset countdown on every speech result
-            };
-            rec.onend = () => { if (silenceTimer) clearTimeout(silenceTimer); setLiveTranscript(""); resolve(finalText); };
-            rec.onerror = () => { if (silenceTimer) clearTimeout(silenceTimer); setLiveTranscript(""); resolve(""); };
-            rec.start();
+                const checkSilence = () => {
+                    if (stopped) return;
+                    analyser.getByteFrequencyData(dataArray);
+                    const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+                    if (avg > SILENCE_THRESHOLD) {
+                        hasSpeech = true;
+                        silenceStart = null;
+                    } else if (hasSpeech) {
+                        // Only start counting silence AFTER speech has been detected
+                        if (!silenceStart) silenceStart = Date.now();
+                        if (Date.now() - silenceStart >= SILENCE_MS) {
+                            stopped = true;
+                            recorder.stop();
+                            return;
+                        }
+                    }
+                    requestAnimationFrame(checkSilence);
+                };
+
+                recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+                recorder.onstop = async () => {
+                    // Cleanup
+                    stream.getTracks().forEach(t => t.stop());
+                    streamRef.current = null;
+                    mediaRecorderRef.current = null;
+                    await audioCtx.close();
+
+                    if (chunks.length === 0) { setIsRecording(false); resolve(""); return; }
+                    const blob = new Blob(chunks, { type: "audio/webm;codecs=opus" });
+
+                    // Send to Google Cloud STT
+                    setConvState("processing");
+                    setOwlMood("thinking");
+                    try {
+                        const formData = new FormData();
+                        formData.append("audio", blob, "recording.webm");
+                        formData.append("topic", sessionCtx.current.topic);
+                        const res = await fetch("/api/ai/english-stt-google", {
+                            method: "POST",
+                            headers: token ? { Authorization: `Bearer ${token}` } : {},
+                            body: formData,
+                        });
+                        const data = await res.json();
+                        setIsRecording(false);
+                        resolve(data.transcript || "");
+                    } catch {
+                        setIsRecording(false);
+                        resolve("");
+                    }
+                };
+
+                recorder.start(250); // collect chunks every 250ms
+                setConvState("user-speaking");
+                setOwlMood("listening");
+                setIsRecording(true);
+                checkSilence();
+            } catch {
+                setIsRecording(false);
+                resolve("");
+            }
         });
-    }, []);
+    }, [token]);
 
     /* ─── Call Luna API ─── */
     const callLunaAPI = useCallback(async (userText: string, currentMessages: ChatMessage[]): Promise<{ reply: string; mood: OwlMood }> => {
@@ -429,7 +484,8 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     const endSession = useCallback(async () => {
         if (isEndedRef.current) return;
         isEndedRef.current = true;
-        recognitionRef.current?.stop();
+        mediaRecorderRef.current?.stop();
+        streamRef.current?.getTracks().forEach(t => t.stop());
         audioRef.current?.pause();
         setConvState("ended");
         setIsSpeaking(false);
@@ -530,10 +586,10 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                             </motion.div>
                         ))}
                     </AnimatePresence>
-                    {/* Live transcript */}
-                    {liveTranscript && (
+                    {/* Recording indicator */}
+                    {isRecording && (
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="lv-msg lv-msg-user lv-msg-live">
-                            <p className="lv-msg-text lv-msg-text-live">{liveTranscript}</p>
+                            <p className="lv-msg-text lv-msg-text-live">🎤 Đang ghi âm...</p>
                         </motion.div>
                     )}
                     {convState === "processing" && (
