@@ -297,25 +297,34 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [token, voice]);
 
-    /* ─── STT: listen for user speech (auto-start, auto-end) ─── */
+    /* ─── STT: listen for user speech (continuous + silence auto-stop) ─── */
     const startListening = useCallback((): Promise<string> => {
         return new Promise((resolve) => {
             const SR = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
             if (!SR) { resolve(""); return; }
             const rec = new SR();
             rec.lang = "en-US";
-            rec.continuous = false;
+            rec.continuous = true;        // ← keep listening through pauses
             rec.interimResults = true;
             let finalText = "";
+            let silenceTimer: ReturnType<typeof setTimeout> | null = null;
+            const SILENCE_MS = 2000; // auto-stop after 2s of silence
+
+            const resetSilenceTimer = () => {
+                if (silenceTimer) clearTimeout(silenceTimer);
+                silenceTimer = setTimeout(() => { rec.stop(); }, SILENCE_MS);
+            };
+
             recognitionRef.current = rec;
-            rec.onstart = () => { setConvState("user-speaking"); setOwlMood("listening"); };
+            rec.onstart = () => { setConvState("user-speaking"); setOwlMood("listening"); resetSilenceTimer(); };
             rec.onresult = (e: SpeechRecognitionEvent) => {
                 const text = Array.from(Array(e.results.length), (_, i) => e.results[i][0].transcript).join("");
                 setLiveTranscript(text);
                 if (e.results[e.results.length - 1].isFinal) finalText = text;
+                resetSilenceTimer(); // reset countdown on every speech result
             };
-            rec.onend = () => { setLiveTranscript(""); resolve(finalText); };
-            rec.onerror = () => { setLiveTranscript(""); resolve(""); };
+            rec.onend = () => { if (silenceTimer) clearTimeout(silenceTimer); setLiveTranscript(""); resolve(finalText); };
+            rec.onerror = () => { if (silenceTimer) clearTimeout(silenceTimer); setLiveTranscript(""); resolve(""); };
             rec.start();
         });
     }, []);
