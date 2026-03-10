@@ -182,6 +182,8 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     const [isTyping, setIsTyping] = useState(false);
     const typingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const silenceCount = useRef(0);
+    // Past session memory
+    const [pastSummaries, setPastSummaries] = useState<string[]>([]);
     const bottomRef = useRef<HTMLDivElement>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -234,6 +236,20 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
         return () => clearInterval(id);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [convState]);
+
+    /* ─── Fetch past session summaries for memory ─── */
+    useEffect(() => {
+        if (!playerId || !token) return;
+        fetch(`/api/english-sessions?player_id=${playerId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+            .then(r => r.json())
+            .then(d => {
+                const sums = (d.sessions || []).map((s: { summary: string; topic: string }) => `[${s.topic}] ${s.summary}`).slice(0, 3);
+                setPastSummaries(sums);
+            })
+            .catch(() => { });
+    }, [playerId, token]);
 
     /* ─── Auto-scroll ─── */
     useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, liveTranscript]);
@@ -306,13 +322,13 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     const callLunaAPI = useCallback(async (userText: string, currentMessages: ChatMessage[]): Promise<{ reply: string; mood: OwlMood }> => {
         setConvState("processing");
         setOwlMood("thinking");
-        // Cap history to last 4 messages to save tokens
-        const recentHistory = currentMessages.slice(-4).map(m => ({ role: m.role, content: m.content }));
+        // Send up to 16 messages for context continuity
+        const recentHistory = currentMessages.slice(-16).map(m => ({ role: m.role, content: m.content }));
         const fluencyLevel = fluencyScore.current >= 66 ? "advanced" : fluencyScore.current >= 36 ? "intermediate" : "beginner";
         const res = await fetch("/api/ai/english-practice", {
             method: "POST",
             headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-            body: JSON.stringify({ message: userText.trim(), history: recentHistory, sessionContext: { ...sessionCtx.current, fluencyLevel } }),
+            body: JSON.stringify({ message: userText.trim(), history: recentHistory, sessionContext: { ...sessionCtx.current, fluencyLevel, pastSummaries } }),
         });
         const data = await res.json();
         const reply = data.response || "Keep going!";
@@ -353,7 +369,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
             const { reply, mood } = await callLunaAPI(userText, msgs);
 
             // Score the turn based on Luna's response
-            const hasCorrected = /did you mean|should be|try saying|try it/i.test(reply);
+            const hasCorrected = /(did you mean|do you mean|should be|try saying|try it|maybe try|the correct way|let me fix|instead of|rather than)/i.test(reply);
             const newTier = hasCorrected ? updateSpeed(-10) : updateSpeed(+10);
 
             // Pre-arm typewriter BEFORE rendering message to avoid text flash
@@ -367,13 +383,28 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
         }
     }, [lunaSpeak, startListening, callLunaAPI]);
 
-    /* ─── Start ─── */
+    /* ─── Start: dynamic AI-generated greeting ─── */
     const handleStart = useCallback(async () => {
         if (convState !== "ready") return;
         isEndedRef.current = false;
-        const opening = `Hi ${studentName}! Let's chat about "${topic}" — what do you know about it?`;
+        // Generate a dynamic opening via API instead of hardcoded text
+        let opening = `Hi ${studentName}! Let's chat about "${topic}" — what do you know about it?`;
+        try {
+            const fluencyLevel = fluencyScore.current >= 66 ? "advanced" : fluencyScore.current >= 36 ? "intermediate" : "beginner";
+            const res = await fetch("/api/ai/english-practice", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                body: JSON.stringify({
+                    message: "[SYSTEM] Generate your opening greeting to start the conversation. Be warm, natural, and ask an engaging first question about the topic.",
+                    history: [],
+                    sessionContext: { ...sessionCtx.current, fluencyLevel, pastSummaries },
+                }),
+            });
+            const data = await res.json();
+            if (data.response && !data.isFallback) opening = data.response;
+        } catch { /* fallback to hardcoded */ }
         await runConversation(opening);
-    }, [convState, studentName, topic, durationMinutes, runConversation]);
+    }, [convState, studentName, topic, durationMinutes, runConversation, token, pastSummaries]);
 
     /* ─── End session ─── */
     const endSession = useCallback(async () => {

@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
                 topic: string;
                 durationMinutes: number;
                 pastSummaries?: string[];
+                fluencyLevel?: "beginner" | "intermediate" | "advanced";
             };
         };
 
@@ -80,8 +81,8 @@ export async function POST(request: NextRequest) {
             body: JSON.stringify({
                 model: modelName,
                 messages,
-                max_tokens: 350,    // Short-ish for conversational turns
-                temperature: 0.82,  // Natural, slightly varied
+                max_tokens: 500,    // Generous for natural filler-rich responses
+                temperature: 0.88,  // More varied, natural-sounding
             }),
         });
 
