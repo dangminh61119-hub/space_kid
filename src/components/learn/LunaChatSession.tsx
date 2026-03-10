@@ -299,8 +299,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [token, voice]);
 
-    /* ─── STT: Google Cloud STT (primary) → Web Speech API (fallback) ─── */
-    const googleSttFailCount = useRef(0); // only fallback after 5 consecutive failures
+    /* ─── STT: Google Cloud STT only ─── */
 
     // Helper: stop any playing Luna audio and wait for echo to clear
     const stopAudioAndWait = useCallback(async () => {
@@ -313,41 +312,11 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
         await new Promise(r => setTimeout(r, 500));
     }, []);
 
-    // Fallback: browser Web Speech API
-    const listenViaBrowser = useCallback((): Promise<string> => {
-        return new Promise(async (resolve) => {
-            await stopAudioAndWait(); // ensure Luna audio is stopped
-            const SR = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
-            if (!SR) { resolve(""); return; }
-            const rec = new SR();
-            rec.lang = "en-US";
-            rec.continuous = true;
-            rec.interimResults = true;
-            let finalText = "";
-            let silenceTimer: ReturnType<typeof setTimeout> | null = null;
-
-            const resetTimer = () => {
-                if (silenceTimer) clearTimeout(silenceTimer);
-                silenceTimer = setTimeout(() => { rec.stop(); }, 2000);
-            };
-
-            rec.onstart = () => { setConvState("user-speaking"); setOwlMood("listening"); setIsRecording(true); resetTimer(); };
-            rec.onresult = (e: SpeechRecognitionEvent) => {
-                const text = Array.from(Array(e.results.length), (_, i) => e.results[i][0].transcript).join("");
-                if (e.results[e.results.length - 1].isFinal) finalText = text;
-                resetTimer();
-            };
-            rec.onend = () => { if (silenceTimer) clearTimeout(silenceTimer); setIsRecording(false); resolve(finalText); };
-            rec.onerror = () => { if (silenceTimer) clearTimeout(silenceTimer); setIsRecording(false); resolve(""); };
-            rec.start();
-        });
-    }, [stopAudioAndWait]);
-
-    // Primary: Google Cloud STT via MediaRecorder
-    const listenViaGoogle = useCallback((): Promise<string> => {
+    // Google Cloud STT via MediaRecorder
+    const startListening = useCallback((): Promise<string> => {
         return new Promise(async (resolve) => {
             try {
-                await stopAudioAndWait(); // ensure Luna audio is stopped
+                await stopAudioAndWait();
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 streamRef.current = stream;
                 const recorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
@@ -421,15 +390,12 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                         });
                         if (!res.ok) throw new Error(`STT ${res.status}`);
                         const data = await res.json();
-                        googleSttFailCount.current = 0; // reset on success
                         setIsRecording(false);
                         resolve(data.transcript || "");
                     } catch (err) {
-                        // Count consecutive failures — only fallback after 5
-                        googleSttFailCount.current++;
-                        console.warn(`[Luna] Google STT failed (${googleSttFailCount.current}/5)`, err);
+                        console.warn("[Luna] Google STT failed:", err);
                         setIsRecording(false);
-                        resolve(""); // this turn lost, next turn may retry or fallback
+                        resolve("");
                     }
                 };
 
@@ -439,22 +405,11 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                 setIsRecording(true);
                 checkSilence();
             } catch {
-                // MediaRecorder/mic failed → fallback to browser
-                googleSttFailCount.current++;
                 setIsRecording(false);
                 resolve("");
             }
         });
     }, [token, stopAudioAndWait]);
-
-    // Main dispatcher: choose Google (primary) or browser (fallback after 5 failures)
-    const startListening = useCallback((): Promise<string> => {
-        if (googleSttFailCount.current >= 5) {
-            console.warn("[Luna] Google STT disabled after 5 failures, using browser Speech API");
-            return listenViaBrowser();
-        }
-        return listenViaGoogle();
-    }, [listenViaBrowser, listenViaGoogle]);
 
     /* ─── Call Luna API ─── */
     const callLunaAPI = useCallback(async (userText: string, currentMessages: ChatMessage[]): Promise<{ reply: string; mood: OwlMood }> => {
