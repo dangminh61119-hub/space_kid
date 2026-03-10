@@ -123,6 +123,9 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     const [summaryText, setSummaryText] = useState("");
     const [keyPhrases, setKeyPhrases] = useState<KeyPhrase[]>([]);
     const [sessionSaved, setSessionSaved] = useState(false);
+    // Adaptive speed
+    const [speedTier, setSpeedTier] = useState<"slow" | "normal" | "fast">("slow");
+    const fluencyScore = useRef(20); // 0–100, starts at 20 (beginner)
     const bottomRef = useRef<HTMLDivElement>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -131,6 +134,15 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     const convStateRef = useRef<ConvState>("ready");
 
     convStateRef.current = convState;
+
+    /* ─── Fluency score → speed tier ─── */
+    function updateSpeed(delta: number) {
+        fluencyScore.current = Math.min(100, Math.max(0, fluencyScore.current + delta));
+        const s = fluencyScore.current;
+        const tier = s >= 66 ? "fast" : s >= 36 ? "normal" : "slow";
+        setSpeedTier(tier);
+        return tier;
+    }
 
     /* ─── Timer ─── */
     useEffect(() => {
@@ -154,14 +166,14 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
         return "idle";
     }
 
-    /* ─── Gemini TTS: play Luna voice ─── */
-    const lunaSpeak = useCallback(async (text: string, mood: OwlMood): Promise<void> => {
+    /* ─── TTS: play Luna voice with current speed ─── */
+    const lunaSpeak = useCallback(async (text: string, mood: OwlMood, speed?: string): Promise<void> => {
         return new Promise(async (resolve) => {
             try {
                 const res = await fetch("/api/ai/english-tts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-                    body: JSON.stringify({ text, voice }),
+                    body: JSON.stringify({ text, voice, speed }),
                 });
                 if (!res.ok) throw new Error("TTS failed");
                 const blob = await res.blob();
@@ -222,19 +234,18 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     /* ─── Main conversation loop ─── */
     const runConversation = useCallback(async (initialLunaText: string) => {
         let msgs: ChatMessage[] = [];
-        // Luna opens
         msgs = [{ role: "assistant", content: initialLunaText }];
         setMessages(msgs);
         setConvState("luna-speaking");
-        await lunaSpeak(initialLunaText, "happy");
+        await lunaSpeak(initialLunaText, "happy", "slow"); // always slow for opener
         if (isEndedRef.current) return;
 
-        // Conversation loop
         while (!isEndedRef.current) {
             const userText = await startListening();
             if (isEndedRef.current) return;
             if (!userText.trim()) {
-                await lunaSpeak("I'm here — take your time! What would you like to say?", "idle");
+                updateSpeed(-5); // silence = score down
+                await lunaSpeak("I'm here — take your time! What would you like to say?", "idle", fluencyScore.current >= 66 ? "fast" : fluencyScore.current >= 36 ? "normal" : "slow");
                 continue;
             }
 
@@ -243,11 +254,15 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
 
             const { reply, mood } = await callLunaAPI(userText, msgs);
 
+            // Score the turn based on Luna's response
+            const hasCorrected = /did you mean|should be|try saying|try it/i.test(reply);
+            const newTier = hasCorrected ? updateSpeed(-8) : updateSpeed(+7);
+
             msgs = [...msgs, { role: "assistant", content: reply }];
             setMessages([...msgs]);
 
             setConvState("luna-speaking");
-            await lunaSpeak(reply, mood);
+            await lunaSpeak(reply, mood, newTier);
             if (isEndedRef.current) return;
         }
     }, [lunaSpeak, startListening, callLunaAPI]);
