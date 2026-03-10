@@ -56,7 +56,143 @@ function formatAgo(dateStr: string): string {
     return `${Math.floor(hours / 24)} ngày trước`;
 }
 
+/* ─── Luna Owl SVG (homepage owl, amber+indigo tone) ─── */
+function LunaOwl() {
+    return (
+        <svg viewBox="0 0 100 110" style={{ width: "100%", height: "100%", filter: "drop-shadow(0 0 20px rgba(251,191,36,0.6))" }}>
+            <defs>
+                <radialGradient id="lunaDeep" cx="50%" cy="50%" r="60%">
+                    <stop offset="0%" stopColor="#3B1F6E" />
+                    <stop offset="60%" stopColor="#1E0F3A" />
+                    <stop offset="100%" stopColor="#0A0612" />
+                </radialGradient>
+                <linearGradient id="lunaGold" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#FDE68A" />
+                    <stop offset="30%" stopColor="#F59E0B" />
+                    <stop offset="70%" stopColor="#D97706" />
+                    <stop offset="100%" stopColor="#92400E" />
+                </linearGradient>
+                <radialGradient id="lunaGalaxy" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="#7C3AED" />
+                    <stop offset="40%" stopColor="#3B1F6E" />
+                    <stop offset="100%" stopColor="#0A0612" />
+                </radialGradient>
+                <linearGradient id="lunaEyeGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#FEF3C7" />
+                    <stop offset="30%" stopColor="#F59E0B" />
+                    <stop offset="100%" stopColor="#D97706" />
+                </linearGradient>
+                <linearGradient id="lunaScroll" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#F5DEB3" />
+                    <stop offset="50%" stopColor="#FAEBD7" />
+                    <stop offset="100%" stopColor="#E6C280" />
+                </linearGradient>
+                <filter id="lunaGlow">
+                    <feGaussianBlur stdDeviation="1.5" result="blur" />
+                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+            </defs>
+
+            {/* Legs */}
+            <g>
+                <path d="M 38 78 L 33 92 C 32 96 28 97 28 97 C 32 97 35 99 35 99 C 36 96 39 94 40 92 L 44 78 Z" fill="url(#lunaGold)" stroke="#92400E" strokeWidth="1" />
+                <circle cx="38" cy="80" r="3.5" fill="#1E0F3A" stroke="url(#lunaGold)" strokeWidth="1.5" />
+                <circle cx="38" cy="80" r="1.5" fill="#F59E0B" filter="url(#lunaGlow)" />
+                <path d="M 62 78 L 67 92 C 68 96 72 97 72 97 C 68 97 65 99 65 99 C 64 96 61 94 60 92 L 56 78 Z" fill="url(#lunaGold)" stroke="#92400E" strokeWidth="1" />
+                <circle cx="62" cy="80" r="3.5" fill="#1E0F3A" stroke="url(#lunaGold)" strokeWidth="1.5" />
+                <circle cx="62" cy="80" r="1.5" fill="#F59E0B" filter="url(#lunaGlow)" />
+            </g>
+
+            {/* Body */}
+            <ellipse cx="50" cy="55" rx="34" ry="36" fill="url(#lunaDeep)" stroke="#0A0612" strokeWidth="2" />
+            <path d="M 22 55 C 22 35 78 35 78 55 C 78 75 65 88 50 88 C 35 88 22 75 22 55 Z" fill="url(#lunaGalaxy)" stroke="url(#lunaGold)" strokeWidth="1.5" opacity="0.95" />
+            {/* Stars in belly */}
+            <circle cx="40" cy="50" r="0.8" fill="#FFF" opacity="0.9" filter="url(#lunaGlow)" />
+            <circle cx="60" cy="65" r="1.2" fill="#F59E0B" opacity="0.8" filter="url(#lunaGlow)" />
+            <circle cx="35" cy="60" r="1.5" fill="#FFF" opacity="0.7" filter="url(#lunaGlow)" />
+            <circle cx="55" cy="45" r="0.6" fill="#FFF" opacity="0.9" />
+            <circle cx="45" cy="70" r="1" fill="#C084FC" opacity="0.6" filter="url(#lunaGlow)" />
+            <path d="M 30 65 Q 45 50 60 70 Q 55 75 45 65" fill="#F59E0B" opacity="0.15" filter="url(#lunaGlow)" />
+            <path d="M 45 45 Q 60 40 65 55 Q 55 50 50 55" fill="#C084FC" opacity="0.15" filter="url(#lunaGlow)" />
+            {/* Gold straps */}
+            <path d="M 22 45 C 40 65 60 65 78 45" fill="none" stroke="url(#lunaGold)" strokeWidth="4" strokeLinecap="round" opacity="0.9" />
+            <path d="M 30 35 C 45 55 55 55 70 35" fill="none" stroke="url(#lunaGold)" strokeWidth="3" strokeLinecap="round" opacity="0.9" />
+            {/* Shield */}
+            <g transform="translate(50, 56)">
+                <path d="M -10 -10 L 10 -10 L 10 0 C 10 8 0 14 0 14 C 0 14 -10 8 -10 0 Z" fill="url(#lunaDeep)" stroke="url(#lunaGold)" strokeWidth="2.5" strokeLinejoin="round" />
+                <path d="M -3 3 Q -3 0 0 0 Q 4 0 4 3 Q 7 3 7 6 L -5 6 Q -7 6 -7 4 Q -7 3 -3 3 Z" fill="url(#lunaGold)" />
+            </g>
+
+            {/* Left Wing */}
+            <g>
+                <path d="M 22 42 C 10 50 5 65 10 80 C 15 90 28 75 30 65" fill="url(#lunaDeep)" stroke="#0A0612" strokeWidth="1.5" />
+                <circle cx="25" cy="48" r="8" fill="url(#lunaDeep)" stroke="url(#lunaGold)" strokeWidth="2" />
+                <path d="M 23 45 A 4 4 0 1 1 23 51" fill="none" stroke="#F59E0B" strokeWidth="2" filter="url(#lunaGlow)" opacity="0.8" />
+            </g>
+
+            {/* Right Wing + Scroll */}
+            <g>
+                <path d="M 78 42 C 90 50 95 65 90 80 C 85 90 72 75 70 65" fill="url(#lunaDeep)" stroke="#0A0612" strokeWidth="1.5" />
+                <g transform="translate(68, 62) rotate(-15)">
+                    <path d="M 0 0 L 25 -5 L 20 30 L -5 35 Z" fill="url(#lunaScroll)" stroke="#9C6644" strokeWidth="1" />
+                    <path d="M -2 0 C -5 -3 0 -5 2 -3 L 25 -5 C 28 -8 32 -5 30 -2 L 5 0 Z" fill="#FAD6A5" stroke="#9C6644" strokeWidth="1" strokeLinejoin="round" />
+                    <circle cx="-1" cy="-2" r="1.5" fill="#92400E" />
+                    <path d="M -5 35 C -8 32 -3 30 -1 32 L 20 30 C 17 27 22 25 24 28 L -1 37 Z" fill="#E6C280" stroke="#9C6644" strokeWidth="1" strokeLinejoin="round" />
+                    <line x1="5" y1="4" x2="20" y2="1" stroke="#92400E" strokeWidth="1.2" strokeDasharray="3 1 2 2" opacity="0.6" />
+                    <line x1="3" y1="9" x2="18" y2="6" stroke="#92400E" strokeWidth="1.2" strokeDasharray="4 2 1 1" opacity="0.6" />
+                    <line x1="1" y1="14" x2="16" y2="11" stroke="#92400E" strokeWidth="1.2" strokeDasharray="2 2 4 1" opacity="0.6" />
+                    <line x1="-1" y1="19" x2="14" y2="16" stroke="#92400E" strokeWidth="1.2" strokeDasharray="1 3 3 1" opacity="0.6" />
+                    <line x1="-3" y1="24" x2="12" y2="21" stroke="#F59E0B" strokeWidth="1.5" strokeDasharray="2 2 1 2" opacity="0.8" filter="url(#lunaGlow)" />
+                </g>
+                <path d="M 82 72 C 88 70 92 73 90 75 C 86 76 83 74 82 72 Z" fill="#1E0F3A" stroke="url(#lunaGold)" strokeWidth="1.5" strokeLinejoin="round" />
+                <path d="M 80 78 C 86 76 90 79 88 81 C 84 82 81 80 80 78 Z" fill="#1E0F3A" stroke="url(#lunaGold)" strokeWidth="1.5" strokeLinejoin="round" />
+            </g>
+
+            {/* Head */}
+            <ellipse cx="50" cy="32" rx="30" ry="26" fill="url(#lunaDeep)" stroke="#0A0612" strokeWidth="2" />
+            <path d="M 40 10 C 50 18 60 10 50 25 Z" fill="url(#lunaGalaxy)" opacity="0.8" filter="url(#lunaGlow)" />
+            <path d="M 24 18 C 35 25 45 32 50 35 C 55 32 65 25 76 18 C 80 20 75 14 74 12 C 65 18 55 24 50 28 C 45 24 35 18 26 12 C 25 14 20 20 24 18 Z" fill="url(#lunaDeep)" stroke="url(#lunaGold)" strokeWidth="1.5" strokeLinejoin="round" />
+            {/* Ears */}
+            <path d="M 28 22 C 20 12 15 5 28 15 Z" fill="url(#lunaDeep)" stroke="#1E0F3A" strokeWidth="1.5" />
+            <path d="M 25 20 C 18 12 16 8 26 14" fill="none" stroke="url(#lunaGold)" strokeWidth="1.5" />
+            <path d="M 72 22 C 80 12 85 5 72 15 Z" fill="url(#lunaDeep)" stroke="#1E0F3A" strokeWidth="1.5" />
+            <path d="M 75 20 C 82 12 84 8 74 14" fill="none" stroke="url(#lunaGold)" strokeWidth="1.5" />
+            {/* Face patch */}
+            <path d="M 42 38 C 38 45 46 52 50 54 C 54 52 62 45 58 38 C 52 42 48 42 42 38 Z" fill="#FEF3C7" stroke="#3B1F6E" strokeWidth="1" />
+            {/* Beak */}
+            <path d="M 46 38 C 50 36 50 36 54 38 C 52 45 51 46 50 50 C 49 46 48 45 46 38 Z" fill="#D4A373" stroke="#92400E" strokeWidth="1.5" strokeLinejoin="round" />
+            <path d="M 48 39 C 50 38 50 38 52 39 C 51 44 50.5 45 50 48 Z" fill="#FAD6A5" opacity="0.8" />
+
+            {/* Left Eye */}
+            <g>
+                <circle cx="34" cy="30" r="16" fill="url(#lunaGold)" stroke="#92400E" strokeWidth="1.5" />
+                <path d="M 34 14 L 34 18 M 34 46 L 34 42 M 18 30 L 22 30 M 50 30 L 46 30 M 22 18 L 25 21 M 46 42 L 43 39 M 22 42 L 25 39 M 46 18 L 43 21" stroke="#92400E" strokeWidth="1.5" strokeLinecap="round" />
+                <circle cx="34" cy="30" r="12" fill="#0A0612" stroke="#111" strokeWidth="2" />
+                <circle cx="34" cy="30" r="11" fill="url(#lunaEyeGlow)" opacity="0.9" filter="url(#lunaGlow)" />
+                <circle cx="34" cy="30" r="8" fill="none" stroke="#FFF" strokeWidth="0.8" opacity="0.5" strokeDasharray="3 2" />
+                <circle cx="34" cy="30" r="7" fill="#0A0612" />
+                <circle cx="32" cy="28" r="2.5" fill="#FFF" opacity="0.95" />
+                <circle cx="36" cy="31" r="1" fill="#F59E0B" filter="url(#lunaGlow)" />
+                <path d="M 28 30 A 6 6 0 0 1 40 30" fill="none" stroke="#F59E0B" strokeWidth="1.5" opacity="0.8" filter="url(#lunaGlow)" />
+            </g>
+            {/* Right Eye */}
+            <g>
+                <circle cx="66" cy="30" r="16" fill="url(#lunaGold)" stroke="#92400E" strokeWidth="1.5" />
+                <path d="M 66 14 L 66 18 M 66 46 L 66 42 M 50 30 L 54 30 M 82 30 L 78 30 M 54 18 L 57 21 M 78 42 L 75 39 M 54 42 L 57 39 M 78 18 L 75 21" stroke="#92400E" strokeWidth="1.5" strokeLinecap="round" />
+                <circle cx="66" cy="30" r="12" fill="#0A0612" stroke="#111" strokeWidth="2" />
+                <circle cx="66" cy="30" r="11" fill="url(#lunaEyeGlow)" opacity="0.9" filter="url(#lunaGlow)" />
+                <circle cx="66" cy="30" r="8" fill="none" stroke="#FFF" strokeWidth="0.8" opacity="0.5" strokeDasharray="3 2" />
+                <circle cx="66" cy="30" r="7" fill="#0A0612" />
+                <circle cx="64" cy="28" r="2.5" fill="#FFF" opacity="0.95" />
+                <circle cx="68" cy="31" r="1" fill="#F59E0B" filter="url(#lunaGlow)" />
+                <path d="M 60 30 A 6 6 0 0 1 72 30" fill="none" stroke="#F59E0B" strokeWidth="1.5" opacity="0.8" filter="url(#lunaGlow)" />
+            </g>
+        </svg>
+    );
+}
+
 /* ═══════════════════════════════════════════════════════════ */
+
 export default function EnglishBuddyPage() {
     const { player } = useGame();
     const { playerDbId, session } = useAuth();
@@ -156,7 +292,7 @@ export default function EnglishBuddyPage() {
                         animate={{ y: [0, -12, 0], rotate: [-2, 2, -2] }}
                         transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                     >
-                        🦅
+                        <LunaOwl />
                     </motion.div>
                     <div className="luna-hero-text">
                         <div className="luna-hero-tag">✨ NEW — English Buddy</div>
@@ -283,7 +419,7 @@ export default function EnglishBuddyPage() {
               .luna-hero-bg-1 { position:absolute; top:-30%; right:-5%; width:380px; height:380px; background:radial-gradient(circle, rgba(94,234,212,0.25) 0%, transparent 70%); border-radius:50%; pointer-events:none; }
               .luna-hero-bg-2 { position:absolute; bottom:-40%; left:10%; width:500px; height:500px; background:radial-gradient(circle, rgba(20,184,166,0.15) 0%, transparent 60%); border-radius:50%; pointer-events:none; }
               .luna-hero-content { position:relative; z-index:2; display:flex; align-items:center; gap:32px; }
-              .luna-hero-owl { font-size:100px; filter:drop-shadow(0 0 30px rgba(94,234,212,0.5)); flex-shrink:0; }
+              .luna-hero-owl { width:140px; height:140px; flex-shrink:0; }
               .luna-hero-text { flex:1; }
               .luna-hero-tag { font-size:11px; font-weight:800; color:#5EEAD4; text-transform:uppercase; letter-spacing:1.5px; background:rgba(13,148,136,0.2); border:1px solid rgba(13,148,136,0.4); border-radius:20px; display:inline-block; padding:5px 14px; margin-bottom:12px; }
               .luna-hero-title { font-family:var(--font-heading); font-size:48px; font-weight:900; color:#fff; margin:0 0 12px; text-shadow:0 4px 16px rgba(0,0,0,0.4); letter-spacing:-1px; }
@@ -352,7 +488,7 @@ export default function EnglishBuddyPage() {
 
               @media (max-width: 768px) {
                 .luna-hero-content { flex-direction:column; text-align:center; gap:20px; }
-                .luna-hero-owl { font-size:70px; }
+                .luna-hero-owl { width:100px; height:100px; }
                 .luna-hero-title { font-size:38px; }
                 .luna-hero-badges { justify-content:center; }
                 .luna-duration-grid { grid-template-columns:repeat(3,1fr); gap:10px; }
