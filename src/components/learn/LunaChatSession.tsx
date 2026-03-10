@@ -298,8 +298,40 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [token, voice]);
 
-    /* ─── STT: record audio + Google Cloud STT (high accuracy) ─── */
-    const startListening = useCallback((): Promise<string> => {
+    /* ─── STT: Google Cloud STT (primary) → Web Speech API (fallback) ─── */
+    const googleSttFailed = useRef(false); // skip Google STT after first failure
+
+    // Fallback: browser Web Speech API
+    const listenViaBrowser = useCallback((): Promise<string> => {
+        return new Promise((resolve) => {
+            const SR = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
+            if (!SR) { resolve(""); return; }
+            const rec = new SR();
+            rec.lang = "en-US";
+            rec.continuous = true;
+            rec.interimResults = true;
+            let finalText = "";
+            let silenceTimer: ReturnType<typeof setTimeout> | null = null;
+
+            const resetTimer = () => {
+                if (silenceTimer) clearTimeout(silenceTimer);
+                silenceTimer = setTimeout(() => { rec.stop(); }, 2000);
+            };
+
+            rec.onstart = () => { setConvState("user-speaking"); setOwlMood("listening"); setIsRecording(true); resetTimer(); };
+            rec.onresult = (e: SpeechRecognitionEvent) => {
+                const text = Array.from(Array(e.results.length), (_, i) => e.results[i][0].transcript).join("");
+                if (e.results[e.results.length - 1].isFinal) finalText = text;
+                resetTimer();
+            };
+            rec.onend = () => { if (silenceTimer) clearTimeout(silenceTimer); setIsRecording(false); resolve(finalText); };
+            rec.onerror = () => { if (silenceTimer) clearTimeout(silenceTimer); setIsRecording(false); resolve(""); };
+            rec.start();
+        });
+    }, []);
+
+    // Primary: Google Cloud STT via MediaRecorder
+    const listenViaGoogle = useCallback((): Promise<string> => {
         return new Promise(async (resolve) => {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -315,16 +347,16 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                 analyser.fftSize = 256;
                 source.connect(analyser);
                 const dataArray = new Uint8Array(analyser.fftSize);
-                const SILENCE_THRESHOLD = 10; // amplitude deviation from 128 baseline
+                const SILENCE_THRESHOLD = 10;
                 const SILENCE_MS = 2000;
-                const MAX_RECORD_MS = 30_000; // safety: max 30s recording
+                const MAX_RECORD_MS = 30_000;
                 let silenceStart: number | null = null;
                 let hasSpeech = false;
                 let stopped = false;
                 let silenceCheckInterval: ReturnType<typeof setInterval> | null = null;
                 let maxTimeout: ReturnType<typeof setTimeout> | null = null;
 
-                const stopRecording = () => {
+                const stopRec = () => {
                     if (stopped) return;
                     stopped = true;
                     if (silenceCheckInterval) clearInterval(silenceCheckInterval);
@@ -334,35 +366,24 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
 
                 const checkSilence = () => {
                     if (stopped) return;
-                    // Use time-domain data (amplitude) — more reliable than frequency for voice detection
                     analyser.getByteTimeDomainData(dataArray);
-                    // Calculate how far samples deviate from 128 (silence baseline)
-                    let maxDeviation = 0;
+                    let maxDev = 0;
                     for (let i = 0; i < dataArray.length; i++) {
-                        const dev = Math.abs(dataArray[i] - 128);
-                        if (dev > maxDeviation) maxDeviation = dev;
+                        const d = Math.abs(dataArray[i] - 128);
+                        if (d > maxDev) maxDev = d;
                     }
-
-                    if (maxDeviation > SILENCE_THRESHOLD) {
-                        hasSpeech = true;
-                        silenceStart = null;
-                    } else if (hasSpeech) {
+                    if (maxDev > SILENCE_THRESHOLD) { hasSpeech = true; silenceStart = null; }
+                    else if (hasSpeech) {
                         if (!silenceStart) silenceStart = Date.now();
-                        if (Date.now() - silenceStart >= SILENCE_MS) {
-                            stopRecording();
-                            return;
-                        }
+                        if (Date.now() - silenceStart >= SILENCE_MS) { stopRec(); }
                     }
                 };
 
-                // Use setInterval (works even when tab is unfocused, unlike requestAnimationFrame)
                 silenceCheckInterval = setInterval(checkSilence, 100);
-                // Safety: force stop after MAX_RECORD_MS
-                maxTimeout = setTimeout(stopRecording, MAX_RECORD_MS);
+                maxTimeout = setTimeout(stopRec, MAX_RECORD_MS);
 
                 recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
                 recorder.onstop = async () => {
-                    // Cleanup timers
                     if (silenceCheckInterval) { clearInterval(silenceCheckInterval); silenceCheckInterval = null; }
                     if (maxTimeout) { clearTimeout(maxTimeout); maxTimeout = null; }
                     stream.getTracks().forEach(t => t.stop());
@@ -373,7 +394,6 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                     if (chunks.length === 0) { setIsRecording(false); resolve(""); return; }
                     const blob = new Blob(chunks, { type: "audio/webm;codecs=opus" });
 
-                    // Send to Google Cloud STT
                     setConvState("processing");
                     setOwlMood("thinking");
                     try {
@@ -385,26 +405,38 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                             headers: token ? { Authorization: `Bearer ${token}` } : {},
                             body: formData,
                         });
+                        if (!res.ok) throw new Error(`STT ${res.status}`);
                         const data = await res.json();
                         setIsRecording(false);
                         resolve(data.transcript || "");
                     } catch {
+                        // Google STT failed → mark as failed, don't retry next time
+                        console.warn("[Luna] Google STT failed, switching to browser Speech API");
+                        googleSttFailed.current = true;
                         setIsRecording(false);
-                        resolve("");
+                        resolve(""); // this turn lost, but next turn will use browser fallback
                     }
                 };
 
-                recorder.start(250); // collect chunks every 250ms
+                recorder.start(250);
                 setConvState("user-speaking");
                 setOwlMood("listening");
                 setIsRecording(true);
                 checkSilence();
             } catch {
+                // MediaRecorder/mic failed → fallback to browser
+                googleSttFailed.current = true;
                 setIsRecording(false);
                 resolve("");
             }
         });
     }, [token]);
+
+    // Main dispatcher: choose Google or browser STT
+    const startListening = useCallback((): Promise<string> => {
+        if (googleSttFailed.current) return listenViaBrowser();
+        return listenViaGoogle();
+    }, [listenViaBrowser, listenViaGoogle]);
 
     /* ─── Call Luna API ─── */
     const callLunaAPI = useCallback(async (userText: string, currentMessages: ChatMessage[]): Promise<{ reply: string; mood: OwlMood }> => {
