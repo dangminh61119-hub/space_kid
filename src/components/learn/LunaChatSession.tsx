@@ -368,7 +368,6 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     if (convState === "ended") {
         return (
             <div className="lv-end">
-                <LunaOwl mood="happy" isSpeaking={isSpeaking} />
                 <div className="lv-end-card">
                     {isSummaryLoading ? (
                         <motion.p animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.2, repeat: Infinity }} style={{ color: "var(--learn-text-secondary)", textAlign: "center" }}>
@@ -393,8 +392,6 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                         </>
                     )}
                 </div>
-                {/* Scoped owl global CSS */}
-                <OWL_GLOBAL_CSS />
                 <style jsx>{LV_STYLES}</style>
             </div>
         );
@@ -445,18 +442,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                     <div ref={bottomRef} />
                 </div>
 
-                {/* Owl panel */}
-                <div className="lv-owl-panel">
-                    <LunaOwl mood={owlMood} isSpeaking={isSpeaking} />
-                    <AnimatePresence mode="wait">
-                        <motion.div key={owlMood + convState} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="lv-owl-status">
-                            {convState === "ready" && ""}
-                            {convState === "luna-speaking" && "🗣 Luna đang nói"}
-                            {convState === "user-speaking" && "👂 Đang nghe bạn..."}
-                            {convState === "processing" && "💭 Đang suy nghĩ..."}
-                        </motion.div>
-                    </AnimatePresence>
-                </div>
+
             </div>
 
             {/* Bottom: big Start button or status */}
@@ -480,7 +466,6 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                 )}
             </div>
 
-            <OWL_GLOBAL_CSS />
             <style jsx>{LV_STYLES}</style>
         </div>
     );
@@ -549,9 +534,7 @@ const LV_STYLES = `
   .lv-typing span:nth-child(2){ animation-delay:.2s; } .lv-typing span:nth-child(3){ animation-delay:.4s; }
   @keyframes ldot { 0%,80%,100%{transform:scale(0.7);opacity:0.4} 40%{transform:scale(1.1);opacity:1} }
 
-  /* Owl panel */
-  .lv-owl-panel { width:190px; flex-shrink:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; padding:0 0 20px; background:linear-gradient(to left,rgba(4,47,46,0.6) 0%,transparent 100%); }
-  .lv-owl-status { font-size:10.5px; font-weight:700; color:rgba(94,234,212,0.55); margin-top:7px; min-height:15px; letter-spacing:0.4px; }
+
 
   /* Bottom / Start button */
   .lv-bottom { padding-top:14px; display:flex; justify-content:center; }
@@ -579,7 +562,6 @@ const LV_STYLES = `
 
   @media (max-width:768px) {
     .lv-session { height:calc(100vh - 170px); }
-    .lv-owl-panel { width:130px; }
     .lv-start-btn { padding:16px 36px; font-size:16px; }
   }
 `;
