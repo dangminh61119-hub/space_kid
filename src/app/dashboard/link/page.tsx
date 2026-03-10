@@ -43,10 +43,7 @@ export default function LinkChildPage() {
             </div>
 
             {/* How it works */}
-            <div
-                className="rounded-2xl border p-5 sm:p-6 bg-white"
-                style={{ borderColor: "var(--dash-border)" }}
-            >
+            <div className="dash-card p-5 sm:p-6">
                 <h3 className="font-bold text-base mb-4" style={{ fontFamily: "var(--font-heading)" }}>
                     📋 Hướng dẫn
                 </h3>
@@ -58,10 +55,7 @@ export default function LinkChildPage() {
             </div>
 
             {/* Link form */}
-            <div
-                className="rounded-2xl border p-5 sm:p-6 bg-white"
-                style={{ borderColor: "var(--dash-border)" }}
-            >
+            <div className="dash-card p-5 sm:p-6">
                 <h3 className="font-bold text-base mb-4" style={{ fontFamily: "var(--font-heading)" }}>
                     🔑 Nhập mã liên kết
                 </h3>
@@ -73,20 +67,24 @@ export default function LinkChildPage() {
                         onChange={(e) => setCode(e.target.value.toUpperCase().slice(0, 6))}
                         placeholder="VD: ABC123"
                         maxLength={6}
-                        className="flex-1 px-4 py-3 rounded-xl border text-center text-lg font-bold tracking-[0.3em] uppercase"
+                        className="flex-1 px-4 py-3 rounded-xl border text-center text-lg font-bold tracking-[0.3em] uppercase transition-all focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
                         style={{
                             borderColor: "var(--dash-border)",
                             fontFamily: "var(--font-heading)",
-                            letterSpacing: "0.3em",
                         }}
                     />
                     <button
                         onClick={handleLink}
                         disabled={loading || code.trim().length !== 6}
                         className={`px-6 py-3 rounded-xl font-bold text-sm transition-all ${loading || code.trim().length !== 6
-                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md"
+                            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                            : "text-white hover:shadow-lg hover:scale-[1.02]"
                             }`}
+                        style={
+                            !(loading || code.trim().length !== 6)
+                                ? { background: "linear-gradient(135deg, var(--dash-hero-from), var(--dash-hero-to))" }
+                                : undefined
+                        }
                     >
                         {loading ? "..." : "Liên kết"}
                     </button>
@@ -105,39 +103,57 @@ export default function LinkChildPage() {
             </div>
 
             {/* Linked children */}
-            <div
-                className="rounded-2xl border p-5 sm:p-6 bg-white"
-                style={{ borderColor: "var(--dash-border)" }}
-            >
+            <div className="dash-card p-5 sm:p-6">
                 <h3 className="font-bold text-base mb-4" style={{ fontFamily: "var(--font-heading)" }}>
                     👧 Tài khoản con đã liên kết
                 </h3>
 
                 {linkedChildren.length === 0 ? (
-                    <div className="text-center py-8 text-gray-400">
-                        <div className="text-4xl mb-2">🔗</div>
-                        <p className="text-sm">Chưa liên kết tài khoản nào</p>
-                        <p className="text-xs mt-1">Nhập mã liên kết ở trên để bắt đầu</p>
+                    <div className="text-center py-8">
+                        <div
+                            className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center"
+                            style={{ background: "linear-gradient(135deg, #EEF2FF, #E0E7FF)" }}
+                        >
+                            <span className="text-3xl">🔗</span>
+                        </div>
+                        <p className="text-sm font-medium" style={{ color: "var(--dash-text)" }}>
+                            Chưa liên kết tài khoản nào
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: "var(--dash-muted)" }}>
+                            Nhập mã liên kết ở trên để bắt đầu
+                        </p>
                     </div>
                 ) : (
                     <div className="space-y-2">
                         {linkedChildren.map((childId, i) => (
                             <div
                                 key={childId}
-                                className="flex items-center gap-3 p-3 rounded-xl bg-green-50 border border-green-200"
+                                className="flex items-center gap-3 p-4 rounded-xl transition-all hover:shadow-sm"
+                                style={{
+                                    background: "linear-gradient(135deg, #F0FFF4, #ECFDF5)",
+                                    border: "1px solid #BBF7D0",
+                                }}
                             >
-                                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-sm">
+                                <div
+                                    className="w-10 h-10 rounded-xl flex items-center justify-center text-lg"
+                                    style={{ background: "rgba(34, 197, 94, 0.12)" }}
+                                >
                                     👧
                                 </div>
                                 <div className="flex-1">
-                                    <span className="text-sm font-medium text-green-800">
+                                    <span className="text-sm font-bold" style={{ color: "#166534" }}>
                                         Bé #{i + 1}
                                     </span>
-                                    <span className="text-xs text-green-600 ml-2">
+                                    <span className="text-xs ml-2" style={{ color: "#16A34A" }}>
                                         ID: {childId.slice(0, 8)}...
                                     </span>
                                 </div>
-                                <span className="text-xs text-green-500 font-medium">✓ Đã liên kết</span>
+                                <span
+                                    className="text-xs font-bold px-2.5 py-1 rounded-full"
+                                    style={{ color: "#16A34A", background: "rgba(34, 197, 94, 0.1)" }}
+                                >
+                                    ✓ Đã liên kết
+                                </span>
                             </div>
                         ))}
                     </div>
@@ -151,7 +167,11 @@ function Step({ num, text }: { num: number; text: string }) {
     return (
         <div className="flex items-start gap-3">
             <div
-                className="w-7 h-7 rounded-full bg-indigo-50 flex items-center justify-center text-xs font-bold text-indigo-600 shrink-0"
+                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                style={{
+                    color: "var(--dash-accent)",
+                    background: "var(--dash-accent-light)",
+                }}
             >
                 {num}
             </div>

@@ -13,7 +13,7 @@ type RegisterRole = "child" | "parent";
 
 export default function LoginPage() {
     const router = useRouter();
-    const { signUp, signIn, signInWithGoogle, signInWithFacebook, loading: authLoading, user, role, profileCompleted, surveyCompleted, onboardingComplete } = useAuth();
+    const { signUp, signIn, signInWithGoogle, signInWithFacebook, loading: authLoading, user, role, needsRoleSelect, profileCompleted, surveyCompleted, onboardingComplete } = useAuth();
 
     const [tab, setTab] = useState<AuthTab>("login");
     const [registerRole, setRegisterRole] = useState<RegisterRole>("child");
@@ -26,7 +26,9 @@ export default function LoginPage() {
     // If already logged in, redirect based on role & status
     useEffect(() => {
         if (user) {
-            if (role === 'parent') {
+            if (needsRoleSelect || !role) {
+                router.push("/role-select");
+            } else if (role === 'parent') {
                 router.push("/dashboard");
             } else if (!profileCompleted) {
                 router.push("/profile");
@@ -36,7 +38,7 @@ export default function LoginPage() {
                 router.push("/portal");
             }
         }
-    }, [user, role, profileCompleted, onboardingComplete, router]);
+    }, [user, role, needsRoleSelect, profileCompleted, onboardingComplete, router]);
 
     /** Determine where to redirect after successful auth */
     const getRedirectPath = (isProfileDone: boolean, _isSurveyDone: boolean, isOnboardingDone: boolean): string => {

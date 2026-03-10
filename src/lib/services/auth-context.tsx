@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { supabase, isMockMode } from "./supabase";
 import type { User, Session } from "@supabase/supabase-js";
 
@@ -12,6 +12,7 @@ interface AuthContextType {
     session: Session | null;
     loading: boolean;
     role: UserRole;
+    needsRoleSelect: boolean;        // True when OAuth user has no player record yet
     linkCode: string | null;         // Child's link code (6 chars)
     linkedChildren: string[];        // Parent's linked child IDs
     signUp: (email: string, password: string, name: string, grade: number, role?: 'parent' | 'child') => Promise<{ error: string | null }>;
@@ -20,6 +21,7 @@ interface AuthContextType {
     signInWithFacebook: () => Promise<{ error: string | null }>;
     signOut: () => Promise<void>;
     linkChild: (code: string) => Promise<{ error: string | null; childName?: string }>;
+    createPlayerForOAuth: (playerRole: 'parent' | 'child') => Promise<string | null>;
     playerDbId: string | null; // UUID from players table
     profileCompleted: boolean;
     surveyCompleted: boolean;
@@ -54,9 +56,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [role, setRole] = useState<UserRole>(null);
     const [linkCode, setLinkCode] = useState<string | null>(null);
     const [linkedChildren, setLinkedChildren] = useState<string[]>([]);
+    const [needsRoleSelect, setNeedsRoleSelect] = useState(false);
     const [profileCompleted, setProfileCompleted] = useState(false);
     const [surveyCompleted, setSurveyCompleted] = useState(false);
     const [onboardingComplete, setOnboardingComplete] = useState(false);
+
+    // Flag to prevent loadPlayerData from auto-creating during signUp
+    const isSigningUp = useRef(false);
 
     // Load linked children for parent accounts
     const loadLinkedChildren = useCallback(async (parentPlayerId: string) => {
@@ -98,24 +104,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     await loadLinkedChildren(data.id);
                 }
             } else {
-                // No player record found — auto-create one (default child)
-                console.log("[auth] loadPlayerData: no player found, auto-creating...");
-                const { data: newPlayer, error: insertErr } = await supabase
-                    .from("players")
-                    .insert({ auth_id: authId, name: "Tân Binh", grade: 3, email, role: 'child' })
-                    .select("id, link_code")
-                    .single();
-
-                if (insertErr) {
-                    console.error("[auth] auto-create player error:", insertErr);
-                } else if (newPlayer) {
-                    console.log("[auth] auto-created player:", newPlayer.id);
-                    setPlayerDbId(newPlayer.id);
-                    setRole('child');
-                    setLinkCode(newPlayer.link_code || null);
-                    setProfileCompleted(false);
-                    setSurveyCompleted(false);
-                    setOnboardingComplete(false);
+                // No player record found
+                if (isSigningUp.current) {
+                    // signUp is in progress — let signUp handle player creation
+                    console.log("[auth] loadPlayerData: skipping auto-create (signUp in progress)");
+                } else {
+                    // OAuth or returning user with no player → mark for role selection
+                    console.log("[auth] loadPlayerData: no player found, needs role selection");
+                    setNeedsRoleSelect(true);
                 }
             }
         } catch (err) {
@@ -217,21 +213,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return { error: null };
         }
 
+        // Set flag BEFORE auth to prevent loadPlayerData from auto-creating
+        isSigningUp.current = true;
         console.log("[auth] signUp called with email:", email, "role:", userRole);
+
         const { data, error } = await supabase.auth.signUp({ email, password });
         console.log("[auth] signUp result:", { user: data?.user?.id, session: !!data?.session, error });
-        if (error) return { error: error.message };
+
+        if (error) {
+            isSigningUp.current = false;
+            return { error: error.message };
+        }
+
         if (data.user) {
             console.log("[auth] User created, creating player record...");
             const playerId = await createPlayerRecord(data.user.id, name, grade, email, userRole);
             console.log("[auth] Player record created with id:", playerId);
             setPlayerDbId(playerId);
+            setNeedsRoleSelect(false);
             setProfileCompleted(userRole === 'parent'); // Parents skip profile
             setSurveyCompleted(userRole === 'parent');   // Parents skip survey
             setOnboardingComplete(userRole === 'parent'); // Parents skip onboarding
         } else {
             console.warn("[auth] signUp returned no user object");
         }
+
+        isSigningUp.current = false;
         return { error: null };
     }, [createPlayerRecord]);
 
@@ -352,10 +359,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const setOnboardingDone = useCallback(() => setOnboardingComplete(true), []);
     const setProfileDone = useCallback(() => setProfileCompleted(true), []);
 
+    // Create player for OAuth users after they select a role
+    const createPlayerForOAuth = useCallback(async (playerRole: 'parent' | 'child') => {
+        if (!user || !supabase) return null;
+        const playerId = await createPlayerRecord(user.id, user.email?.split('@')[0] || 'Tân Binh', 3, user.email || '', playerRole);
+        if (playerId) {
+            setPlayerDbId(playerId);
+            setNeedsRoleSelect(false);
+            setProfileCompleted(playerRole === 'parent');
+            setSurveyCompleted(playerRole === 'parent');
+            setOnboardingComplete(playerRole === 'parent');
+        }
+        return playerId;
+    }, [user, createPlayerRecord]);
+
     return (
         <AuthContext.Provider value={{
-            user, session, loading, role, linkCode, linkedChildren,
+            user, session, loading, role, needsRoleSelect, linkCode, linkedChildren,
             signUp, signIn, signInWithGoogle, signInWithFacebook, signOut, linkChild,
+            createPlayerForOAuth,
             playerDbId, profileCompleted, surveyCompleted, onboardingComplete,
             setSurveyDone, setOnboardingDone, setProfileDone,
         }}>

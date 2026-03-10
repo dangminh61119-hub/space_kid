@@ -10,7 +10,6 @@ const navItems = [
     { label: "Lịch sử", icon: "📅", href: "/dashboard/history" },
     { label: "Giới hạn", icon: "⏰", href: "/dashboard/controls" },
     { label: "Liên kết", icon: "🔗", href: "/dashboard/link" },
-    { label: "AI Insights", icon: "🤖", href: "/dashboard#insights" },
     { label: "Cài đặt", icon: "⚙️", href: "/dashboard/settings" },
 ];
 
@@ -34,30 +33,37 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
     return (
         <div className="min-h-screen flex" style={{ background: "var(--dash-bg)", color: "var(--dash-text)" }}>
-            {/* Sidebar */}
+            {/* ── Sidebar ── */}
             <aside
                 className={`
-          fixed lg:static inset-y-0 left-0 z-40 w-64 transform transition-transform duration-300
-          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0
-          bg-white border-r flex flex-col
-        `}
+                    fixed lg:static inset-y-0 left-0 z-40 w-64 transform transition-transform duration-300
+                    ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0
+                    bg-white border-r flex flex-col
+                `}
                 style={{ borderColor: "var(--dash-border)" }}
             >
                 {/* Logo */}
                 <div className="p-6 border-b" style={{ borderColor: "var(--dash-border)" }}>
-                    <Link href="/" className="flex items-center gap-2">
-                        <span className="text-2xl">🌌</span>
-                        <span className="text-lg font-bold" style={{ fontFamily: "var(--font-heading)" }}>
-                            CosmoMosaic
-                        </span>
+                    <Link href="/" className="flex items-center gap-2.5 group">
+                        <div
+                            className="w-9 h-9 rounded-xl flex items-center justify-center text-lg transition-transform group-hover:scale-110"
+                            style={{ background: "linear-gradient(135deg, var(--dash-hero-from), var(--dash-hero-to))" }}
+                        >
+                            <span className="text-white text-sm">🌌</span>
+                        </div>
+                        <div>
+                            <span className="text-base font-bold block" style={{ fontFamily: "var(--font-heading)" }}>
+                                CosmoMosaic
+                            </span>
+                            <span className="text-[10px] font-medium" style={{ color: "var(--dash-muted)" }}>
+                                Bảng điều khiển
+                            </span>
+                        </div>
                     </Link>
-                    <p className="text-xs mt-1" style={{ color: "var(--dash-muted)" }}>
-                        Bảng điều khiển Phụ huynh
-                    </p>
                 </div>
 
                 {/* Nav */}
-                <nav className="flex-1 p-4 space-y-1">
+                <nav className="flex-1 p-3 space-y-1">
                     {navItems.map((item) => {
                         const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname?.startsWith(item.href));
                         return (
@@ -66,14 +72,25 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                                 href={item.href}
                                 onClick={() => setSidebarOpen(false)}
                                 className={`
-                  flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all
-                  ${isActive
-                                        ? "bg-blue-50 text-blue-600"
+                                    flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all relative
+                                    ${isActive
+                                        ? "text-indigo-700"
                                         : "hover:bg-gray-50"
                                     }
-                `}
-                                style={!isActive ? { color: "var(--dash-muted)" } : undefined}
+                                `}
+                                style={{
+                                    ...(isActive
+                                        ? { background: "var(--dash-sidebar-active)" }
+                                        : { color: "var(--dash-muted)" }),
+                                }}
                             >
+                                {/* Active indicator pill */}
+                                {isActive && (
+                                    <div
+                                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full"
+                                        style={{ background: "var(--dash-accent)" }}
+                                    />
+                                )}
                                 <span className="text-lg">{item.icon}</span>
                                 {item.label}
                             </Link>
@@ -82,10 +99,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 </nav>
 
                 {/* Back to game */}
-                <div className="p-4 border-t" style={{ borderColor: "var(--dash-border)" }}>
+                <div className="p-3 border-t" style={{ borderColor: "var(--dash-border)" }}>
                     <Link
                         href="/portal"
-                        className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+                        className="flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-medium transition-all hover:bg-indigo-50 hover:text-indigo-600"
                         style={{ color: "var(--dash-muted)" }}
                     >
                         <span>🎮</span>
@@ -97,12 +114,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             {/* Overlay */}
             {sidebarOpen && (
                 <div
-                    className="fixed inset-0 bg-black/30 z-30 lg:hidden"
+                    className="fixed inset-0 bg-black/30 z-30 lg:hidden backdrop-blur-sm"
                     onClick={() => setSidebarOpen(false)}
                 />
             )}
 
-            {/* Main content */}
+            {/* ── Main Content ── */}
             <div className="flex-1 flex flex-col min-h-screen">
                 {/* Top bar */}
                 <header
@@ -110,7 +127,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                     style={{ borderColor: "var(--dash-border)" }}
                 >
                     <button
-                        className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
+                        className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
                         onClick={() => setSidebarOpen(true)}
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -119,17 +136,23 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                     </button>
                     <div>
                         <h1 className="text-lg font-bold" style={{ fontFamily: "var(--font-heading)" }}>
-                            Xin chào, phụ huynh! 👋
+                            Bảng điều khiển Phụ huynh
                         </h1>
                         <p className="text-xs" style={{ color: "var(--dash-muted)" }}>
                             Theo dõi tiến độ học tập của bé
                         </p>
                     </div>
                     <div className="flex items-center gap-3">
-                        <button className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-sm hover:bg-gray-200 transition-colors">
+                        <button
+                            className="w-9 h-9 rounded-full flex items-center justify-center text-sm transition-all hover:scale-105"
+                            style={{ background: "var(--dash-accent-light)" }}
+                        >
                             🔔
                         </button>
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-sm font-bold">
+                        <div
+                            className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                            style={{ background: "linear-gradient(135deg, var(--dash-hero-from), var(--dash-hero-to))" }}
+                        >
                             P
                         </div>
                     </div>

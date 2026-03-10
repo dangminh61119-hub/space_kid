@@ -3,9 +3,9 @@
 import { useGame, MASCOT_INFO } from "@/lib/game-context";
 
 const typeStyles = {
-    strength: { bg: "#F0FFF4", border: "#4ADE8040", accent: "#16A34A" },
-    improve: { bg: "#FFFBEB", border: "#FFE06640", accent: "#CA8A04" },
-    tip: { bg: "#FFF1F2", border: "#FB923C40", accent: "#EA580C" },
+    strength: { bg: "#F0FFF4", border: "#22C55E", accent: "#16A34A", label: "Điểm mạnh" },
+    improve: { bg: "#FFFBEB", border: "#F59E0B", accent: "#CA8A04", label: "Cần cải thiện" },
+    tip: { bg: "#FFF1F2", border: "#F97316", accent: "#EA580C", label: "Mẹo hay" },
 };
 
 interface Insight {
@@ -86,14 +86,11 @@ export default function AIInsights() {
 
     if (insights.length === 0) {
         return (
-            <div
-                className="rounded-2xl border p-5 sm:p-6 bg-white"
-                style={{ borderColor: "var(--dash-border)" }}
-            >
+            <div className="dash-card p-5 sm:p-6">
                 <div className="flex items-center gap-2 mb-5">
-                    <span className="text-xl">🤖</span>
+                    <span className="text-xl">🦉</span>
                     <h3 className="font-bold text-base" style={{ fontFamily: "var(--font-heading)" }}>
-                        AI Insights
+                        Cú Mèo nhận xét
                     </h3>
                 </div>
                 <div className="text-center py-6 text-gray-400">
@@ -104,34 +101,54 @@ export default function AIInsights() {
     }
 
     return (
-        <div
-            className="rounded-2xl border p-5 sm:p-6 bg-white"
-            style={{ borderColor: "var(--dash-border)" }}
-        >
-            <div className="flex items-center gap-2 mb-5">
-                <span className="text-xl">🤖</span>
-                <h3 className="font-bold text-base" style={{ fontFamily: "var(--font-heading)" }}>
-                    AI Insights
-                </h3>
+        <div className="dash-card p-5 sm:p-6 dash-fade-up" style={{ animationDelay: "200ms" }}>
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-5">
+                <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+                    style={{ background: "linear-gradient(135deg, #EEF2FF, #E0E7FF)" }}
+                >
+                    🦉
+                </div>
+                <div className="flex-1">
+                    <h3 className="font-bold text-base" style={{ fontFamily: "var(--font-heading)" }}>
+                        Cú Mèo nhận xét
+                    </h3>
+                    <p className="text-[10px]" style={{ color: "var(--dash-muted)" }}>
+                        Phân tích dựa trên dữ liệu học tập
+                    </p>
+                </div>
                 <span
-                    className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-50 text-green-600"
+                    className="text-[10px] font-bold px-2.5 py-1 rounded-full"
+                    style={{ color: "#16A34A", background: "#F0FFF4" }}
                 >
                     TỰ ĐỘNG
                 </span>
             </div>
 
+            {/* Insight Cards */}
             <div className="space-y-3">
                 {insights.map((insight, i) => {
                     const style = typeStyles[insight.type];
                     return (
                         <div
                             key={i}
-                            className="rounded-xl p-4 border transition-all hover:shadow-sm"
-                            style={{ background: style.bg, borderColor: style.border }}
+                            className="rounded-xl p-4 transition-all hover:shadow-sm dash-fade-up flex gap-3"
+                            style={{
+                                background: style.bg,
+                                borderLeft: `3px solid ${style.border}`,
+                                animationDelay: `${250 + i * 80}ms`,
+                            }}
                         >
-                            <div className="flex gap-3">
-                                <span className="text-xl shrink-0">{insight.icon}</span>
-                                <p className="text-sm leading-relaxed" style={{ color: "var(--dash-text)" }}>
+                            <span className="text-xl shrink-0">{insight.icon}</span>
+                            <div className="flex-1 min-w-0">
+                                <span
+                                    className="text-[10px] font-bold uppercase tracking-wider"
+                                    style={{ color: style.accent }}
+                                >
+                                    {style.label}
+                                </span>
+                                <p className="text-sm leading-relaxed mt-0.5" style={{ color: "var(--dash-text)" }}>
                                     {insight.message}
                                 </p>
                             </div>
@@ -139,10 +156,6 @@ export default function AIInsights() {
                     );
                 })}
             </div>
-
-            <p className="text-[10px] mt-4 text-center" style={{ color: "var(--dash-muted)" }}>
-                Phân tích dựa trên dữ liệu hiện tại của bé
-            </p>
         </div>
     );
 }

@@ -4,14 +4,14 @@ import { useGame } from "@/lib/game-context";
 
 /* Subject emoji + color mapping */
 const SUBJECT_META: Record<string, { icon: string; color: string }> = {
-    "Toán": { icon: "🔢", color: "#60A5FA" },
-    "Tiếng Việt": { icon: "📝", color: "#4ADE80" },
-    "Tiếng Anh": { icon: "🌍", color: "#FB923C" },
-    "Lịch sử": { icon: "📜", color: "#A78BFA" },
-    "Địa lý": { icon: "🗺️", color: "#06B6D4" },
-    "Khoa học": { icon: "🔬", color: "#10B981" },
-    "Mỹ thuật": { icon: "🎨", color: "#F472B6" },
-    "Tin học": { icon: "💻", color: "#8B5CF6" },
+    "Toán": { icon: "🔢", color: "#4F46E5" },
+    "Tiếng Việt": { icon: "📝", color: "#16A34A" },
+    "Tiếng Anh": { icon: "🌍", color: "#EA580C" },
+    "Lịch sử": { icon: "📜", color: "#7C3AED" },
+    "Địa lý": { icon: "🗺️", color: "#0891B2" },
+    "Khoa học": { icon: "🔬", color: "#059669" },
+    "Mỹ thuật": { icon: "🎨", color: "#DB2777" },
+    "Tin học": { icon: "💻", color: "#7C3AED" },
 };
 
 /* Planet ID → Vietnamese name */
@@ -60,62 +60,74 @@ export default function SubjectBreakdown() {
     /* If no mastery data, show a friendly empty state */
     if (subjects.length === 0) {
         return (
-            <div
-                className="rounded-2xl border p-5 sm:p-6 bg-white"
-                style={{ borderColor: "var(--dash-border)" }}
-            >
+            <div className="dash-card p-5 sm:p-6">
                 <h3 className="font-bold text-base mb-5" style={{ fontFamily: "var(--font-heading)" }}>
-                    Tiến độ theo Môn học 📚
+                    📚 Tiến độ theo Môn học
                 </h3>
                 <div className="text-center py-8 text-gray-400">
-                    <div className="text-4xl mb-2">📚</div>
-                    <p className="text-sm">Chưa có dữ liệu. Hãy chơi game để bắt đầu!</p>
+                    <div className="text-5xl mb-3">📚</div>
+                    <p className="text-sm font-medium">Chưa có dữ liệu</p>
+                    <p className="text-xs mt-1 text-gray-300">Hãy chơi game để bắt đầu!</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div
-            className="rounded-2xl border p-5 sm:p-6 bg-white"
-            style={{ borderColor: "var(--dash-border)" }}
-        >
-            <h3 className="font-bold text-base mb-5" style={{ fontFamily: "var(--font-heading)" }}>
-                Tiến độ theo Môn học 📚
+        <div className="dash-card p-5 sm:p-6">
+            <h3 className="font-bold text-base mb-6" style={{ fontFamily: "var(--font-heading)" }}>
+                📚 Tiến độ theo Môn học
             </h3>
 
             <div className="space-y-5">
-                {subjects.map((subject) => (
-                    <div key={subject.name}>
-                        <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                                <span className="text-lg">{subject.icon}</span>
-                                <span className="text-sm font-semibold" style={{ color: "var(--dash-text)" }}>
-                                    {subject.name}
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs" style={{ color: "var(--dash-muted)" }}>
-                                    {subject.planet}
-                                </span>
-                                <span
-                                    className="text-xs font-bold px-2 py-0.5 rounded-full"
-                                    style={{ color: subject.color, background: `${subject.color}15` }}
+                {subjects.map((subject, i) => (
+                    <div
+                        key={subject.name}
+                        className="dash-fade-up"
+                        style={{ animationDelay: `${i * 60}ms` }}
+                    >
+                        <div className="flex items-center justify-between mb-2.5">
+                            <div className="flex items-center gap-2.5">
+                                <div
+                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-base"
+                                    style={{ background: `${subject.color}12` }}
                                 >
-                                    {subject.progress}%
-                                </span>
+                                    {subject.icon}
+                                </div>
+                                <div>
+                                    <span className="text-sm font-semibold block" style={{ color: "var(--dash-text)" }}>
+                                        {subject.name}
+                                    </span>
+                                    <span className="text-[10px]" style={{ color: "var(--dash-muted)" }}>
+                                        {subject.planet}
+                                    </span>
+                                </div>
                             </div>
+                            <span
+                                className="text-sm font-bold px-2.5 py-1 rounded-lg"
+                                style={{ color: subject.color, background: `${subject.color}10` }}
+                            >
+                                {subject.progress}%
+                            </span>
                         </div>
 
                         {/* Progress bar */}
-                        <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
                             <div
-                                className="h-full rounded-full transition-all duration-500"
+                                className="h-full rounded-full transition-all duration-700 ease-out relative"
                                 style={{
                                     width: `${subject.progress}%`,
-                                    backgroundColor: subject.color,
+                                    background: `linear-gradient(90deg, ${subject.color}, ${subject.color}CC)`,
                                 }}
-                            />
+                            >
+                                {/* Shine effect */}
+                                <div
+                                    className="absolute inset-0 rounded-full"
+                                    style={{
+                                        background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)",
+                                    }}
+                                />
+                            </div>
                         </div>
                     </div>
                 ))}

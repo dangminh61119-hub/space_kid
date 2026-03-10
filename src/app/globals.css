@@ -33,6 +33,11 @@
   --dash-viet: #4ADE80;
   --dash-eng: #FB923C;
   --dash-hist: #A78BFA;
+  --dash-hero-from: #4F46E5;
+  --dash-hero-to: #7C3AED;
+  --dash-accent: #6366F1;
+  --dash-accent-light: #EEF2FF;
+  --dash-sidebar-active: #EEF2FF;
 
   /* === LEARN MODULE (Galactic Bento - Amber Glow) === */
   --learn-bg: #0A0612;
@@ -692,6 +697,63 @@ h6 {
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 245, 255, 0.5);
+}
+
+/* ── DASHBOARD PREMIUM ── */
+@keyframes dash-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes dash-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dash-count-pulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+.dash-card {
+  background: white;
+  border: 1px solid var(--dash-border);
+  border-radius: 16px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dash-card:hover {
+  box-shadow: 0 8px 30px rgba(99, 102, 241, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  transform: translateY(-2px);
+}
+
+.dash-fade-up {
+  animation: dash-fade-up 0.5s ease-out both;
+}
+
+.dash-hero {
+  background: linear-gradient(135deg, var(--dash-hero-from) 0%, var(--dash-hero-to) 50%, #6D28D9 100%);
+  background-size: 200% 200%;
+  animation: gradient-shift 8s ease infinite;
 }
 
 /* ============================================

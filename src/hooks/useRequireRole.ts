@@ -13,7 +13,7 @@ import { useAuth } from "@/lib/services/auth-context";
  */
 export function useRequireRole(requiredRole: "parent" | "child") {
     const router = useRouter();
-    const { user, loading, role } = useAuth();
+    const { user, loading, role, needsRoleSelect } = useAuth();
 
     useEffect(() => {
         if (loading) return;
@@ -24,15 +24,21 @@ export function useRequireRole(requiredRole: "parent" | "child") {
             return;
         }
 
+        // No role yet (OAuth user) → choose role first
+        if (needsRoleSelect || !role) {
+            router.replace("/role-select");
+            return;
+        }
+
         // Wrong role → redirect to correct area
-        if (role && role !== requiredRole) {
+        if (role !== requiredRole) {
             if (role === "parent") {
                 router.replace("/dashboard");
             } else {
                 router.replace("/portal");
             }
         }
-    }, [user, loading, role, requiredRole, router]);
+    }, [user, loading, role, needsRoleSelect, requiredRole, router]);
 
     const allowed = !loading && !!user && role === requiredRole;
     const redirecting = !loading && !allowed;
