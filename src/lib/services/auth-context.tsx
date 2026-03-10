@@ -15,7 +15,7 @@ interface AuthContextType {
     needsRoleSelect: boolean;        // True when OAuth user has no player record yet
     linkCode: string | null;         // Child's link code (6 chars)
     linkedChildren: string[];        // Parent's linked child IDs
-    signUp: (email: string, password: string, name: string, grade: number, role?: 'parent' | 'child') => Promise<{ error: string | null }>;
+    signUp: (email: string, password: string, name: string, grade: number, role?: 'parent' | 'child') => Promise<{ error: string | null; needsEmailConfirmation?: boolean }>;
     signIn: (email: string, password: string) => Promise<{ error: string | null }>;
     signInWithGoogle: () => Promise<{ error: string | null }>;
     signInWithFacebook: () => Promise<{ error: string | null }>;
@@ -110,9 +110,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     // signUp is in progress — let signUp handle player creation
                     console.log("[auth] loadPlayerData: skipping auto-create (signUp in progress)");
                 } else {
-                    // OAuth or returning user with no player → mark for role selection
-                    console.log("[auth] loadPlayerData: no player found, needs role selection");
-                    setNeedsRoleSelect(true);
+                    // Check user_metadata for pre-filled registration data (email confirmation flow)
+                    const { data: { user: currentUser } } = await supabase.auth.getUser();
+                    const meta = currentUser?.user_metadata;
+
+                    if (meta?.name && meta?.role) {
+                        // Email-confirmed user with stored registration data → auto-create player
+                        console.log("[auth] loadPlayerData: creating player from user_metadata for confirmed email user");
+                        const playerId = await createPlayerRecord(
+                            authId,
+                            meta.name as string,
+                            (meta.grade as number) || 2,
+                            email,
+                            meta.role as 'parent' | 'child'
+                        );
+                        setPlayerDbId(playerId);
+                        setNeedsRoleSelect(false);
+                        const isParent = meta.role === 'parent';
+                        setProfileCompleted(isParent);
+                        setSurveyCompleted(isParent);
+                        setOnboardingComplete(isParent);
+                        if (isParent) {
+                            await loadLinkedChildren(playerId);
+                        }
+                    } else {
+                        // OAuth or returning user with no player → mark for role selection
+                        console.log("[auth] loadPlayerData: no player found, needs role selection");
+                        setNeedsRoleSelect(true);
+                    }
                 }
             }
         } catch (err) {
@@ -198,7 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     /* ─── Auth methods ─── */
 
-    const signUp = useCallback(async (email: string, password: string, name: string, grade: number, userRole: 'parent' | 'child' = 'child') => {
+    const signUp = useCallback(async (email: string, password: string, name: string, grade: number, userRole: 'parent' | 'child' = 'child'): Promise<{ error: string | null; needsEmailConfirmation?: boolean }> => {
         if (isMockMode || !supabase) {
             // Mock mode
             const mockCode = userRole === 'child' ? Math.random().toString(36).substring(2, 8).toUpperCase() : null;
@@ -218,7 +243,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isSigningUp.current = true;
         console.log("[auth] signUp called with email:", email, "role:", userRole);
 
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`,
+                data: { name, grade, role: userRole }, // Store in user_metadata for later
+            },
+        });
         console.log("[auth] signUp result:", { user: data?.user?.id, session: !!data?.session, error });
 
         if (error) {
@@ -226,15 +258,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return { error: error.message };
         }
 
-        if (data.user) {
-            console.log("[auth] User created, creating player record...");
+        // If no session → email confirmation required
+        if (data.user && !data.session) {
+            console.log("[auth] Email confirmation required, player record will be created after confirmation");
+            isSigningUp.current = false;
+            return { error: null, needsEmailConfirmation: true };
+        }
+
+        if (data.user && data.session) {
+            console.log("[auth] User created with session, creating player record...");
             const playerId = await createPlayerRecord(data.user.id, name, grade, email, userRole);
             console.log("[auth] Player record created with id:", playerId);
             setPlayerDbId(playerId);
             setNeedsRoleSelect(false);
-            setProfileCompleted(userRole === 'parent'); // Parents skip profile
-            setSurveyCompleted(userRole === 'parent');   // Parents skip survey
-            setOnboardingComplete(userRole === 'parent'); // Parents skip onboarding
+            setProfileCompleted(userRole === 'parent');
+            setSurveyCompleted(userRole === 'parent');
+            setOnboardingComplete(userRole === 'parent');
         } else {
             console.warn("[auth] signUp returned no user object");
         }

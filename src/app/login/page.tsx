@@ -56,9 +56,11 @@ export default function LoginPage() {
 
         try {
             if (tab === "register") {
-                const { error: err } = await signUp(email, password, email.split("@")[0], 3, registerRole);
-                if (err) {
-                    setError(err);
+                const result = await signUp(email, password, email.split("@")[0], 3, registerRole);
+                if (result.error) {
+                    setError(result.error);
+                } else if (result.needsEmailConfirmation) {
+                    setSuccess("📧 Đã gửi email xác nhận! Vui lòng kiểm tra hộp thư (và thư rác) để kích hoạt tài khoản.");
                 } else {
                     setSuccess("Đăng ký thành công!");
                     if (registerRole === 'parent') {
