@@ -108,6 +108,56 @@ function LunaOwl({ mood, isSpeaking }: { mood: OwlMood; isSpeaking: boolean }) {
     );
 }
 
+function AnimatedOwlAvatar({ isSpeaking, size = 140 }: { isSpeaking: boolean, size?: number }) {
+    const [blink, setBlink] = useState(false);
+
+    useEffect(() => {
+        const schedule = (): ReturnType<typeof setTimeout> => setTimeout(() => {
+            setBlink(true);
+            setTimeout(() => setBlink(false), 120);
+            schedule();
+        }, 2000 + Math.random() * 4000);
+        const t = schedule();
+        return () => clearTimeout(t);
+    }, []);
+
+    return (
+        <motion.div
+            className="lv-owl-avatar"
+            style={{ position: 'relative', width: size, height: size }}
+            animate={{ y: [0, -8, 0], scale: isSpeaking ? [1, 1.03, 1] : 1 }}
+            transition={{
+                y: { duration: 3, repeat: Infinity, ease: "easeInOut" },
+                scale: { duration: 0.6, repeat: isSpeaking ? Infinity : 0 }
+            }}
+        >
+            {/* Base Body */}
+            <Image src="/images/luna_owl_base.png" alt="Luna Body" fill priority style={{ objectFit: 'contain' }} />
+
+            {/* Eyes */}
+            <motion.div
+                style={{ position: 'absolute', inset: 0, transformOrigin: 'center 45%' }}
+                animate={{ scaleY: blink ? 0.05 : 1 }}
+                transition={{ duration: blink ? 0.08 : 0.15 }}
+            >
+                <Image src="/images/luna_owl_eyes.png" alt="Luna Eyes" fill priority style={{ objectFit: 'contain' }} />
+            </motion.div>
+
+            {/* Beak / Mouth */}
+            <motion.div
+                style={{ position: 'absolute', inset: 0, transformOrigin: 'center 60%' }}
+                animate={{
+                    y: isSpeaking ? [0, 2, 0] : 0,
+                    scaleY: isSpeaking ? [1, 1.15, 1] : 1
+                }}
+                transition={{ duration: 0.35, repeat: isSpeaking ? Infinity : 0 }}
+            >
+                <Image src="/images/luna_owl_beak.png" alt="Luna Beak" fill priority style={{ objectFit: 'contain' }} />
+            </motion.div>
+        </motion.div>
+    );
+}
+
 /* ═══════════════════ MAIN SESSION ═══════════════════ */
 export default function LunaChatSession({ studentName, grade, topic, durationMinutes, playerId, voice = "en-US-Studio-O", onSessionEnd }: Props) {
     const { session } = useAuth();
@@ -369,9 +419,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     if (convState === "ended") {
         return (
             <div className="lv-end">
-                <motion.div animate={{ y: [0, -10, 0] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}>
-                    <Image src="/images/luna_owl_avatar.png" alt="Luna Mascot" width={180} height={180} />
-                </motion.div>
+                <AnimatedOwlAvatar isSpeaking={isSpeaking} size={180} />
                 <div className="lv-end-card">
                     {isSummaryLoading ? (
                         <motion.p animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.2, repeat: Infinity }} style={{ color: "var(--learn-text-secondary)", textAlign: "center" }}>
@@ -448,16 +496,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
 
                 {/* Owl panel */}
                 <div className="lv-owl-panel">
-                    <motion.div
-                        className="lv-owl-avatar"
-                        animate={{ y: [0, -8, 0], scale: isSpeaking ? [1, 1.05, 1] : 1 }}
-                        transition={{
-                            y: { duration: 3, repeat: Infinity, ease: "easeInOut" },
-                            scale: { duration: 0.5, repeat: isSpeaking ? Infinity : 0 }
-                        }}
-                    >
-                        <Image src="/images/luna_owl_avatar.png" alt="Luna Mascot" width={140} height={140} priority style={{ objectFit: 'contain' }} />
-                    </motion.div>
+                    <AnimatedOwlAvatar isSpeaking={isSpeaking} size={140} />
 
                     <AnimatePresence mode="wait">
                         <motion.div key={owlMood + convState} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="lv-owl-status">
