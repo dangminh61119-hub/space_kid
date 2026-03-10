@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence, type TargetAndTransition } from "framer-motion";
+import Image from "next/image";
 import { useAuth } from "@/lib/services/auth-context";
 
 /* ─── Types ─── */
@@ -368,6 +369,9 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     if (convState === "ended") {
         return (
             <div className="lv-end">
+                <motion.div animate={{ y: [0, -10, 0] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}>
+                    <Image src="/images/luna_owl_avatar.png" alt="Luna Mascot" width={180} height={180} />
+                </motion.div>
                 <div className="lv-end-card">
                     {isSummaryLoading ? (
                         <motion.p animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.2, repeat: Infinity }} style={{ color: "var(--learn-text-secondary)", textAlign: "center" }}>
@@ -442,7 +446,28 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                     <div ref={bottomRef} />
                 </div>
 
+                {/* Owl panel */}
+                <div className="lv-owl-panel">
+                    <motion.div
+                        className="lv-owl-avatar"
+                        animate={{ y: [0, -8, 0], scale: isSpeaking ? [1, 1.05, 1] : 1 }}
+                        transition={{
+                            y: { duration: 3, repeat: Infinity, ease: "easeInOut" },
+                            scale: { duration: 0.5, repeat: isSpeaking ? Infinity : 0 }
+                        }}
+                    >
+                        <Image src="/images/luna_owl_avatar.png" alt="Luna Mascot" width={140} height={140} priority style={{ objectFit: 'contain' }} />
+                    </motion.div>
 
+                    <AnimatePresence mode="wait">
+                        <motion.div key={owlMood + convState} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="lv-owl-status">
+                            {convState === "ready" && ""}
+                            {convState === "luna-speaking" && "🗣 Luna đang nói"}
+                            {convState === "user-speaking" && "👂 Đang nghe bạn..."}
+                            {convState === "processing" && "💭 Đang suy nghĩ..."}
+                        </motion.div>
+                    </AnimatePresence>
+                </div>
             </div>
 
             {/* Bottom: big Start button or status */}
@@ -534,6 +559,10 @@ const LV_STYLES = `
   .lv-typing span:nth-child(2){ animation-delay:.2s; } .lv-typing span:nth-child(3){ animation-delay:.4s; }
   @keyframes ldot { 0%,80%,100%{transform:scale(0.7);opacity:0.4} 40%{transform:scale(1.1);opacity:1} }
 
+  /* Owl panel */
+  .lv-owl-panel { width:190px; flex-shrink:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; padding:0 0 20px; background:linear-gradient(to left,rgba(4,47,46,0.6) 0%,transparent 100%); }
+  .lv-owl-avatar { filter:drop-shadow(0 0 25px rgba(94,234,212,0.3)); display:flex; align-items:center; justify-content:center; }
+  .lv-owl-status { font-size:10.5px; font-weight:700; color:rgba(94,234,212,0.55); margin-top:12px; min-height:15px; letter-spacing:0.4px; }
 
 
   /* Bottom / Start button */
@@ -562,6 +591,8 @@ const LV_STYLES = `
 
   @media (max-width:768px) {
     .lv-session { height:calc(100vh - 170px); }
+    .lv-owl-panel { width:130px; }
+    .lv-owl-panel img { width: 100px; height: 100px; }
     .lv-start-btn { padding:16px 36px; font-size:16px; }
   }
 `;
