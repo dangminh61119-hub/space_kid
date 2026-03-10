@@ -181,7 +181,8 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     const [typingText, setTypingText] = useState("");
     const [isTyping, setIsTyping] = useState(false);
     const typingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-    const silenceCount = useRef(0);
+    const silenceStart = useRef<number | null>(null);
+    const silencePrompted = useRef(false);
     // Past session memory
     const [pastSummaries, setPastSummaries] = useState<string[]>([]);
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -349,19 +350,20 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
         while (!isEndedRef.current) {
             const userText = await startListening();
             if (isEndedRef.current) return;
-            // Silence handling — only prompt once, then wait silently
+            // Silence handling — only prompt after 60+ seconds of silence, and only once
             if (!userText.trim()) {
                 updateSpeed(-5);
-                silenceCount.current += 1;
-                if (silenceCount.current === 1) {
-                    // Prompt exactly once
+                if (!silenceStart.current) silenceStart.current = Date.now();
+                const silenceDuration = Date.now() - silenceStart.current;
+                if (silenceDuration >= 60_000 && !silencePrompted.current) {
+                    silencePrompted.current = true;
                     const silenceTier = fluencyScore.current >= 66 ? "fast" : fluencyScore.current >= 36 ? "normal" : "slow";
                     await lunaSpeak("Take your time — I'm listening!", "idle", silenceTier);
                 }
-                // After the first prompt (or subsequent silences), just wait again without speaking
                 continue;
             }
-            silenceCount.current = 0; // reset on real response
+            silenceStart.current = null; // reset on real response
+            silencePrompted.current = false;
 
             msgs = [...msgs, { role: "user", content: userText.trim() }];
             setMessages([...msgs]);

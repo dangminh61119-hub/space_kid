@@ -32,12 +32,42 @@ const DURATIONS = [
 
 /* ─── Suggested topics by grade ─── */
 const TOPIC_SUGGESTIONS: Record<string, string[]> = {
-    "1": ["Animals 🐶", "Colors 🎨", "Numbers 1–20 🔢", "Family 👨‍👩‍👧", "My classroom 📚"],
-    "2": ["My day 🌅", "Food I like 🍕", "Weather ☀️🌧️", "Hobbies 🎮", "My friends 🤝"],
-    "3": ["School life 🏫", "Sports ⚽", "Wild animals 🦁", "Seasons 🍂", "Going shopping 🛒"],
-    "4": ["Travel & places ✈️", "My dream job 👩‍🚀", "Environment 🌍", "Technology 💻", "Celebrations 🎉"],
-    "5": ["Vietnamese culture 🇻🇳", "Science & nature 🔬", "What I learned this week 📖", "Future plans 🚀", "Social media 📱"],
+    "1": [
+        "Animals 🐶", "Colors 🎨", "Numbers 1–20 🔢", "Family 👨‍👩‍👧", "My classroom 📚",
+        "Toys I like 🧸", "My body 🦶", "Fruits 🍎", "At the park 🌳", "My house 🏠",
+        "Clothes I wear 👕", "Hello & Goodbye 👋", "Big & Small 📏", "Happy & Sad 😊😢", "My pet 🐱",
+    ],
+    "2": [
+        "My day 🌅", "Food I like 🍕", "Weather ☀️🌧️", "Hobbies 🎮", "My friends 🤝",
+        "Going to school 🚌", "My weekend 🎡", "Bedtime routine 🌙", "At the zoo 🦒", "Helping at home 🧹",
+        "Birthday party 🎂", "Favorite cartoon 📺", "My neighborhood 🏘️", "Rainy days ☔", "Snack time 🍿",
+    ],
+    "3": [
+        "School life 🏫", "Sports ⚽", "Wild animals 🦁", "Seasons 🍂", "Going shopping 🛒",
+        "My best friend 💛", "Cooking with family 🍳", "The ocean 🌊", "Reading books 📖", "Field trips 🚍",
+        "My favorite teacher 👩‍🏫", "Rainy vs sunny ☀️🌧️", "Games I play 🎲", "Healthy food 🥗", "Music I like 🎵",
+    ],
+    "4": [
+        "Travel & places ✈️", "My dream job 👩‍🚀", "Environment 🌍", "Technology 💻", "Celebrations 🎉",
+        "Space & planets 🪐", "Movies I love 🎬", "If I were a superhero 🦸", "School subjects 📐", "Famous people 🌟",
+        "Inventions 💡", "My country 🇻🇳", "Teamwork 🤜🤛", "Camping adventure ⛺", "Robots & AI 🤖",
+    ],
+    "5": [
+        "Vietnamese culture 🇻🇳", "Science & nature 🔬", "What I learned this week 📖", "Future plans 🚀", "Social media 📱",
+        "Climate change 🌡️", "My role model 💪", "If I could time travel ⏰", "Debate: cats vs dogs 🐱🐶", "World cultures 🌏",
+        "Friendship challenges 🤝", "Creative writing ✍️", "Everyday heroes 🦸‍♀️", "My dream school 🏫", "Life in 2050 🔮",
+    ],
 };
+
+/* Shuffle array (Fisher-Yates) and pick first N */
+function shufflePick<T>(arr: T[], n: number): T[] {
+    const copy = [...arr];
+    for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy.slice(0, n);
+}
 
 interface PastSession {
     id: string;
@@ -73,10 +103,12 @@ export default function EnglishBuddyPage() {
     /* The active topic used for the session */
     const activeTopic = topicInput.trim() || null;
 
-    /* Suggestions based on grade */
+    /* Suggestions based on grade — randomized on each mount */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     const suggestions = useMemo(() => {
         const g = String(player.grade ?? 2);
-        return TOPIC_SUGGESTIONS[g] ?? TOPIC_SUGGESTIONS["2"];
+        const pool = TOPIC_SUGGESTIONS[g] ?? TOPIC_SUGGESTIONS["2"];
+        return shufflePick(pool, 5);
     }, [player.grade]);
 
 
