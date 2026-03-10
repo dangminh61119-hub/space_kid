@@ -68,7 +68,7 @@ const CLASS_OPTIONS = [
 export default function PlayerPage() {
     const router = useRouter();
     const { player, updatePlayer, resetGame, unlockAchievement } = useGame();
-    const { linkCode } = useAuth();
+    const { linkCode, regenerateLinkCode } = useAuth();
 
     /* ── Edit form state ── */
     const [editName, setEditName] = useState(player.name);
@@ -77,6 +77,8 @@ export default function PlayerPage() {
     const [editClass, setEditClass] = useState(player.playerClass);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [regenerating, setRegenerating] = useState(false);
+    const [copied, setCopied] = useState(false);
 
     /* ── Reset confirmation ── */
     const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -193,21 +195,43 @@ export default function PlayerPage() {
                                 </p>
 
                                 {/* Link Code for parents */}
-                                {linkCode && (
-                                    <div className="mb-3 p-2.5 rounded-xl bg-white/5 border border-white/10 inline-flex items-center gap-2">
-                                        <span className="text-white/40 text-xs">🔗 Mã liên kết:</span>
-                                        <span
-                                            className="text-neon-cyan font-bold font-mono tracking-[0.2em] text-sm cursor-pointer hover:text-white transition-colors"
-                                            title="Nhấn để sao chép"
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(linkCode);
-                                            }}
-                                        >
-                                            {linkCode}
-                                        </span>
-                                        <span className="text-white/30 text-[10px]">📋</span>
-                                    </div>
-                                )}
+                                <div className="mb-3">
+                                    {linkCode ? (
+                                        <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 inline-flex items-center gap-2">
+                                            <span className="text-white/40 text-xs">🔗 Mã liên kết:</span>
+                                            <span
+                                                className="text-neon-cyan font-bold font-mono tracking-[0.2em] text-sm cursor-pointer hover:text-white transition-colors"
+                                                title="Nhấn để sao chép"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(linkCode);
+                                                    setCopied(true);
+                                                    setTimeout(() => setCopied(false), 2000);
+                                                }}
+                                            >
+                                                {linkCode}
+                                            </span>
+                                            <span className="text-white/30 text-[10px]">{copied ? "✅" : "📋"}</span>
+                                        </div>
+                                    ) : (
+                                        <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 inline-flex items-center gap-2">
+                                            <span className="text-white/40 text-xs">🔗 Mã đã được sử dụng</span>
+                                            <button
+                                                onClick={async () => {
+                                                    setRegenerating(true);
+                                                    await regenerateLinkCode();
+                                                    setRegenerating(false);
+                                                }}
+                                                disabled={regenerating}
+                                                className="text-xs font-medium text-neon-cyan hover:text-white transition-colors disabled:opacity-50"
+                                            >
+                                                {regenerating ? "⏳" : "🔄 Tạo mã mới"}
+                                            </button>
+                                        </div>
+                                    )}
+                                    <p className="text-white/25 text-[10px] mt-1">
+                                        Gửi mã này cho phụ huynh để liên kết tài khoản
+                                    </p>
+                                </div>
                                 <div>
                                     <div className="flex justify-between text-xs text-white/50 mb-1.5">
                                         <span>Level {player.level}</span>

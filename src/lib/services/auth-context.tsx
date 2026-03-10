@@ -21,6 +21,7 @@ interface AuthContextType {
     signInWithFacebook: () => Promise<{ error: string | null }>;
     signOut: () => Promise<void>;
     linkChild: (code: string) => Promise<{ error: string | null; childName?: string }>;
+    regenerateLinkCode: () => Promise<string | null>;
     createPlayerForOAuth: (playerRole: 'parent' | 'child') => Promise<string | null>;
     playerDbId: string | null; // UUID from players table
     profileCompleted: boolean;
@@ -288,10 +289,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: null };
     }, []);
 
+    // Rate limit tracking for link attempts
+    const linkAttempts = useRef<{ count: number; firstAttemptAt: number }>({ count: 0, firstAttemptAt: 0 });
+    const MAX_LINK_ATTEMPTS = 5;
+    const RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour
+
     // Link a child account to this parent using the child's link code
+    // Security: one-time code + max 2 parents + rate limit
     const linkChild = useCallback(async (code: string): Promise<{ error: string | null; childName?: string }> => {
         if (isMockMode || !supabase) {
-            // Mock mode: store in localStorage
             const mockLinks = JSON.parse(localStorage.getItem('cosmomosaic_mock_links') || '[]');
             mockLinks.push({ code, childId: 'mock-child-' + code });
             localStorage.setItem('cosmomosaic_mock_links', JSON.stringify(mockLinks));
@@ -301,7 +307,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (!playerDbId) return { error: 'Chưa đăng nhập' };
 
-        // Find child by link_code
+        // ── Rate limit check ──
+        const now = Date.now();
+        if (now - linkAttempts.current.firstAttemptAt > RATE_LIMIT_WINDOW) {
+            // Reset window
+            linkAttempts.current = { count: 0, firstAttemptAt: now };
+        }
+        if (linkAttempts.current.count >= MAX_LINK_ATTEMPTS) {
+            const minutesLeft = Math.ceil((RATE_LIMIT_WINDOW - (now - linkAttempts.current.firstAttemptAt)) / 60000);
+            return { error: `Bạn đã nhập sai quá ${MAX_LINK_ATTEMPTS} lần. Vui lòng thử lại sau ${minutesLeft} phút.` };
+        }
+
+        // ── Find child by link_code ──
         const { data: child, error: findErr } = await supabase
             .from('players')
             .select('id, name')
@@ -310,22 +327,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .single();
 
         if (findErr || !child) {
-            return { error: 'Không tìm thấy mã liên kết. Vui lòng kiểm tra lại!' };
+            linkAttempts.current.count += 1;
+            const remaining = MAX_LINK_ATTEMPTS - linkAttempts.current.count;
+            return {
+                error: remaining > 0
+                    ? `Không tìm thấy mã liên kết. Còn ${remaining} lần thử.`
+                    : `Bạn đã nhập sai quá ${MAX_LINK_ATTEMPTS} lần. Vui lòng thử lại sau 1 giờ.`
+            };
         }
 
-        // Check if already linked
-        const { data: existing } = await supabase
+        // ── Check max 2 parents per child ──
+        const { data: existingLinks, error: countErr } = await supabase
             .from('parent_child_link')
-            .select('id')
-            .eq('parent_id', playerDbId)
-            .eq('child_id', child.id)
-            .single();
+            .select('id, parent_id')
+            .eq('child_id', child.id);
 
-        if (existing) {
-            return { error: `Bé ${child.name} đã được liên kết trước đó!` };
+        if (!countErr && existingLinks) {
+            // Already linked to this parent?
+            if (existingLinks.some((l: { parent_id: string }) => l.parent_id === playerDbId)) {
+                return { error: `Bé ${child.name} đã được liên kết trước đó!` };
+            }
+            // Max 2 parents
+            if (existingLinks.length >= 2) {
+                return { error: `Bé ${child.name} đã có 2 phụ huynh liên kết. Không thể thêm nữa.` };
+            }
         }
 
-        // Create link
+        // ── Create link ──
         const { error: linkErr } = await supabase
             .from('parent_child_link')
             .insert({ parent_id: playerDbId, child_id: child.id });
@@ -335,8 +363,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return { error: 'Không thể liên kết. Vui lòng thử lại!' };
         }
 
+        // ── Invalidate link code (one-time use) ──
+        await supabase
+            .from('players')
+            .update({ link_code: null })
+            .eq('id', child.id);
+
         setLinkedChildren(prev => [...prev, child.id]);
+        // Reset rate limit on success
+        linkAttempts.current = { count: 0, firstAttemptAt: 0 };
         return { error: null, childName: child.name };
+    }, [playerDbId]);
+
+    // Regenerate link code for child accounts (after it was invalidated)
+    const regenerateLinkCode = useCallback(async (): Promise<string | null> => {
+        if (isMockMode || !supabase || !playerDbId) return null;
+
+        // Generate new 6-char code via SQL function
+        const { data, error } = await supabase.rpc('regenerate_link_code', { player_id: playerDbId });
+        if (error) {
+            console.error('[auth] regenerateLinkCode error:', error);
+            return null;
+        }
+        const newCode = data as string;
+        setLinkCode(newCode);
+        return newCode;
     }, [playerDbId]);
 
     const signOut = useCallback(async () => {
@@ -377,7 +428,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         <AuthContext.Provider value={{
             user, session, loading, role, needsRoleSelect, linkCode, linkedChildren,
             signUp, signIn, signInWithGoogle, signInWithFacebook, signOut, linkChild,
-            createPlayerForOAuth,
+            regenerateLinkCode, createPlayerForOAuth,
             playerDbId, profileCompleted, surveyCompleted, onboardingComplete,
             setSurveyDone, setOnboardingDone, setProfileDone,
         }}>
