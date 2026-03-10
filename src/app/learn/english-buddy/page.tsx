@@ -162,14 +162,13 @@ export default function EnglishBuddyPage() {
                         <div className="luna-hero-tag">✨ NEW — English Buddy</div>
                         <h1 className="luna-hero-title">Luna</h1>
                         <p className="luna-hero-desc">
-                            Người bạn ngoại quốc giỏi tiếng Anh của {player.name}.<br />
-                            Luna sẽ <strong>chủ động sửa lỗi</strong> và giúp bạn nói tiếng Anh tự nhiên hơn mỗi ngày! 🌟
+                            Người bạn tiếng Anh của {player.name} — chủ động <strong>sửa lỗi</strong> &amp; trò chuyện tự nhiên 🌟
                         </p>
                         <div className="luna-hero-badges">
-                            <span className="luna-badge-chip">🔠 Sửa lỗi ngữ pháp</span>
-                            <span className="luna-badge-chip">💬 Hội thoại tự nhiên</span>
-                            <span className="luna-badge-chip">📖 Từ vựng thực tế</span>
-                            <span className="luna-badge-chip">🎯 Theo dõi tiến trình</span>
+                            <span className="luna-badge-chip">🔠 Ngữ pháp</span>
+                            <span className="luna-badge-chip">💬 Hội thoại</span>
+                            <span className="luna-badge-chip">📖 Từ vựng</span>
+                            <span className="luna-badge-chip">🎯 Tiến trình</span>
                         </div>
                     </div>
                 </div>
@@ -234,25 +233,24 @@ export default function EnglishBuddyPage() {
             {/* ─── Voice Selector ─── */}
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
                 <h2 className="luna-section-title">🎙️ Chọn giọng nói</h2>
-                <div className="luna-voice-grid">
-                    {["female", "male"].map(g => (
-                        <div key={g} className="luna-voice-group">
-                            <div className="luna-voice-gender-label">{g === "female" ? "👩 Nữ" : "👨 Nam"}</div>
-                            <div className="luna-voice-row">
-                                {VOICES.filter(v => v.gender === g).map(v => (
-                                    <button
-                                        key={v.id}
-                                        className={`luna-voice-chip ${selectedVoice === v.id ? "selected" : ""}`}
-                                        onClick={() => setSelectedVoice(v.id)}
-                                    >
-                                        <span className="luna-voice-name">{v.name}</span>
-                                        <span className="luna-voice-tier">{v.tier}</span>
-                                        <span className="luna-voice-desc">{v.desc}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
+                <div className="luna-voice-dropdown-wrap">
+                    <select
+                        className="luna-voice-select"
+                        value={selectedVoice}
+                        onChange={e => setSelectedVoice(e.target.value)}
+                    >
+                        <optgroup label="👩 Giọng Nữ">
+                            {VOICES.filter(v => v.gender === "female").map(v => (
+                                <option key={v.id} value={v.id}>{v.name} — {v.desc}</option>
+                            ))}
+                        </optgroup>
+                        <optgroup label="👨 Giọng Nam">
+                            {VOICES.filter(v => v.gender === "male").map(v => (
+                                <option key={v.id} value={v.id}>{v.name} — {v.desc}</option>
+                            ))}
+                        </optgroup>
+                    </select>
+                    <span className="luna-voice-arrow">▾</span>
                 </div>
             </motion.div>
 
