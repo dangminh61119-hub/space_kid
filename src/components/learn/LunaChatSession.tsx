@@ -130,6 +130,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     const [typingText, setTypingText] = useState("");
     const [isTyping, setIsTyping] = useState(false);
     const typingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const silenceCount = useRef(0);
     const bottomRef = useRef<HTMLDivElement>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -272,6 +273,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     const runConversation = useCallback(async (initialLunaText: string) => {
         let msgs: ChatMessage[] = [];
         msgs = [{ role: "assistant", content: initialLunaText }];
+        setIsTyping(true); setTypingText("");       // ← pre-arm typewriter (no flash)
         setMessages(msgs);
         setConvState("luna-speaking");
         await lunaSpeak(initialLunaText, "happy", "slow"); // always slow for opener
@@ -280,11 +282,19 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
         while (!isEndedRef.current) {
             const userText = await startListening();
             if (isEndedRef.current) return;
+            // Silence handling — only prompt once, then wait silently
             if (!userText.trim()) {
-                updateSpeed(-5); // silence = score down
-                await lunaSpeak("I'm here — take your time! What would you like to say?", "idle", fluencyScore.current >= 66 ? "fast" : fluencyScore.current >= 36 ? "normal" : "slow");
+                updateSpeed(-5);
+                silenceCount.current += 1;
+                if (silenceCount.current === 1) {
+                    // Prompt exactly once
+                    const silenceTier = fluencyScore.current >= 66 ? "fast" : fluencyScore.current >= 36 ? "normal" : "slow";
+                    await lunaSpeak("Take your time — I'm listening!", "idle", silenceTier);
+                }
+                // After the first prompt (or subsequent silences), just wait again without speaking
                 continue;
             }
+            silenceCount.current = 0; // reset on real response
 
             msgs = [...msgs, { role: "user", content: userText.trim() }];
             setMessages([...msgs]);
@@ -295,6 +305,8 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
             const hasCorrected = /did you mean|should be|try saying|try it/i.test(reply);
             const newTier = hasCorrected ? updateSpeed(-10) : updateSpeed(+10);
 
+            // Pre-arm typewriter BEFORE rendering message to avoid text flash
+            setIsTyping(true); setTypingText("");
             msgs = [...msgs, { role: "assistant", content: reply }];
             setMessages([...msgs]);
 
