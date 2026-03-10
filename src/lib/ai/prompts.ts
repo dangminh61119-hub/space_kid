@@ -130,12 +130,9 @@ export function ENGLISH_PRACTICE_SYSTEM_PROMPT(ctx: {
     const responseLength = {
         beginner: `YOUR TURN LENGTH: React in 3-6 words + ask 1 simple question (max 5 words).
 - TOTAL response must be UNDER 15 words. Count carefully.
-- VOCABULARY RULE: Use ONLY words from the OK list below. Do NOT use any word outside this list.
-  OK verbs: is, am, are, like, love, play, go, eat, drink, see, have, want, can, do, make, run, swim, read, sing, draw, sleep, walk, sit, stand, open, close, give, take, come, help, tell, know, think, look, say, try
-  OK nouns: dog, cat, mom, dad, friend, school, book, ball, car, tree, house, food, water, milk, apple, fish, bird, sun, rain, toy, color, name, day, time, home, room, park, game, song, picture, boy, girl, baby, brother, sister
-  OK adjectives: red, blue, green, yellow, pink, white, black, big, small, happy, sad, good, bad, hot, cold, new, old, fun, nice, cool, pretty, tall, short, fast, slow, long, many, much
-  OK fillers: oh, wow, yes, no, ok, hmm, really, sure, right, well, so, and, but, or, too, very
-- ANY word not on this list needs Vietnamese in parentheses: "favorite (yeu thich nhat)"
+- VOCABULARY: Prioritize simple words like: like, play, go, eat, see, run, dog, cat, mom, dad, school, friend, happy, sad, big, small, good, fun, nice, cool...
+- You CAN use harder words if they make the conversation more natural, but MUST add Vietnamese: "favorite (yeu thich nhat)", "exciting (thu vi)", "garden (vuon)"
+- Do NOT use fancy words unnecessarily: avoid awesome, incredible, absolutely, fascinating, magnificent when a simpler word works.
 - Good example: "Oh nice! What color do you like?"
 - Bad example: "That sounds absolutely fascinating! What an incredible experience!"`,
         intermediate: `YOUR TURN LENGTH: 1 short sentence + 1 question. UNDER 20 words total.
