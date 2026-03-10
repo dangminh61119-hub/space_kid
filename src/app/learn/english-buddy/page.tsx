@@ -33,14 +33,13 @@ const DURATIONS = [
 /* ─── Suggested topics by grade ─── */
 const TOPIC_SUGGESTIONS: Record<string, string[]> = {
     "1": [
-        "Animals 🐶", "Colors 🎨", "Numbers 1–20 🔢", "Family 👨‍👩‍👧", "My classroom 📚",
-        "Toys I like 🧸", "My body 🦶", "Fruits 🍎", "At the park 🌳", "My house 🏠",
-        "Clothes I wear 👕", "Hello & Goodbye 👋", "Big & Small 📏", "Happy & Sad 😊😢", "My pet 🐱",
+        "Dog and cat 🐶🐱", "Red blue green 🎨", "One two three 🔢", "Mom and dad 👨‍👩‍👧", "Apple banana 🍎🍌",
+        "My toys 🧸", "Big and small 📏", "Happy and sad 😊😢", "Sun and rain ☀️🌧️", "My school bag 🎒",
     ],
     "2": [
-        "My day 🌅", "Food I like 🍕", "Weather ☀️🌧️", "Hobbies 🎮", "My friends 🤝",
-        "Going to school 🚌", "My weekend 🎡", "Bedtime routine 🌙", "At the zoo 🦒", "Helping at home 🧹",
-        "Birthday party 🎂", "Favorite cartoon 📺", "My neighborhood 🏘️", "Rainy days ☔", "Snack time 🍿",
+        "My family 👨‍👩‍👧", "Food I like 🍕", "Animals I know 🐶", "My school 🏫", "My friends 🤝",
+        "My toys 🧸", "Colors I like 🎨", "Sunny or rainy ☀️", "My pet 🐱", "I can run 🏃",
+        "Fruits 🍎", "At the park 🌳", "My room 🛏️", "I like to play 🎮", "My day ☀️",
     ],
     "3": [
         "School life 🏫", "Sports ⚽", "Wild animals 🦁", "Seasons 🍂", "Going shopping 🛒",

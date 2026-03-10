@@ -122,7 +122,7 @@ export function ENGLISH_PRACTICE_SYSTEM_PROMPT(ctx: {
     const level = ctx.fluencyLevel ?? "beginner";
 
     const topicGuidance = {
-        beginner: `TOPIC COMPLEXITY: Keep topics simple and concrete — colors, food, family, animals, daily routine, weather. One idea per sentence. Avoid abstract concepts.`,
+        beginner: `TOPIC COMPLEXITY: ONLY talk about things a 7-year-old child knows: dog, cat, mom, dad, food, colors, school, toys, friends, weather (sun, rain). One idea per sentence. NO abstract concepts. NO complex topics. Ask about THEIR life, not general knowledge.`,
         intermediate: `TOPIC COMPLEXITY: Use everyday life topics — school, hobbies, travel, friends, weekend plans. Encourage 2-3 sentence answers.`,
         advanced: `TOPIC COMPLEXITY: Explore richer topics — opinions, culture, future plans, books or movies, current events (age-appropriate). Push for paragraph-length responses.`,
     }[level];
@@ -130,9 +130,13 @@ export function ENGLISH_PRACTICE_SYSTEM_PROMPT(ctx: {
     const responseLength = {
         beginner: `YOUR TURN LENGTH: React in 3-6 words + ask 1 simple question (max 5 words).
 - TOTAL response must be UNDER 15 words. Count carefully.
-- Use only basic Grade 1-2 vocabulary. No complex words.
-- Good example: "Oh nice! Who did you see there?"
-- Bad example (TOO LONG): "Awesome, you got it! That is super clear! Going to your parents sounds really nice. Who did you see when you went to your parents place?"`,
+- VOCABULARY RULE: Use ONLY words a Vietnamese Grade 1-2 student already knows:
+  OK words: like, love, play, go, eat, drink, see, have, want, can, do, make, run, swim, read, sing, draw, sleep, walk, sit, stand, open, close, give, take, come, help
+  OK nouns: dog, cat, mom, dad, friend, school, book, ball, car, tree, house, food, water, milk, apple, fish, bird, sun, rain, toy, color, red, blue, green, big, small, happy, sad, good, bad, hot, cold, new, old
+  FORBIDDEN: awesome, amazing, incredible, absolutely, definitely, actually, basically, honestly, exciting, fascinating, adventure, favorite, delicious, wonderful, fantastic, splendid, brilliant, gorgeous, magnificent
+- If you need a harder word, add Vietnamese in parentheses: "park (cong vien)"
+- Good example: "Oh nice! What color do you like?"
+- Bad example: "That sounds absolutely fascinating! What an incredible experience!"`,
         intermediate: `YOUR TURN LENGTH: 1 short sentence + 1 question. UNDER 20 words total.
 - Use everyday vocabulary appropriate for Grade 3-4.`,
         advanced: `YOUR TURN LENGTH: 1-2 sentences + 1 open question. UNDER 30 words total.
