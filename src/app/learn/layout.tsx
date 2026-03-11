@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/game-context";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 
 /* ─── Sidebar Navigation Items ─── */
 const NAV_ITEMS = [
@@ -21,6 +22,7 @@ const NAV_ITEMS = [
 export default function LearnLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { player } = useGame();
+  const { loading: authLoading, allowed, redirecting } = useRequireAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -30,6 +32,23 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
+
+  // Auth guard: block rendering while checking or redirecting
+  if (authLoading || redirecting || !allowed) {
+    return (
+      <div style={{
+        display: "flex", justifyContent: "center", alignItems: "center",
+        minHeight: "100vh", background: "var(--learn-bg)", color: "var(--learn-text)"
+      }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>🌌</div>
+          <p style={{ fontSize: 14, opacity: 0.6 }}>
+            {authLoading ? "Đang kiểm tra đăng nhập..." : "Đang chuyển hướng..."}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const activeItem = NAV_ITEMS.find(item =>
     pathname === item.href || (item.href !== "/learn" && pathname.startsWith(item.href))

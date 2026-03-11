@@ -2,11 +2,11 @@
  * /api/ai/english-practice — Luna English Practice Chat
  *
  * Conversational English practice with the Luna owl persona.
- * Luna proactively corrects grammar mistakes using the SANDWICH method.
+ * Uses 5-level prompt system for targeted difficulty.
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { ENGLISH_PRACTICE_SYSTEM_PROMPT } from "@/lib/ai/prompts";
+import { getLunaPromptByLevel, type LunaLevel } from "@/lib/ai/prompts";
 import { requireAuth, checkRateLimit, rateLimitResponse } from "@/lib/services/api-auth";
 
 interface ChatMessage {
@@ -38,6 +38,8 @@ export async function POST(request: NextRequest) {
                 topic: string;
                 durationMinutes: number;
                 pastSummaries?: string[];
+                level?: number;
+                // Legacy support
                 fluencyLevel?: "beginner" | "intermediate" | "advanced";
             };
         };
@@ -61,7 +63,20 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        const systemPrompt = ENGLISH_PRACTICE_SYSTEM_PROMPT(sessionContext);
+        // Resolve level: use explicit level prop, or map legacy fluencyLevel
+        const level: LunaLevel = sessionContext.level
+            ? (Math.min(5, Math.max(1, sessionContext.level)) as LunaLevel)
+            : sessionContext.fluencyLevel === "advanced" ? 4
+                : sessionContext.fluencyLevel === "intermediate" ? 3
+                    : 2;
+
+        const systemPrompt = getLunaPromptByLevel(level, {
+            studentName: sessionContext.studentName,
+            grade: sessionContext.grade,
+            topic: sessionContext.topic,
+            durationMinutes: sessionContext.durationMinutes,
+            pastSummaries: sessionContext.pastSummaries,
+        });
 
         // Keep up to 20 turns of history for natural flow
         const recentHistory = history.slice(-20);
@@ -111,3 +126,4 @@ export async function POST(request: NextRequest) {
         }, { status: 200 });
     }
 }
+

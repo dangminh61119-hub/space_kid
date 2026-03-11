@@ -9,6 +9,7 @@ import CalmModeToggle from "@/components/CalmModeToggle";
 import VolumeControl from "@/components/VolumeControl";
 import { useGame } from "@/lib/game-context";
 import { useAuth } from "@/lib/services/auth-context";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { getJourneyLevels, updateMastery, saveJourneyProgress, getJourneyProgress, getPlanetForGrade, saveAnsweredQuestion, awardBadge, checkAchievementBadges, type GameLevel, type Ship } from "@/lib/services/db";
 import { supabase } from "@/lib/services/supabase";
 
@@ -17,6 +18,7 @@ function PlayContent() {
     const searchParams = useSearchParams();
     const { player, addCosmo, addCoins, addStars } = useGame();
     const { playerDbId } = useAuth();
+    const { loading: authLoading, allowed, redirecting } = useRequireAuth();
     const [levels, setLevels] = useState<GameLevel[]>([]);
     const [loading, setLoading] = useState(true);
     const [journeyTitle, setJourneyTitle] = useState("");
@@ -200,6 +202,19 @@ function PlayContent() {
             setStarCollected(false);
         }, 1500);
     }, [addStars]);
+
+    if (authLoading || redirecting || !allowed) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <div className="text-5xl mb-3" style={{ animation: "pulse 2s infinite" }}>🌌</div>
+                    <p className="text-white/50 text-sm">
+                        {authLoading ? "Đang kiểm tra đăng nhập..." : "Đang chuyển hướng..."}
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     if (loading) {
         return (

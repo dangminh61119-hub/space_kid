@@ -11,6 +11,7 @@ import NeonButton from "@/components/NeonButton";
 import AchievementBadge, { ACHIEVEMENTS } from "@/components/AchievementBadge";
 import { useGame, MASCOT_INFO, CLASS_ABILITIES } from "@/lib/game-context";
 import { useAuth } from "@/lib/services/auth-context";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 
 /* ─── Achievement unlock logic ─── */
 function computeUnlockedAchievements(player: ReturnType<typeof useGame>["player"]): string[] {
@@ -69,6 +70,7 @@ export default function PlayerPage() {
     const router = useRouter();
     const { player, updatePlayer, resetGame, unlockAchievement } = useGame();
     const { linkCode, regenerateLinkCode } = useAuth();
+    const { loading: authLoading, allowed, redirecting } = useRequireAuth();
 
     /* ── Edit form state ── */
     const [editName, setEditName] = useState(player.name);
@@ -118,6 +120,20 @@ export default function PlayerPage() {
         await resetGame();
         router.push("/onboarding");
     };
+
+    // Auth guard
+    if (authLoading || redirecting || !allowed) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <div className="text-5xl mb-3" style={{ animation: "pulse 2s infinite" }}>🌌</div>
+                    <p className="text-white/50 text-sm">
+                        {authLoading ? "Đang kiểm tra đăng nhập..." : "Đang chuyển hướng..."}
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen relative">

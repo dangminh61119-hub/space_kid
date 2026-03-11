@@ -11,6 +11,7 @@ import { useGame, MASCOT_INFO } from "@/lib/game-context";
 import { getPlanetForGrade, getPlanetList, getJourneys, getPlayerBadges, getAllBadges, getShips, getPlayerShips, getUnlockedPlanetIds, exchangeStarsForBadge, retroactiveBadgeCheck, exchangeBadgesForShip, type Planet, type Journey, type Ship, type Badge } from "@/lib/services/db";
 import { type DBPlayerBadge } from "@/lib/services/supabase";
 import { useAuth } from "@/lib/services/auth-context";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import Link from "next/link";
 
 const fadeUp = {
@@ -25,6 +26,7 @@ const fadeUp = {
 export default function PortalPage() {
     const { player, updatePlayer, spendStars } = useGame();
     const { playerDbId } = useAuth();
+    const { loading: authLoading, allowed, redirecting } = useRequireAuth();
     const [planet, setPlanet] = useState<Planet | null>(null);
     const [allPlanets, setAllPlanets] = useState<Planet[]>([]);
     const [journeys, setJourneys] = useState<Journey[]>([]);
@@ -100,6 +102,20 @@ export default function PortalPage() {
     const mascotEmoji = player.mascot ? MASCOT_INFO[player.mascot].emoji : "🚀";
     const completedJourneys = journeys.filter(j => j.completedLevels >= j.totalLevels && j.totalLevels > 0).length;
     const selectedPlanet = allPlanets.find(p => p.id === selectedPlanetId) || planet;
+
+    // Auth guard: block rendering while checking or redirecting
+    if (authLoading || redirecting || !allowed) {
+        return (
+            <div className="min-h-screen flex items-center justify-center" style={{ background: "#0A0612" }}>
+                <div className="text-center">
+                    <div className="text-5xl mb-3" style={{ animation: "pulse 2s infinite" }}>🌌</div>
+                    <p className="text-white/50 text-sm">
+                        {authLoading ? "Đang kiểm tra đăng nhập..." : "Đang chuyển hướng..."}
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen relative">

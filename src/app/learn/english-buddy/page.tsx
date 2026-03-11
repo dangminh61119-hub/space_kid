@@ -30,6 +30,26 @@ const DURATIONS = [
     { minutes: 45, label: "45 phút", desc: "Luyện sâu, có thời gian ôn từ", emoji: "🔥" },
 ];
 
+/* ─── 5-Level definitions ─── */
+type LunaLevelId = 1 | 2 | 3 | 4 | 5;
+interface LevelDef {
+    id: LunaLevelId;
+    emoji: string;
+    name: string;
+    nameVi: string;
+    desc: string;
+    color: string;
+    borderColor: string;
+    bgColor: string;
+}
+const LEVELS: LevelDef[] = [
+    { id: 1, emoji: "🌱", name: "Baby Steps", nameVi: "Mới bắt đầu", desc: "Từ rất đơn giản, Luna nói cực chậm", color: "#86EFAC", borderColor: "rgba(134,239,172,0.5)", bgColor: "rgba(134,239,172,0.08)" },
+    { id: 2, emoji: "🌿", name: "Explorer", nameVi: "Biết vài từ", desc: "Câu ngắn 3-6 từ, có dịch tiếng Việt", color: "#5EEAD4", borderColor: "rgba(94,234,212,0.5)", bgColor: "rgba(94,234,212,0.08)" },
+    { id: 3, emoji: "☀️", name: "Talker", nameVi: "Quen giao tiếp", desc: "Nói câu hoàn chỉnh, tốc độ bình thường", color: "#FBBF24", borderColor: "rgba(251,191,36,0.5)", bgColor: "rgba(251,191,36,0.08)" },
+    { id: 4, emoji: "🔥", name: "Confident", nameVi: "Tự tin", desc: "Chủ đề đa dạng, nói nhanh hơn", color: "#FB923C", borderColor: "rgba(251,146,60,0.5)", bgColor: "rgba(251,146,60,0.08)" },
+    { id: 5, emoji: "🚀", name: "Star", nameVi: "Giỏi", desc: "Tranh luận, kể chuyện, nói nhanh", color: "#F472B6", borderColor: "rgba(244,114,182,0.5)", bgColor: "rgba(244,114,182,0.08)" },
+];
+
 /* ─── Suggested topics by grade ─── */
 const TOPIC_SUGGESTIONS: Record<string, string[]> = {
     "1": [
@@ -98,6 +118,17 @@ export default function EnglishBuddyPage() {
     const [topicInput, setTopicInput] = useState("");
     const [pastSessions, setPastSessions] = useState<PastSession[]>([]);
     const [loadingSessions, setLoadingSessions] = useState(false);
+    // Level: load from localStorage or default to 1
+    const [selectedLevel, setSelectedLevel] = useState<LunaLevelId>(() => {
+        if (typeof window !== "undefined") {
+            const saved = localStorage.getItem("luna-english-level");
+            if (saved) {
+                const n = parseInt(saved, 10);
+                if (n >= 1 && n <= 5) return n as LunaLevelId;
+            }
+        }
+        return 1;
+    });
 
     /* The active topic used for the session */
     const activeTopic = topicInput.trim() || null;
@@ -169,6 +200,7 @@ export default function EnglishBuddyPage() {
                     durationMinutes={selectedDuration}
                     playerId={playerDbId}
                     voice={selectedVoice}
+                    level={selectedLevel}
                     onSessionEnd={handleSessionEnd}
                 />
             </div>
@@ -206,6 +238,44 @@ export default function EnglishBuddyPage() {
             </motion.div >
 
 
+
+            {/* ─── Level Selector ─── */}
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
+                <h2 className="luna-section-title">📊 Chọn Level giao tiếp</h2>
+                <div className="luna-level-grid">
+                    {LEVELS.map(lv => (
+                        <motion.button
+                            key={lv.id}
+                            className={`luna-level-card ${selectedLevel === lv.id ? "selected" : ""}`}
+                            style={{
+                                borderColor: selectedLevel === lv.id ? lv.borderColor : undefined,
+                                background: selectedLevel === lv.id ? lv.bgColor : undefined,
+                            }}
+                            onClick={() => {
+                                setSelectedLevel(lv.id);
+                                localStorage.setItem("luna-english-level", String(lv.id));
+                            }}
+                            whileHover={{ scale: 1.03, y: -3 }}
+                            whileTap={{ scale: 0.97 }}
+                        >
+                            <span className="luna-level-emoji">{lv.emoji}</span>
+                            <span className="luna-level-name" style={{ color: selectedLevel === lv.id ? lv.color : undefined }}>{lv.name}</span>
+                            <span className="luna-level-name-vi">{lv.nameVi}</span>
+                            <span className="luna-level-desc">{lv.desc}</span>
+                            {selectedLevel === lv.id && (
+                                <motion.div
+                                    className="luna-level-check"
+                                    initial={{ scale: 0 }}
+                                    animate={{ scale: 1 }}
+                                    style={{ color: lv.color }}
+                                >
+                                    ✓
+                                </motion.div>
+                            )}
+                        </motion.button>
+                    ))}
+                </div>
+            </motion.div>
 
             {/* ─── Topic Input ─── */}
             < motion.div initial={{ opacity: 0, y: 16 }
@@ -268,7 +338,7 @@ export default function EnglishBuddyPage() {
                     whileTap={{ scale: 0.98 }}
                 >
                     🚀 Bắt đầu luyện với Luna
-                    <span className="luna-start-meta">{selectedDuration} phút{activeTopic ? ` • ${activeTopic}` : " • Luna chọn chủ đề"}</span>
+                    <span className="luna-start-meta">{selectedDuration} phút • Level {selectedLevel}{activeTopic ? ` • ${activeTopic}` : " • Luna chọn chủ đề"}</span>
                 </motion.button>
             </motion.div >
 
@@ -341,6 +411,17 @@ export default function EnglishBuddyPage() {
               .luna-duration-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; }
               .luna-duration-btn { position:relative; display:flex; flex-direction:column; align-items:center; gap:6px; padding:22px 16px; border-radius:22px; border:1.5px solid var(--learn-card-border); background:var(--learn-card); cursor:pointer; transition:all 0.25s cubic-bezier(0.34,1.56,0.64,1); }
               .luna-duration-btn:hover { border-color:rgba(13,148,136,0.4); transform:translateY(-3px); box-shadow:0 8px 20px rgba(0,0,0,0.15); }
+
+              /* Level grid */
+              .luna-level-grid { display:grid; grid-template-columns:repeat(5, 1fr); gap:12px; }
+              .luna-level-card { position:relative; display:flex; flex-direction:column; align-items:center; gap:4px; padding:18px 10px 14px; border-radius:20px; border:1.5px solid var(--learn-card-border); background:var(--learn-card); cursor:pointer; transition:all 0.25s cubic-bezier(0.34,1.56,0.64,1); text-align:center; }
+              .luna-level-card:hover { transform:translateY(-3px); box-shadow:0 8px 20px rgba(0,0,0,0.18); }
+              .luna-level-card.selected { box-shadow:0 0 0 3px rgba(94,234,212,0.12), 0 8px 20px rgba(13,148,136,0.15); }
+              .luna-level-emoji { font-size:28px; margin-bottom:2px; }
+              .luna-level-name { font-family:var(--font-heading); font-size:14px; font-weight:900; color:#fff; }
+              .luna-level-name-vi { font-size:11px; font-weight:700; color:var(--learn-text-secondary); }
+              .luna-level-desc { font-size:10px; color:rgba(255,255,255,0.45); line-height:1.4; margin-top:2px; }
+              .luna-level-check { position:absolute; top:8px; right:8px; font-size:14px; font-weight:900; }
               .luna-duration-btn.selected { border-color:rgba(13,148,136,0.7); background:rgba(13,148,136,0.1); box-shadow:0 0 0 3px rgba(13,148,136,0.12), 0 8px 20px rgba(13,148,136,0.15); }
               .luna-popular-badge { position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:linear-gradient(90deg, #0D9488, #14B8A6); color:#fff; font-size:9px; font-weight:900; letter-spacing:1px; padding:3px 10px; border-radius:10px; white-space:nowrap; }
               .luna-dur-emoji { font-size:28px; }
@@ -398,9 +479,11 @@ export default function EnglishBuddyPage() {
                 .luna-hero-title { font-size:38px; }
                 .luna-hero-badges { justify-content:center; }
                 .luna-duration-grid { grid-template-columns:repeat(3,1fr); gap:10px; }
+                .luna-level-grid { grid-template-columns:repeat(3, 1fr); }
               }
               @media (max-width: 480px) {
                 .luna-duration-grid { grid-template-columns:1fr; }
+                .luna-level-grid { grid-template-columns:repeat(2, 1fr); }
               }
             `}</style>
         </div >

@@ -13,6 +13,7 @@ interface Props {
     studentName: string; grade: number; topic: string;
     durationMinutes: number; playerId: string | null;
     voice?: string;
+    level?: 1 | 2 | 3 | 4 | 5;
     onSessionEnd?: () => void;
 }
 type OwlMood = "idle" | "listening" | "speaking" | "happy" | "correcting" | "thinking";
@@ -160,7 +161,7 @@ function AnimatedOwlAvatar({ isSpeaking, size = 140 }: { isSpeaking: boolean, si
 }
 
 /* ═══════════════════ MAIN SESSION ═══════════════════ */
-export default function LunaChatSession({ studentName, grade, topic, durationMinutes, playerId, voice = "en-US-Studio-O", onSessionEnd }: Props) {
+export default function LunaChatSession({ studentName, grade, topic, durationMinutes, playerId, voice = "en-US-Studio-O", level = 2, onSessionEnd }: Props) {
     const { session } = useAuth();
     const token = session?.access_token;
 
@@ -175,9 +176,11 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     const [summaryText, setSummaryText] = useState("");
     const [keyPhrases, setKeyPhrases] = useState<KeyPhrase[]>([]);
     const [sessionSaved, setSessionSaved] = useState(false);
-    // Adaptive speed
-    const [speedTier, setSpeedTier] = useState<"slow" | "normal" | "fast">("slow");
-    const fluencyScore = useRef(20); // 0–100, starts at 20 (beginner)
+    // Adaptive speed — initialized from level
+    const LEVEL_SCORES: Record<number, number> = { 1: 10, 2: 30, 3: 50, 4: 70, 5: 90 };
+    const LEVEL_SPEEDS: Record<number, "slow" | "normal" | "fast"> = { 1: "slow", 2: "slow", 3: "normal", 4: "fast", 5: "fast" };
+    const [speedTier, setSpeedTier] = useState<"slow" | "normal" | "fast">(LEVEL_SPEEDS[level] ?? "slow");
+    const fluencyScore = useRef(LEVEL_SCORES[level] ?? 20);
     // Typewriter
     const [typingText, setTypingText] = useState("");
     const [isTyping, setIsTyping] = useState(false);
@@ -417,11 +420,10 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
         setOwlMood("thinking");
         // Send up to 16 messages for context continuity
         const recentHistory = currentMessages.slice(-16).map(m => ({ role: m.role, content: m.content }));
-        const fluencyLevel = fluencyScore.current >= 66 ? "advanced" : fluencyScore.current >= 36 ? "intermediate" : "beginner";
         const res = await fetch("/api/ai/english-practice", {
             method: "POST",
             headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-            body: JSON.stringify({ message: userText.trim(), history: recentHistory, sessionContext: { ...sessionCtx.current, fluencyLevel, pastSummaries } }),
+            body: JSON.stringify({ message: userText.trim(), history: recentHistory, sessionContext: { ...sessionCtx.current, level, pastSummaries } }),
         });
         const data = await res.json();
         const reply = data.response || "Keep going!";
@@ -491,14 +493,13 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
         // Generate a dynamic opening via API instead of hardcoded text
         let opening = `Hi ${studentName}! Let's chat about "${topic}" — what do you know about it?`;
         try {
-            const fluencyLevel = fluencyScore.current >= 66 ? "advanced" : fluencyScore.current >= 36 ? "intermediate" : "beginner";
             const res = await fetch("/api/ai/english-practice", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
                 body: JSON.stringify({
                     message: "[SYSTEM] Generate your opening greeting to start the conversation. Be warm, natural, and ask an engaging first question about the topic.",
                     history: [],
-                    sessionContext: { ...sessionCtx.current, fluencyLevel, pastSummaries },
+                    sessionContext: { ...sessionCtx.current, level, pastSummaries },
                 }),
             });
             const data = await res.json();

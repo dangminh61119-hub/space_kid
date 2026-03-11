@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/services/auth-context";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useGame } from "@/lib/game-context";
 import { getJourneys, type Journey } from "@/lib/services/db";
 import { motion, AnimatePresence } from "framer-motion";
@@ -20,6 +21,7 @@ function HeliosContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { playerDbId } = useAuth();
+    const { loading: authLoading, allowed, redirecting } = useRequireAuth();
     const { player, spendStars } = useGame();
 
     const [journeys, setJourneys] = useState<Journey[]>([]);
@@ -71,6 +73,19 @@ function HeliosContent() {
     );
 
     // Loading state
+    if (authLoading || redirecting || !allowed) {
+        return (
+            <div className="min-h-screen bg-space-deep flex items-center justify-center">
+                <div className="text-center">
+                    <div className="text-5xl mb-3" style={{ animation: "pulse 2s infinite" }}>🌌</div>
+                    <p className="text-white/50 text-sm">
+                        {authLoading ? "Đang kiểm tra đăng nhập..." : "Đang chuyển hướng..."}
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
     if (loading) {
         return (
             <div className="min-h-screen bg-space-deep flex items-center justify-center">
