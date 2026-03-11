@@ -476,14 +476,22 @@ export default function EnglishBuddyPage() {
               @media (max-width: 768px) {
                 .luna-hero-content { flex-direction:column; text-align:center; gap:20px; }
                 .luna-hero-owl > img { width: 110px; height: 110px; }
-                .luna-hero-title { font-size:38px; }
+                .luna-hero-title { font-size:32px; }
                 .luna-hero-badges { justify-content:center; }
                 .luna-duration-grid { grid-template-columns:repeat(3,1fr); gap:10px; }
                 .luna-level-grid { grid-template-columns:repeat(3, 1fr); }
               }
               @media (max-width: 480px) {
+                .luna-setup-page { gap: 20px; }
+                .luna-hero-card { padding: 24px 16px; border-radius: 24px; }
+                .luna-hero-title { font-size:26px; }
+                .luna-hero-desc { font-size: 14px; }
+                .luna-start-btn { padding: 16px; font-size: 16px; }
                 .luna-duration-grid { grid-template-columns:1fr; }
-                .luna-level-grid { grid-template-columns:repeat(2, 1fr); }
+                .luna-level-grid { grid-template-columns:1fr 1fr; gap: 10px; }
+                .luna-level-card { padding: 14px 8px 12px; }
+                .luna-history-card { padding: 14px; }
+                .luna-topic-card { padding: 16px; }
               }
             `}</style>
         </div >
