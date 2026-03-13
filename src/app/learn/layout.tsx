@@ -6,6 +6,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/game-context";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import SpaceParticles from "@/components/learn/SpaceParticles";
 
 /* ─── Sidebar Navigation Items ─── */
 const NAV_ITEMS = [
@@ -56,6 +57,8 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="learn-layout">
+      {/* Ambient Space Effects */}
+      <SpaceParticles />
       {/* Desktop Sidebar */}
       {!isMobile && (
         <motion.aside
@@ -179,8 +182,9 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
         .learn-layout {
           min-height: 100vh;
           background: var(--learn-bg);
-          background-image: radial-gradient(circle at 15% 50%, rgba(245, 158, 11, 0.08), transparent 25%),
-                            radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.08), transparent 25%);
+          background-image: radial-gradient(circle at 15% 50%, rgba(0, 212, 255, 0.06), transparent 25%),
+                            radial-gradient(circle at 85% 30%, rgba(0, 212, 255, 0.04), transparent 25%),
+                            radial-gradient(circle at 50% 80%, rgba(245, 158, 11, 0.04), transparent 30%);
           background-attachment: fixed;
           color: var(--learn-text);
           font-family: var(--font-body);
@@ -191,8 +195,10 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           content: '';
           position: fixed;
           inset: 0;
-          background-image: radial-gradient(var(--learn-bg-pattern) 1.2px, transparent 1.2px);
-          background-size: 32px 32px;
+          background-image:
+            linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+          background-size: 48px 48px;
           pointer-events: none;
           z-index: 0;
         }
@@ -203,22 +209,22 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           top: 0;
           left: 0;
           height: 100vh;
-          background: linear-gradient(180deg, #180F2A 0%, var(--learn-sidebar) 50%, var(--learn-sidebar-dark) 100%);
+          background: linear-gradient(180deg, #0A1628 0%, var(--learn-sidebar) 50%, var(--learn-sidebar-dark) 100%);
           color: var(--learn-sidebar-text);
           display: flex;
           flex-direction: column;
           padding: 20px 14px;
           z-index: 50;
           overflow: hidden;
-          box-shadow: 4px 0 32px rgba(0, 0, 0, 0.6);
-          border-right: 1px solid var(--learn-card-border);
+          box-shadow: 4px 0 32px rgba(0, 0, 0, 0.7), 1px 0 0 rgba(0, 212, 255, 0.08);
+          border-right: 1px solid rgba(0, 212, 255, 0.08);
           border-radius: 0 24px 24px 0;
         }
         .learn-sidebar::before {
           content: '';
           position: absolute;
           inset: 0;
-          background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 40%);
+          background: linear-gradient(180deg, rgba(0, 212, 255, 0.03) 0%, transparent 40%);
           pointer-events: none;
           border-radius: inherit;
         }
@@ -247,10 +253,10 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           border: 1px solid var(--learn-card-border);
         }
         .learn-sidebar-back:hover { 
-          background: rgba(255,255,255,0.08); 
+          background: rgba(0, 212, 255, 0.06); 
           color: white;
-          border-color: rgba(255,255,255,0.15);
-          box-shadow: 0 0 12px rgba(245, 158, 11, 0.15);
+          border-color: rgba(0, 212, 255, 0.2);
+          box-shadow: 0 0 12px rgba(0, 212, 255, 0.15);
         }
 
         .learn-sidebar-icon { font-size: 20px; }
@@ -271,10 +277,10 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           transition: all 0.25s;
         }
         .learn-sidebar-toggle:hover { 
-          background: rgba(255,255,255,0.1); 
-          color: white;
-          border-color: rgba(255,255,255,0.2);
-          box-shadow: 0 0 12px rgba(245, 158, 11, 0.2);
+          background: rgba(0, 212, 255, 0.08); 
+          color: var(--learn-accent-cyan-light);
+          border-color: rgba(0, 212, 255, 0.2);
+          box-shadow: 0 0 12px rgba(0, 212, 255, 0.2);
         }
 
         /* Player mini card */
@@ -293,15 +299,15 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
         }
         .learn-player-avatar { 
           font-size: 28px; 
-          background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.05));
+          background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(0, 212, 255, 0.05));
           width: 48px;
           height: 48px;
           display: flex;
           align-items: center;
           justify-content: center;
           border-radius: 14px;
-          border: 1px solid rgba(245, 158, 11, 0.3);
-          box-shadow: 0 0 12px rgba(245, 158, 11, 0.2);
+          border: 1px solid rgba(0, 212, 255, 0.25);
+          box-shadow: 0 0 12px rgba(0, 212, 255, 0.15);
         }
         .learn-player-info { display: flex; flex-direction: column; gap: 3px; }
         .learn-player-name { font-weight: 800; font-size: 15px; font-family: var(--font-heading); letter-spacing: -0.2px; color: #FFF; }
@@ -309,8 +315,8 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           font-size: 11px; 
           opacity: 0.9; 
           font-weight: 700; 
-          background: rgba(245, 158, 11, 0.15); 
-          color: var(--learn-accent-light);
+          background: rgba(0, 212, 255, 0.12); 
+          color: var(--learn-accent-cyan-light);
           padding: 3px 10px; 
           border-radius: 20px; 
           display: inline-block; 
@@ -345,12 +351,12 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           border: 1px solid transparent;
         }
         .learn-nav-item:hover { 
-          background: rgba(255,255,255,0.05); 
+          background: rgba(0, 212, 255, 0.04); 
           color: white; 
           transform: translateX(4px);
         }
         .learn-nav-item.active { 
-          background: linear-gradient(90deg, rgba(245, 158, 11, 0.1) 0%, transparent 100%); 
+          background: linear-gradient(90deg, rgba(0, 212, 255, 0.08) 0%, transparent 100%); 
           color: white; 
           font-weight: 800;
         }
@@ -362,7 +368,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           filter: grayscale(0.5) opacity(0.8);
         }
         .learn-nav-item.active .learn-nav-icon {
-          filter: grayscale(0) drop-shadow(0 0 8px rgba(245, 158, 11, 0.6));
+          filter: grayscale(0) drop-shadow(0 0 8px rgba(0, 212, 255, 0.6));
         }
         .learn-nav-item:hover .learn-nav-icon { 
           transform: scale(1.15) rotate(5deg); 
@@ -376,9 +382,9 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           top: 15%;
           height: 70%;
           width: 4px;
-          background: linear-gradient(180deg, var(--learn-accent-light), var(--learn-accent));
+          background: linear-gradient(180deg, var(--learn-accent-cyan-light), var(--learn-accent-cyan));
           border-radius: 0 6px 6px 0;
-          box-shadow: 0 0 12px var(--learn-accent), 0 0 4px var(--learn-accent-light);
+          box-shadow: 0 0 12px var(--learn-accent-cyan), 0 0 4px var(--learn-accent-cyan-light);
         }
 
         /* Streak */
@@ -388,13 +394,13 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           gap: 10px;
           padding: 14px 16px;
           background: var(--learn-card);
-          border: 1px solid var(--learn-card-border);
+          border: 1px solid rgba(245, 158, 11, 0.15);
           border-radius: 16px;
           font-family: var(--font-heading);
           font-weight: 800;
           font-size: 15px;
           color: var(--learn-accent-light);
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 0 12px rgba(245, 158, 11, 0.08);
         }
         .learn-streak-fire { 
           font-size: 22px; 
@@ -423,10 +429,10 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           bottom: 0;
           left: 0;
           right: 0;
-          background: rgba(10, 6, 18, 0.9);
+          background: rgba(6, 10, 22, 0.92);
           backdrop-filter: blur(24px);
           -webkit-backdrop-filter: blur(24px);
-          border-top: 1px solid var(--learn-card-border);
+          border-top: 1px solid rgba(0, 212, 255, 0.1);
           display: flex;
           justify-content: space-around;
           padding: 10px 6px;
@@ -451,9 +457,9 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           transition: all 0.2s;
         }
         .learn-mobile-nav-item.active { 
-          color: var(--learn-accent-light); 
-          background: rgba(245, 158, 11, 0.1);
-          box-shadow: inset 0 0 12px rgba(245, 158, 11, 0.05);
+          color: var(--learn-accent-cyan-light); 
+          background: rgba(0, 212, 255, 0.08);
+          box-shadow: inset 0 0 12px rgba(0, 212, 255, 0.05);
         }
         .learn-mobile-nav-item:active { transform: scale(0.95); }
         .learn-mobile-nav-icon { 
@@ -463,7 +469,7 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
         }
         .learn-mobile-nav-item.active .learn-mobile-nav-icon { 
           transform: translateY(-2px) scale(1.1); 
-          filter: grayscale(0) drop-shadow(0 0 6px var(--learn-accent));
+          filter: grayscale(0) drop-shadow(0 0 6px var(--learn-accent-cyan));
         }
         .learn-mobile-nav-label { white-space: nowrap; letter-spacing: 0.2px; }
 
@@ -487,9 +493,10 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
 
         .learn-card {
           background: var(--learn-card);
-          backdrop-filter: blur(16px);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
           border: 1px solid var(--learn-card-border);
-          border-radius: 28px; /* Bigger radius for Bento */
+          border-radius: 28px;
           padding: 28px;
           transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
           box-shadow: var(--learn-card-shadow);
@@ -500,13 +507,22 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           content: '';
           position: absolute;
           top: 0; left: 0; width: 100%; height: 100%;
-          background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 60%);
+          background: linear-gradient(135deg, rgba(0, 212, 255, 0.03) 0%, transparent 60%);
+          pointer-events: none;
+        }
+        .learn-card::after {
+          content: '';
+          position: absolute;
+          top: 0; left: 15%; right: 15%;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.3), transparent);
+          border-radius: 0 0 4px 4px;
           pointer-events: none;
         }
         .learn-card-glow {
           position: absolute;
           top: -50%; left: -50%; width: 200%; height: 200%;
-          background: radial-gradient(circle at center, var(--learn-accent-glow) 0%, transparent 50%);
+          background: radial-gradient(circle at center, var(--learn-accent-cyan-glow) 0%, transparent 50%);
           opacity: 0;
           transition: opacity 0.5s;
           pointer-events: none;
@@ -578,27 +594,27 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           letter-spacing: 0.5px;
         }
         .learn-btn-primary {
-          background: linear-gradient(135deg, var(--learn-accent) 0%, var(--learn-accent-dark) 100%);
-          color: #0A0612;
-          box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3), inset 0 1px 0 rgba(255,255,255,0.4);
-          text-shadow: 0 1px 2px rgba(255,255,255,0.3);
+          background: linear-gradient(135deg, var(--learn-accent-cyan) 0%, var(--learn-accent-cyan-dark) 100%);
+          color: #050A14;
+          box-shadow: 0 4px 16px rgba(0, 212, 255, 0.3), inset 0 1px 0 rgba(255,255,255,0.3);
+          text-shadow: 0 1px 2px rgba(255,255,255,0.2);
         }
         .learn-btn-primary::before {
           content: '';
           position: absolute;
           top: 0; left: -100%; width: 200%; height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
           transition: left 0.5s;
         }
         .learn-btn-primary:hover::before { left: 100%; }
         .learn-btn-primary:hover {
           transform: translateY(-2px) scale(1.02);
-          box-shadow: 0 8px 24px rgba(245, 158, 11, 0.5), inset 0 1px 0 rgba(255,255,255,0.5);
+          box-shadow: 0 8px 24px rgba(0, 212, 255, 0.4), 0 0 16px rgba(0, 212, 255, 0.2), inset 0 1px 0 rgba(255,255,255,0.4);
           color: #000;
         }
         .learn-btn-primary:active {
           transform: translateY(1px);
-          box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4), inset 0 2px 4px rgba(0,0,0,0.2);
+          box-shadow: 0 2px 8px rgba(0, 212, 255, 0.3), inset 0 2px 4px rgba(0,0,0,0.2);
         }
         .learn-btn-secondary {
           background: var(--learn-card);
@@ -607,11 +623,11 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
         .learn-btn-secondary:hover {
-          background: rgba(245, 158, 11, 0.1);
+          background: rgba(0, 212, 255, 0.06);
           transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(245, 158, 11, 0.15);
-          border-color: var(--learn-accent);
-          color: var(--learn-accent-light);
+          box-shadow: 0 8px 24px rgba(0, 212, 255, 0.12);
+          border-color: var(--learn-accent-cyan);
+          color: var(--learn-accent-cyan-light);
         }
         .learn-btn-secondary:active {
           transform: translateY(1px);

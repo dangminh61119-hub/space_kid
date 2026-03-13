@@ -51,10 +51,10 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Use OpenAI GPT-4O Mini for Luna English Practice
-        const apiKey = process.env.OPENAI_API_KEY;
-        const apiUrl = "https://api.openai.com/v1/chat/completions";
-        const modelName = "gpt-4o-mini";
+        // Use project AI backend (Gemini via OpenAI-compatible endpoint)
+        const apiKey = process.env.GEMINI_API_KEY;
+        const apiUrl = process.env.AI_API_URL || "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+        const modelName = process.env.AI_MODEL || "gemini-2.5-flash";
 
         if (!apiKey) {
             return NextResponse.json({
@@ -92,6 +92,7 @@ export async function POST(request: NextRequest) {
             headers: {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${apiKey}`,
+                "Referer": "https://learn.aiclick.vn/",
             },
             body: JSON.stringify({
                 model: modelName,

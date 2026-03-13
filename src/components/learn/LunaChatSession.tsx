@@ -111,18 +111,6 @@ function LunaOwl({ mood, isSpeaking }: { mood: OwlMood; isSpeaking: boolean }) {
 }
 
 function AnimatedOwlAvatar({ isSpeaking, size = 140 }: { isSpeaking: boolean, size?: number }) {
-    const [blink, setBlink] = useState(false);
-
-    useEffect(() => {
-        const schedule = (): ReturnType<typeof setTimeout> => setTimeout(() => {
-            setBlink(true);
-            setTimeout(() => setBlink(false), 120);
-            schedule();
-        }, 2000 + Math.random() * 4000);
-        const t = schedule();
-        return () => clearTimeout(t);
-    }, []);
-
     return (
         <motion.div
             className="lv-owl-avatar"
@@ -133,29 +121,7 @@ function AnimatedOwlAvatar({ isSpeaking, size = 140 }: { isSpeaking: boolean, si
                 scale: { duration: 0.6, repeat: isSpeaking ? Infinity : 0 }
             }}
         >
-            {/* Base Body */}
-            <Image src="/images/luna_owl_base.png" alt="Luna Body" fill priority style={{ objectFit: 'contain' }} />
-
-            {/* Eyes */}
-            <motion.div
-                style={{ position: 'absolute', inset: 0, transformOrigin: 'center 45%' }}
-                animate={{ scaleY: blink ? 0.05 : 1 }}
-                transition={{ duration: blink ? 0.08 : 0.15 }}
-            >
-                <Image src="/images/luna_owl_eyes.png" alt="Luna Eyes" fill priority style={{ objectFit: 'contain' }} />
-            </motion.div>
-
-            {/* Beak / Mouth */}
-            <motion.div
-                style={{ position: 'absolute', inset: 0, transformOrigin: 'center 60%' }}
-                animate={{
-                    y: isSpeaking ? [0, 2, 0] : 0,
-                    scaleY: isSpeaking ? [1, 1.15, 1] : 1
-                }}
-                transition={{ duration: 0.35, repeat: isSpeaking ? Infinity : 0 }}
-            >
-                <Image src="/images/luna_owl_beak.png" alt="Luna Beak" fill priority style={{ objectFit: 'contain' }} />
-            </motion.div>
+            <img src="/images/cosmo_avatar.png?v=2" alt="Cosmo" style={{ width: size, height: size, objectFit: 'contain', transform: 'scaleX(-1)' }} />
         </motion.div>
     );
 }
@@ -558,7 +524,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                 <div className="lv-end-card">
                     {isSummaryLoading ? (
                         <motion.p animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.2, repeat: Infinity }} style={{ color: "var(--learn-text-secondary)", textAlign: "center" }}>
-                            Luna đang viết tóm tắt...
+                            Cosmo đang viết tóm tắt...
                         </motion.p>
                     ) : (
                         <>
@@ -605,7 +571,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                     <AnimatePresence initial={false}>
                         {messages.map((m, i) => (
                             <motion.div key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className={`lv-msg lv-msg-${m.role}`}>
-                                {m.role === "assistant" && <span className="lv-msg-who">Luna</span>}
+                                {m.role === "assistant" && <span className="lv-msg-who">Cosmo</span>}
                                 <p className="lv-msg-text">
                                     {m.role === "assistant" && isTyping && i === messages.length - 1
                                         ? typingText
@@ -622,7 +588,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                     )}
                     {convState === "processing" && (
                         <div className="lv-msg lv-msg-assistant">
-                            <span className="lv-msg-who">Luna</span>
+                            <span className="lv-msg-who">Cosmo</span>
                             <div className="lv-typing"><span /><span /><span /></div>
                         </div>
                     )}
@@ -636,7 +602,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                     <AnimatePresence mode="wait">
                         <motion.div key={owlMood + convState} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="lv-owl-status">
                             {convState === "ready" && ""}
-                            {convState === "luna-speaking" && "🗣 Luna đang nói"}
+                            {convState === "luna-speaking" && "🗣 Cosmo đang nói"}
                             {convState === "user-speaking" && "👂 Đang nghe bạn..."}
                             {convState === "processing" && "💭 Đang suy nghĩ..."}
                         </motion.div>
@@ -682,7 +648,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                             animate={{ opacity: convState === "user-speaking" ? [0.6, 1, 0.6] : 1 }}
                             transition={{ duration: 0.8, repeat: convState === "user-speaking" ? Infinity : 0 }}>
                             {convState === "user-speaking" && <>🎤 Đang nghe...</>}
-                            {convState === "luna-speaking" && <>🔊 Luna đang nói</>}
+                            {convState === "luna-speaking" && <>🔊 Cosmo đang nói</>}
                             {convState === "processing" && <><span className="lv-think-dot" />Đang xử lý...</>}
                         </motion.div>
                     </div>
@@ -748,7 +714,7 @@ const LV_STYLES = `
   .lv-msg-user { align-self:flex-end; align-items:flex-end; }
   .lv-msg-live { opacity:0.55; }
   .lv-msg-who { font-size:10px; font-weight:800; color:rgba(94,234,212,0.5); text-transform:uppercase; letter-spacing:1px; padding:0 4px; }
-  .lv-msg-text { margin:0; padding:10px 15px; border-radius:18px; font-size:27px; line-height:1.65; color:rgba(255,255,255,0.9); }
+  .lv-msg-text { margin:0; padding:10px 15px; border-radius:18px; font-size:18px; line-height:1.65; color:rgba(255,255,255,0.9); }
   .lv-msg-text-live { font-style:italic; }
   .lv-msg-assistant .lv-msg-text { background:rgba(13,148,136,0.16); border:1px solid rgba(13,148,136,0.2); border-bottom-left-radius:4px; }
   .lv-msg-user .lv-msg-text { background:rgba(124,58,237,0.2); border:1px solid rgba(124,58,237,0.2); border-bottom-right-radius:4px; }

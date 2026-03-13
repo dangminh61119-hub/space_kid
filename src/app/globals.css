@@ -39,22 +39,26 @@
   --dash-accent-light: #EEF2FF;
   --dash-sidebar-active: #EEF2FF;
 
-  /* === LEARN MODULE (Galactic Bento - Amber Glow) === */
-  --learn-bg: #0A0612;
-  --learn-bg-alt: #130924;
-  --learn-bg-pattern: rgba(245, 158, 11, 0.03);
-  --learn-card: rgba(255, 255, 255, 0.03);
-  --learn-card-solid: #1A112C;
-  --learn-card-hover: rgba(255, 255, 255, 0.05);
-  --learn-card-border: rgba(255, 255, 255, 0.08);
-  --learn-card-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.05);
-  --learn-card-shadow-hover: 0 12px 48px rgba(245, 158, 11, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.1);
-  --learn-text: #F9FAFB;
-  --learn-text-secondary: #9CA3AF;
+  /* === LEARN MODULE (Tech Agent — Dual Cyan + Orange) === */
+  --learn-bg: #080D1B;
+  --learn-bg-alt: #0B1226;
+  --learn-bg-pattern: rgba(0, 212, 255, 0.04);
+  --learn-card: rgba(10, 20, 45, 0.65);
+  --learn-card-solid: #0E1A35;
+  --learn-card-hover: rgba(0, 212, 255, 0.06);
+  --learn-card-border: rgba(0, 212, 255, 0.12);
+  --learn-card-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.04);
+  --learn-card-shadow-hover: 0 12px 48px rgba(0, 212, 255, 0.12), 0 0 24px rgba(0, 212, 255, 0.06), inset 0 1px 1px rgba(255, 255, 255, 0.08);
+  --learn-text: #E8EDF5;
+  --learn-text-secondary: #8B95A8;
   --learn-accent: #F59E0B;
   --learn-accent-dark: #D97706;
   --learn-accent-light: #FDE68A;
   --learn-accent-glow: rgba(245, 158, 11, 0.3);
+  --learn-accent-cyan: #00D4FF;
+  --learn-accent-cyan-dark: #0891B2;
+  --learn-accent-cyan-light: #67E8F9;
+  --learn-accent-cyan-glow: rgba(0, 212, 255, 0.3);
   --learn-success: #10B981;
   --learn-success-bg: rgba(16, 185, 129, 0.1);
   --learn-warning: #F59E0B;
@@ -62,11 +66,11 @@
   --learn-error: #EF4444;
   --learn-error-bg: rgba(239, 68, 68, 0.1);
   --learn-streak: #F97316;
-  --learn-border: rgba(255, 255, 255, 0.05);
-  --learn-border-strong: rgba(245, 158, 11, 0.2);
-  --learn-sidebar: #0F091A;
-  --learn-sidebar-dark: #0A0612;
-  --learn-sidebar-text: #E5E7EB;
+  --learn-border: rgba(0, 212, 255, 0.06);
+  --learn-border-strong: rgba(0, 212, 255, 0.2);
+  --learn-sidebar: #060B18;
+  --learn-sidebar-dark: #040812;
+  --learn-sidebar-text: #C8D0E0;
 
   /* Neon Subject Colors for Bento Grid */
   --learn-math: #06B6D4;
