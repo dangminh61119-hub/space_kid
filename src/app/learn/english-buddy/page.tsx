@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/game-context";
 import { useAuth } from "@/lib/services/auth-context";
 import LunaChatSession from "@/components/learn/LunaChatSession";
+import LiveVoiceSession from "@/components/learn/LiveVoiceSession";
 
 /* ─── Voice options ─── */
 const VOICES = [
@@ -23,9 +24,9 @@ const VOICES = [
 
 /* ─── Duration ─── */
 const DURATIONS = [
-    { minutes: 10, label: "10 phút", emoji: "⚡", desc: "Nhanh gọn" },
-    { minutes: 15, label: "15 phút", emoji: "⭐", desc: "Chuẩn nhất", popular: true },
-    { minutes: 20, label: "20 phút", emoji: "🔥", desc: "Luyện sâu" },
+    { minutes: 5, label: "5 phút", emoji: "⚡", desc: "Nhanh gọn" },
+    { minutes: 10, label: "10 phút", emoji: "⭐", desc: "Chuẩn nhất", popular: true },
+    { minutes: 15, label: "15 phút", emoji: "🔥", desc: "Luyện sâu" },
 ];
 
 /* ─── Levels — teal/cyan palette only ─── */
@@ -122,6 +123,7 @@ export default function EnglishBuddyPage() {
     const [topic, setTopic] = useState("");
     const [past, setPast] = useState<PastSession[]>([]);
     const [, setLoading] = useState(false);
+    const [liveMode, setLiveMode] = useState(false);
     const [level, setLevel] = useState<LunaLevelId>(() => {
         if (typeof window !== "undefined") { const s = localStorage.getItem("luna-english-level"); if (s) { const n = parseInt(s); if (n >= 1 && n <= 5) return n as LunaLevelId; } } return 1;
     });
@@ -151,10 +153,14 @@ export default function EnglishBuddyPage() {
     if (phase === "session" && activeTopic) {
         return (<div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <h1 className="learn-page-title" style={{ marginBottom: 0 }}>🦉 Cosmo</h1>
+                <h1 className="learn-page-title" style={{ marginBottom: 0 }}>🦉 Cosmo {liveMode && <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: 1.5, color: "#fff", background: "linear-gradient(135deg,#7C3AED,#A78BFA)", padding: "3px 10px", borderRadius: 8, marginLeft: 8, verticalAlign: "middle" }}>LIVE</span>}</h1>
                 <button className="learn-btn learn-btn-secondary" style={{ fontSize: 13 }} onClick={() => setPhase("setup")}>← Quay lại</button>
             </div>
-            <LunaChatSession studentName={player.englishName?.trim() || player.name} grade={player.grade ?? 2} topic={activeTopic} durationMinutes={dur} playerId={playerDbId} voice={voice} level={level} onSessionEnd={handleEnd} />
+            {liveMode ? (
+                <LiveVoiceSession studentName={player.englishName?.trim() || player.name} grade={player.grade ?? 2} topic={activeTopic} durationMinutes={dur} playerId={playerDbId} voiceName={voice.includes("Kore") ? "Kore" : voice.includes("Puck") ? "Puck" : "Kore"} level={level} onSessionEnd={handleEnd} />
+            ) : (
+                <LunaChatSession studentName={player.englishName?.trim() || player.name} grade={player.grade ?? 2} topic={activeTopic} durationMinutes={dur} playerId={playerDbId} voice={voice} level={level} onSessionEnd={handleEnd} />
+            )}
         </div>);
     }
 
@@ -388,6 +394,28 @@ export default function EnglishBuddyPage() {
                                 <div><span style={S.sumLabel}>Chủ đề</span><span style={S.sumVal()}>💬 {activeTopic || "Cosmo chọn ngẫu nhiên"}</span></div>
                                 <div><span style={S.sumLabel}>Giọng nói</span><span style={S.sumVal()}>🎙️ {vcDef.name}</span></div>
                             </div>
+                        </div>
+
+                        {/* ─── Live Mode Toggle ─── */}
+                        <div style={{ marginBottom: 20, background: liveMode ? "rgba(124,58,237,0.1)" : "rgba(255,255,255,0.03)", border: `2px solid ${liveMode ? "rgba(124,58,237,0.4)" : "rgba(255,255,255,0.08)"}`, borderRadius: 18, padding: "16px 20px", cursor: "pointer", transition: "all 0.3s" }} onClick={() => setLiveMode(!liveMode)}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                    <span style={{ fontSize: 24 }}>{liveMode ? "🔴" : "💬"}</span>
+                                    <div>
+                                        <div style={{ fontFamily: "var(--font-heading)", fontSize: 14, fontWeight: 900, color: liveMode ? "#A78BFA" : "rgba(255,255,255,0.7)" }}>
+                                            {liveMode ? "Live Mode" : "Text Mode"}
+                                        </div>
+                                        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
+                                            {liveMode ? "Giao tiếp giọng nói real-time với Cosmo" : "Ghi âm → Cosmo phản hồi tuần tự"}
+                                        </div>
+                                    </div>
+                                </div>
+                                {/* Toggle switch */}
+                                <div style={{ width: 48, height: 26, borderRadius: 13, background: liveMode ? "linear-gradient(135deg,#7C3AED,#A78BFA)" : "rgba(255,255,255,0.1)", position: "relative", transition: "all 0.3s", flexShrink: 0 }}>
+                                    <motion.div animate={{ x: liveMode ? 24 : 2 }} transition={{ type: "spring", stiffness: 500, damping: 30 }} style={{ width: 22, height: 22, borderRadius: "50%", background: "#fff", position: "absolute", top: 2, boxShadow: "0 2px 6px rgba(0,0,0,0.3)" }} />
+                                </div>
+                            </div>
+                            {liveMode && <div style={{ marginTop: 10, fontSize: 11, color: "rgba(167,139,250,0.6)", lineHeight: 1.5 }}>⚡ Gemini Native Audio — độ trễ thấp, ngắt lời tự nhiên, nhận diện cảm xúc</div>}
                         </div>
 
                         <div style={{ marginBottom: 16 }}>

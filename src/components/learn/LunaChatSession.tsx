@@ -780,15 +780,15 @@ const LV_STYLES = `
 
   @media (max-width:768px) {
     .lv-session { height:calc(100vh - 100px); min-height: 480px; }
-    .lv-stage { flex-direction:column-reverse; border-radius:20px; }
+    .lv-stage { flex-direction:column-reverse; border-radius:20px; overflow:visible; }
     
     .lv-chat { padding:14px; gap:8px; }
     .lv-msg { max-width: 88%; }
     .lv-msg-text { font-size:18px; padding:10px 14px; line-height:1.5; border-radius:16px; }
     .lv-typing { padding: 8px 12px; border-radius: 16px; }
     
-    .lv-owl-panel { width:100%; flex-direction:row; align-items:center; justify-content:center; padding:12px 16px; background:linear-gradient(to bottom,rgba(4,47,46,0.5) 0%,transparent 100%); border-bottom:1px solid rgba(255,255,255,0.05); gap: 16px; }
-    .lv-owl-avatar { transform: scale(0.65); transform-origin: center; margin: -25px 0; }
+    .lv-owl-panel { width:100%; flex-direction:row; align-items:center; justify-content:center; padding:14px 16px; background:linear-gradient(to bottom,rgba(4,47,46,0.5) 0%,transparent 100%); border-bottom:1px solid rgba(255,255,255,0.05); gap: 16px; overflow:visible; }
+    .lv-owl-avatar { transform: scale(0.75); transform-origin: center; margin: -15px 0; }
     .lv-owl-status { margin-top:0; font-size:12px; text-align:left; min-width: 120px; }
     
     .lv-bottom { padding-top: 10px; }
