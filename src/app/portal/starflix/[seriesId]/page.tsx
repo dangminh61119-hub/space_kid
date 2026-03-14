@@ -10,9 +10,11 @@ import { useRequireAuth } from "@/hooks/useRequireAuth";
 import {
     getSeriesEpisodes, getEpisodeQuiz, getPlayerSeriesProgress,
     markEpisodeWatched, submitQuizAnswers, skipQuizWithCoins,
+    isSeriesUnlocked,
     type VideoEpisode, type VideoQuizQuestion, type EpisodeProgress,
 } from "@/lib/services/video-theater-service";
 import { adminGetAllSeries } from "@/lib/services/video-theater-service";
+import { useRouter } from "next/navigation";
 import VideoQuiz from "@/components/theater/VideoQuiz";
 import StarField from "@/components/StarField";
 import Navbar from "@/components/Navbar";
@@ -44,6 +46,7 @@ export default function SeriesViewerPage() {
     const { player, spendCoins } = useGame();
     const { playerDbId } = useAuth();
     const { loading: authLoading, allowed, redirecting } = useRequireAuth();
+    const router = useRouter();
     const ytReady = useYouTubeAPI();
 
     const [episodes, setEpisodes] = useState<VideoEpisode[]>([]);
@@ -55,6 +58,11 @@ export default function SeriesViewerPage() {
     const [seriesTitle, setSeriesTitle] = useState("");
     const [videoEnded, setVideoEnded] = useState(false);
     const [playerReady, setPlayerReady] = useState(false);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [showControls, setShowControls] = useState(true);
+    const controlsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const wrapperRef = useRef<HTMLDivElement>(null);
 
     const playerRef = useRef<any>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -72,6 +80,15 @@ export default function SeriesViewerPage() {
                 if (series) setSeriesTitle(series.title);
 
                 if (playerDbId) {
+                    // Check series access
+                    if (series && series.unlockCost > 0) {
+                        const hasAccess = await isSeriesUnlocked(playerDbId, seriesId, series.unlockCost);
+                        if (!hasAccess) {
+                            router.replace('/portal/starflix');
+                            return;
+                        }
+                    }
+
                     const prog = await getPlayerSeriesProgress(playerDbId, seriesId);
                     setProgress(prog);
 
@@ -109,6 +126,7 @@ export default function SeriesViewerPage() {
         }
         setVideoEnded(false);
         setPlayerReady(false);
+        setIsPlaying(false);
     }, [currentEpIndex, progress, episodes]);
 
     // Set up YouTube player
@@ -154,8 +172,14 @@ export default function SeriesViewerPage() {
                     setPlayerReady(true);
                 },
                 onStateChange: (event: any) => {
-                    // YT.PlayerState.ENDED = 0
-                    if (event.data === 0) {
+                    // YT states: -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering
+                    if (event.data === 1) {
+                        setIsPlaying(true);
+                        setVideoEnded(false);
+                    } else if (event.data === 2) {
+                        setIsPlaying(false);
+                    } else if (event.data === 0) {
+                        setIsPlaying(false);
                         setVideoEnded(true);
                         handleVideoEnded(epId);
                     }
@@ -226,7 +250,7 @@ export default function SeriesViewerPage() {
         }
     };
 
-    // Start watching
+    // Start / pause / resume
     const startPlayback = () => {
         try {
             if (playerReady && playerRef.current?.playVideo) {
@@ -236,6 +260,50 @@ export default function SeriesViewerPage() {
             console.error("[starflix] playVideo error:", e);
         }
     };
+
+    const togglePlayPause = () => {
+        try {
+            if (!playerReady || !playerRef.current) return;
+            if (isPlaying) {
+                playerRef.current.pauseVideo();
+            } else {
+                playerRef.current.playVideo();
+            }
+        } catch (e) {
+            console.error("[starflix] togglePlayPause error:", e);
+        }
+    };
+
+    const toggleFullscreen = () => {
+        const wrapper = wrapperRef.current;
+        if (!wrapper) return;
+        if (!document.fullscreenElement) {
+            wrapper.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+        } else {
+            document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+        }
+    };
+
+    // Auto-hide controls after 3s of inactivity when playing
+    const resetControlsTimer = useCallback(() => {
+        setShowControls(true);
+        if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
+        if (isPlaying) {
+            controlsTimerRef.current = setTimeout(() => setShowControls(false), 3000);
+        }
+    }, [isPlaying]);
+
+    useEffect(() => {
+        if (!isPlaying) setShowControls(true);
+        else resetControlsTimer();
+    }, [isPlaying, resetControlsTimer]);
+
+    // Listen for fullscreen exit via Escape
+    useEffect(() => {
+        const handler = () => setIsFullscreen(!!document.fullscreenElement);
+        document.addEventListener('fullscreenchange', handler);
+        return () => document.removeEventListener('fullscreenchange', handler);
+    }, []);
 
     // Loading quiz when going to quiz phase
     useEffect(() => {
@@ -314,16 +382,24 @@ export default function SeriesViewerPage() {
                         {/* Main Content */}
                         <main className="sv-main">
                             {/* Video Player */}
-                            <div className="sv-player-wrap" ref={containerRef}>
+                            <div className={`sv-player-wrap ${isFullscreen ? 'fullscreen' : ''}`} ref={wrapperRef} onMouseMove={resetControlsTimer}>
                                 <div id="yt-player-container" className="sv-yt-container" />
-                                {/* Invisible overlay to block interactions */}
-                                <div className="sv-overlay" />
 
-                                {/* Play button overlay */}
-                                {!videoEnded && phase === "watch" && (
+                                {/* Click overlay: play/pause toggle */}
+                                <div className="sv-overlay" onClick={isPlaying || videoEnded ? togglePlayPause : startPlayback} />
+
+                                {/* Initial play button — only before first play */}
+                                {!isPlaying && !videoEnded && !isPlaying && phase === "watch" && (
                                     <button className="sv-play-btn" onClick={startPlayback}>
                                         <span>▶</span>
                                     </button>
+                                )}
+
+                                {/* Pause icon flash (shows briefly when paused mid-video) */}
+                                {!isPlaying && playerReady && !videoEnded && phase === "watch" && (
+                                    <div className="sv-pause-indicator">
+                                        <span>⏸</span>
+                                    </div>
                                 )}
 
                                 {/* Video ended overlay */}
@@ -334,6 +410,17 @@ export default function SeriesViewerPage() {
                                         </motion.div>
                                     </div>
                                 )}
+
+                                {/* Bottom control bar */}
+                                <div className={`sv-controls ${showControls || !isPlaying ? 'visible' : ''}`}>
+                                    <button className="sv-ctrl-btn" onClick={togglePlayPause} title={isPlaying ? 'Tạm dừng' : 'Phát'}>
+                                        {isPlaying ? '⏸' : '▶️'}
+                                    </button>
+                                    <div className="sv-ctrl-spacer" />
+                                    <button className="sv-ctrl-btn" onClick={toggleFullscreen} title={isFullscreen ? 'Thoát toàn màn hình' : 'Toàn màn hình'}>
+                                        {isFullscreen ? '⛶' : '⛶'}
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Episode info */}
@@ -520,11 +607,14 @@ export default function SeriesViewerPage() {
                     height: 100% !important;
                     border: none;
                 }
+                .sv-player-wrap.fullscreen {
+                    border-radius: 0;
+                }
                 .sv-overlay {
                     position: absolute;
-                    top: 0; left: 0; right: 0; bottom: 0;
+                    top: 0; left: 0; right: 0; bottom: 40px;
                     z-index: 5;
-                    cursor: default;
+                    cursor: pointer;
                     background: transparent;
                 }
                 .sv-play-btn {
@@ -562,6 +652,53 @@ export default function SeriesViewerPage() {
                     font-weight: 900;
                     color: #34D399;
                 }
+
+                /* Pause indicator */
+                .sv-pause-indicator {
+                    position: absolute;
+                    top: 50%; left: 50%;
+                    transform: translate(-50%, -50%);
+                    z-index: 8;
+                    font-size: 48px;
+                    opacity: 0.7;
+                    pointer-events: none;
+                    filter: drop-shadow(0 0 20px rgba(0,0,0,0.5));
+                }
+
+                /* Bottom control bar */
+                .sv-controls {
+                    position: absolute;
+                    bottom: 0; left: 0; right: 0;
+                    z-index: 15;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 8px 16px;
+                    background: linear-gradient(transparent, rgba(0,0,0,0.85));
+                    opacity: 0;
+                    transition: opacity 0.3s;
+                }
+                .sv-controls.visible { opacity: 1; }
+                .sv-player-wrap:hover .sv-controls { opacity: 1; }
+                .sv-ctrl-btn {
+                    width: 36px; height: 36px;
+                    border-radius: 50%;
+                    border: none;
+                    background: rgba(255,255,255,0.1);
+                    color: #fff;
+                    font-size: 16px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.2s;
+                    backdrop-filter: blur(4px);
+                }
+                .sv-ctrl-btn:hover {
+                    background: rgba(139,92,246,0.4);
+                    transform: scale(1.1);
+                }
+                .sv-ctrl-spacer { flex: 1; }
 
                 /* Episode info */
                 .sv-ep-header {

@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useGame } from "@/lib/game-context";
 import { useAuth } from "@/lib/services/auth-context";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
-import { getVideoSeries, getPlayerSeriesProgress, type VideoSeries } from "@/lib/services/video-theater-service";
+import { getVideoSeries, getPlayerSeriesProgress, getPlayerUnlockedSeries, unlockSeriesWithCoins, type VideoSeries } from "@/lib/services/video-theater-service";
 import StarField from "@/components/StarField";
 import Navbar from "@/components/Navbar";
 
@@ -17,13 +18,17 @@ const CATEGORY_CONFIG: Record<string, { label: string; emoji: string; color: str
 };
 
 export default function StarFlixPage() {
-    const { player } = useGame();
+    const { player, spendCoins } = useGame();
     const { playerDbId } = useAuth();
     const { loading: authLoading, allowed, redirecting } = useRequireAuth();
+    const router = useRouter();
     const [series, setSeries] = useState<VideoSeries[]>([]);
     const [loading, setLoading] = useState(true);
     const [progressMap, setProgressMap] = useState<Record<string, { watched: number; total: number }>>({});
     const [filter, setFilter] = useState<string>("all");
+    const [unlockedSet, setUnlockedSet] = useState<Set<string>>(new Set());
+    const [unlockModal, setUnlockModal] = useState<VideoSeries | null>(null);
+    const [unlocking, setUnlocking] = useState(false);
 
     useEffect(() => {
         async function load() {
@@ -31,15 +36,22 @@ export default function StarFlixPage() {
                 const data = await getVideoSeries(player.grade);
                 setSeries(data);
 
-                // Load progress for each series
+                // Load progress + unlock status for each series
                 if (playerDbId) {
-                    const map: Record<string, { watched: number; total: number }> = {};
-                    for (const s of data) {
-                        const progress = await getPlayerSeriesProgress(playerDbId, s.id);
-                        const watchedCount = Object.values(progress).filter(p => p.quizPassed).length;
-                        map[s.id] = { watched: watchedCount, total: s.episodeCount || 0 };
-                    }
-                    setProgressMap(map);
+                    const [map2, unlocked] = await Promise.all([
+                        (async () => {
+                            const m: Record<string, { watched: number; total: number }> = {};
+                            for (const s of data) {
+                                const progress = await getPlayerSeriesProgress(playerDbId, s.id);
+                                const watchedCount = Object.values(progress).filter(p => p.quizPassed).length;
+                                m[s.id] = { watched: watchedCount, total: s.episodeCount || 0 };
+                            }
+                            return m;
+                        })(),
+                        getPlayerUnlockedSeries(playerDbId),
+                    ]);
+                    setProgressMap(map2);
+                    setUnlockedSet(unlocked);
                 }
             } catch (e) {
                 console.error("[starflix] load error:", e);
@@ -51,6 +63,35 @@ export default function StarFlixPage() {
     }, [player.grade, playerDbId]);
 
     const filteredSeries = filter === "all" ? series : series.filter(s => s.category === filter);
+
+    const handleCardClick = (s: VideoSeries) => {
+        const isFree = s.unlockCost <= 0;
+        const isUnlocked = unlockedSet.has(s.id);
+        if (isFree || isUnlocked) {
+            router.push(`/portal/starflix/${s.id}`);
+        } else {
+            setUnlockModal(s);
+        }
+    };
+
+    const handleUnlock = async () => {
+        if (!unlockModal || !playerDbId || unlocking) return;
+        if (player.coins < unlockModal.unlockCost) return;
+        setUnlocking(true);
+        try {
+            const ok = await unlockSeriesWithCoins(playerDbId, unlockModal.id, unlockModal.unlockCost);
+            if (ok) {
+                spendCoins(unlockModal.unlockCost);
+                setUnlockedSet(prev => new Set([...prev, unlockModal.id]));
+                setUnlockModal(null);
+                router.push(`/portal/starflix/${unlockModal.id}`);
+            }
+        } catch (e) {
+            console.error("[starflix] unlock error:", e);
+        } finally {
+            setUnlocking(false);
+        }
+    };
 
     if (authLoading || redirecting || !allowed) {
         return (
@@ -155,6 +196,8 @@ export default function StarFlixPage() {
                             const cfg = CATEGORY_CONFIG[s.category] || CATEGORY_CONFIG.english;
                             const prog = progressMap[s.id];
                             const progressPct = prog && prog.total > 0 ? Math.round((prog.watched / prog.total) * 100) : 0;
+                            const isFree = s.unlockCost <= 0;
+                            const isUnlocked = isFree || unlockedSet.has(s.id);
 
                             return (
                                 <motion.div
@@ -164,8 +207,15 @@ export default function StarFlixPage() {
                                         visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
                                     }}
                                 >
-                                    <Link href={`/portal/starflix/${s.id}`} style={{ textDecoration: "none" }}>
-                                        <div className="sf-card">
+                                    <div onClick={() => handleCardClick(s)} style={{ cursor: "pointer" }}>
+                                        <div className={`sf-card ${!isUnlocked ? 'locked' : ''}`}>
+                                            {/* Lock overlay */}
+                                            {!isUnlocked && (
+                                                <div className="sf-card-lock-overlay">
+                                                    <div className="sf-card-lock-icon">🔒</div>
+                                                    <div className="sf-card-lock-cost">🪙 {s.unlockCost}</div>
+                                                </div>
+                                            )}
                                             {/* Thumbnail */}
                                             <div className="sf-card-thumb" style={{ background: `linear-gradient(135deg, ${cfg.color}22, ${cfg.color}08)` }}>
                                                 {s.thumbnailUrl ? (
@@ -189,7 +239,7 @@ export default function StarFlixPage() {
                                                 <p className="sf-card-desc">{s.description}</p>
 
                                                 {/* Progress bar */}
-                                                {prog && prog.total > 0 && (
+                                                {isUnlocked && prog && prog.total > 0 && (
                                                     <div className="sf-card-progress">
                                                         <div className="sf-card-progress-bar">
                                                             <div
@@ -205,19 +255,21 @@ export default function StarFlixPage() {
 
                                                 {/* Cost */}
                                                 <div className="sf-card-footer">
-                                                    {s.unlockCost > 0 ? (
-                                                        <span className="sf-card-cost">🪙 {s.unlockCost}</span>
-                                                    ) : (
+                                                    {isFree ? (
                                                         <span className="sf-card-free">✨ Miễn phí</span>
+                                                    ) : isUnlocked ? (
+                                                        <span className="sf-card-free">✅ Đã mở khóa</span>
+                                                    ) : (
+                                                        <span className="sf-card-cost">🪙 {s.unlockCost}</span>
                                                     )}
-                                                    <span className="sf-card-play">Xem ngay →</span>
+                                                    <span className="sf-card-play">{isUnlocked ? 'Xem ngay →' : 'Mở khoá →'}</span>
                                                 </div>
                                             </div>
 
                                             {/* Hover glow */}
                                             <div className="sf-card-glow" />
                                         </div>
-                                    </Link>
+                                    </div>
                                 </motion.div>
                             );
                         })}
@@ -235,6 +287,62 @@ export default function StarFlixPage() {
                         ← Về Portal
                     </Link>
                 </motion.div>
+
+                {/* Unlock Confirmation Modal */}
+                <AnimatePresence>
+                    {unlockModal && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="sf-modal-overlay"
+                            onClick={() => !unlocking && setUnlockModal(null)}
+                        >
+                            <motion.div
+                                initial={{ scale: 0.9, y: 20 }}
+                                animate={{ scale: 1, y: 0 }}
+                                exit={{ scale: 0.9, y: 20 }}
+                                className="sf-modal"
+                                onClick={e => e.stopPropagation()}
+                            >
+                                <div className="sf-modal-icon">🔓</div>
+                                <h3 className="sf-modal-title">Mở khoá "{unlockModal.title}"?</h3>
+                                <p className="sf-modal-desc">
+                                    Series này có {unlockModal.episodeCount} tập phim. Bạn cần trả coins để mở khoá.
+                                </p>
+                                <div className="sf-modal-cost">
+                                    <span>Chi phí:</span>
+                                    <span className="sf-modal-price">🪙 {unlockModal.unlockCost}</span>
+                                </div>
+                                <div className="sf-modal-balance">
+                                    <span>Số dư:</span>
+                                    <span style={{ color: player.coins >= unlockModal.unlockCost ? '#34D399' : '#EF4444' }}>
+                                        🪙 {player.coins.toLocaleString()}
+                                    </span>
+                                </div>
+                                {player.coins < unlockModal.unlockCost && (
+                                    <p className="sf-modal-warn">⚠️ Không đủ coins! Cần thêm {unlockModal.unlockCost - player.coins} coins.</p>
+                                )}
+                                <div className="sf-modal-actions">
+                                    <button
+                                        className="sf-modal-btn sf-modal-cancel"
+                                        onClick={() => setUnlockModal(null)}
+                                        disabled={unlocking}
+                                    >
+                                        Hủy
+                                    </button>
+                                    <button
+                                        className="sf-modal-btn sf-modal-confirm"
+                                        onClick={handleUnlock}
+                                        disabled={player.coins < unlockModal.unlockCost || unlocking}
+                                    >
+                                        {unlocking ? 'Đang mở...' : '🔓 Mở khoá'}
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
             <style jsx>{`
@@ -486,6 +594,95 @@ export default function StarFlixPage() {
                     transition: color 0.2s;
                 }
                 .sf-card:hover .sf-card-play { color: #c084fc; }
+
+                /* Locked card */
+                .sf-card.locked .sf-card-thumb { filter: grayscale(0.5) brightness(0.6); }
+                .sf-card-lock-overlay {
+                    position: absolute;
+                    top: 0; left: 0; right: 0; bottom: 0;
+                    z-index: 5;
+                    background: rgba(0,0,0,0.4);
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                    border-radius: 24px;
+                    pointer-events: none;
+                }
+                .sf-card-lock-icon { font-size: 36px; filter: drop-shadow(0 0 12px rgba(0,0,0,0.5)); }
+                .sf-card-lock-cost {
+                    font-family: var(--font-heading);
+                    font-weight: 900;
+                    font-size: 16px;
+                    color: #FBBF24;
+                    background: rgba(0,0,0,0.5);
+                    padding: 4px 14px;
+                    border-radius: 10px;
+                    backdrop-filter: blur(4px);
+                }
+
+                /* Unlock Modal */
+                .sf-modal-overlay {
+                    position: fixed;
+                    inset: 0;
+                    z-index: 100;
+                    background: rgba(0,0,0,0.7);
+                    backdrop-filter: blur(8px);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .sf-modal {
+                    background: #0f1225;
+                    border: 1px solid rgba(139,92,246,0.2);
+                    border-radius: 24px;
+                    padding: 32px;
+                    width: 400px;
+                    max-width: 90vw;
+                    text-align: center;
+                }
+                .sf-modal-icon { font-size: 48px; margin-bottom: 12px; }
+                .sf-modal-title { font-family: var(--font-heading); font-size: 20px; font-weight: 900; color: #fff; margin-bottom: 8px; }
+                .sf-modal-desc { font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 20px; line-height: 1.5; }
+                .sf-modal-cost, .sf-modal-balance {
+                    display: flex;
+                    justify-content: space-between;
+                    padding: 10px 16px;
+                    border-radius: 12px;
+                    margin-bottom: 8px;
+                    font-size: 14px;
+                    font-weight: 700;
+                    background: rgba(255,255,255,0.03);
+                }
+                .sf-modal-cost span:first-child, .sf-modal-balance span:first-child { color: rgba(255,255,255,0.5); }
+                .sf-modal-price { color: #FBBF24; font-family: var(--font-heading); font-weight: 900; }
+                .sf-modal-warn { color: #EF4444; font-size: 12px; margin-top: 8px; margin-bottom: 4px; }
+                .sf-modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+                .sf-modal-btn {
+                    flex: 1;
+                    padding: 12px 20px;
+                    border-radius: 14px;
+                    border: none;
+                    font-family: var(--font-heading);
+                    font-weight: 800;
+                    font-size: 14px;
+                    cursor: pointer;
+                    transition: all 0.25s;
+                }
+                .sf-modal-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+                .sf-modal-cancel {
+                    background: rgba(255,255,255,0.05);
+                    color: rgba(255,255,255,0.6);
+                    border: 1px solid rgba(255,255,255,0.08);
+                }
+                .sf-modal-cancel:hover:not(:disabled) { background: rgba(255,255,255,0.08); }
+                .sf-modal-confirm {
+                    background: linear-gradient(135deg, #F59E0B, #D97706);
+                    color: #000;
+                    box-shadow: 0 4px 16px rgba(245,158,11,0.3);
+                }
+                .sf-modal-confirm:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(245,158,11,0.4); }
 
                 /* States */
                 .sf-loading, .sf-empty {

@@ -87,6 +87,64 @@ export async function getVideoSeries(grade: number): Promise<VideoSeries[]> {
     }));
 }
 
+/* ─── Series Unlock ─── */
+
+/** Get all series IDs that a player has unlocked */
+export async function getPlayerUnlockedSeries(playerId: string): Promise<Set<string>> {
+    if (isMockMode || !supabase || !playerId) return new Set();
+
+    const { data, error } = await supabase
+        .from("video_series_unlocks")
+        .select("series_id")
+        .eq("player_id", playerId);
+
+    if (error) {
+        console.error("[starflix] getPlayerUnlockedSeries error:", error);
+        return new Set();
+    }
+
+    return new Set((data || []).map(d => d.series_id));
+}
+
+/** Check if a specific series is unlocked (or free) */
+export async function isSeriesUnlocked(playerId: string, seriesId: string, unlockCost: number): Promise<boolean> {
+    if (unlockCost <= 0) return true; // Free series
+    if (isMockMode || !supabase || !playerId) return false;
+
+    const { data } = await supabase
+        .from("video_series_unlocks")
+        .select("id")
+        .eq("player_id", playerId)
+        .eq("series_id", seriesId)
+        .maybeSingle();
+
+    return !!data;
+}
+
+/** Unlock a series by spending coins. Returns true if successful. */
+export async function unlockSeriesWithCoins(
+    playerId: string,
+    seriesId: string,
+    cost: number
+): Promise<boolean> {
+    if (isMockMode || !supabase || !playerId) return false;
+
+    const { error } = await supabase
+        .from("video_series_unlocks")
+        .insert({
+            player_id: playerId,
+            series_id: seriesId,
+            coins_spent: cost,
+        });
+
+    if (error) {
+        console.error("[starflix] unlockSeriesWithCoins error:", error);
+        return false;
+    }
+
+    return true;
+}
+
 /* ─── Episodes ─── */
 
 export async function getSeriesEpisodes(seriesId: string): Promise<VideoEpisode[]> {
