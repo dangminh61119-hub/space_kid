@@ -17,14 +17,14 @@ interface Props {
     onSessionEnd?: () => void;
 }
 type OwlMood = "idle" | "listening" | "speaking" | "happy" | "correcting" | "thinking";
-type ConvState = "ready" | "luna-speaking" | "user-speaking" | "processing" | "ended";
+type ConvState = "ready" | "cosmo-speaking" | "user-speaking" | "processing" | "ended";
 
 function formatTime(s: number) {
     return `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
 }
 
-/* ═══════════════════ LUNA OWL MASCOT ═══════════════════ */
-function LunaOwl({ mood, isSpeaking }: { mood: OwlMood; isSpeaking: boolean }) {
+/* ═══════════════════ COSMO OWL MASCOT ═══════════════════ */
+function CosmoOwl({ mood, isSpeaking }: { mood: OwlMood; isSpeaking: boolean }) {
     const [blink, setBlink] = useState(false);
 
     useEffect(() => {
@@ -127,7 +127,7 @@ function AnimatedOwlAvatar({ isSpeaking, size = 140 }: { isSpeaking: boolean, si
 }
 
 /* ═══════════════════ MAIN SESSION ═══════════════════ */
-export default function LunaChatSession({ studentName, grade, topic, durationMinutes, playerId, voice = "en-US-Studio-O", level = 2, onSessionEnd }: Props) {
+export default function CosmoChatSession({ studentName, grade, topic, durationMinutes, playerId, voice = "en-US-Studio-O", level = 2, onSessionEnd }: Props) {
     const { session } = useAuth();
     const token = session?.access_token;
 
@@ -226,7 +226,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     /* ─── Auto-scroll ─── */
     useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isRecording]);
 
-    /* ─── Detect mood from Luna's text ─── */
+    /* ─── Detect mood from Cosmo's text ─── */
     function detectMood(text: string): OwlMood {
         if (/great|amazing|well done|excellent|perfect|wonderful|awesome|bravo/i.test(text)) return "happy";
         if (/say it like|the correct|should be|instead say|let me correct|mistake|not quite/i.test(text)) return "correcting";
@@ -234,8 +234,8 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
         return "idle";
     }
 
-    /* ─── TTS: play Luna voice with current speed ─── */
-    const lunaSpeak = useCallback(async (text: string, mood: OwlMood, speed?: string): Promise<void> => {
+    /* ─── TTS: play Cosmo voice with current speed ─── */
+    const cosmoSpeak = useCallback(async (text: string, mood: OwlMood, speed?: string): Promise<void> => {
         return new Promise(async (resolve) => {
             try {
                 const res = await fetch("/api/ai/english-tts", {
@@ -270,7 +270,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
 
     /* ─── STT: Google Cloud STT only ─── */
 
-    // Helper: stop any playing Luna audio and wait for echo to clear
+    // Helper: stop any playing Cosmo audio and wait for echo to clear
     const stopAudioAndWait = useCallback(async () => {
         if (audioRef.current) {
             audioRef.current.pause();
@@ -362,7 +362,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                         setIsRecording(false);
                         resolve(data.transcript || "");
                     } catch (err) {
-                        console.warn("[Luna] Google STT failed:", err);
+                        console.warn("[Cosmo] Google STT failed:", err);
                         setIsRecording(false);
                         resolve("");
                     }
@@ -380,8 +380,8 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
         });
     }, [token, stopAudioAndWait]);
 
-    /* ─── Call Luna API ─── */
-    const callLunaAPI = useCallback(async (userText: string, currentMessages: ChatMessage[]): Promise<{ reply: string; mood: OwlMood }> => {
+    /* ─── Call Cosmo API ─── */
+    const callCosmoAPI = useCallback(async (userText: string, currentMessages: ChatMessage[]): Promise<{ reply: string; mood: OwlMood }> => {
         setConvState("processing");
         setOwlMood("thinking");
         // Send up to 16 messages for context continuity
@@ -398,13 +398,13 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
     }, [token]);
 
     /* ─── Main conversation loop ─── */
-    const runConversation = useCallback(async (initialLunaText: string) => {
+    const runConversation = useCallback(async (initialCosmoText: string) => {
         let msgs: ChatMessage[] = [];
-        msgs = [{ role: "assistant", content: initialLunaText }];
+        msgs = [{ role: "assistant", content: initialCosmoText }];
         setIsTyping(true); setTypingText("");       // ← pre-arm typewriter (no flash)
         setMessages(msgs);
-        setConvState("luna-speaking");
-        await lunaSpeak(initialLunaText, "happy", "slow"); // always slow for opener
+        setConvState("cosmo-speaking");
+        await cosmoSpeak(initialCosmoText, "happy", "slow"); // always slow for opener
         sfxStart();
         if (isEndedRef.current) return;
 
@@ -419,7 +419,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                 if (silenceDuration >= 60_000 && !silencePrompted.current) {
                     silencePrompted.current = true;
                     const silenceTier = fluencyScore.current >= 66 ? "fast" : fluencyScore.current >= 36 ? "normal" : "slow";
-                    await lunaSpeak("Take your time — I'm listening!", "idle", silenceTier);
+                    await cosmoSpeak("Take your time — I'm listening!", "idle", silenceTier);
                 }
                 continue;
             }
@@ -429,9 +429,9 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
             msgs = [...msgs, { role: "user", content: userText.trim() }];
             setMessages([...msgs]);
 
-            const { reply, mood } = await callLunaAPI(userText, msgs);
+            const { reply, mood } = await callCosmoAPI(userText, msgs);
 
-            // Score the turn based on Luna's response
+            // Score the turn based on Cosmo's response
             const hasCorrected = /(did you mean|do you mean|should be|try saying|try it|maybe try|the correct way|let me fix|instead of|rather than)/i.test(reply);
             const hasPraise = /(great|amazing|well done|excellent|perfect|wonderful|awesome|nice|exactly|good job|bravo)/i.test(reply);
             const newTier = hasCorrected ? updateSpeed(-10) : updateSpeed(+10);
@@ -446,11 +446,11 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
             msgs = [...msgs, { role: "assistant", content: reply }];
             setMessages([...msgs]);
 
-            setConvState("luna-speaking");
-            await lunaSpeak(reply, mood, newTier);
+            setConvState("cosmo-speaking");
+            await cosmoSpeak(reply, mood, newTier);
             if (isEndedRef.current) return;
         }
-    }, [lunaSpeak, startListening, callLunaAPI]);
+    }, [cosmoSpeak, startListening, callCosmoAPI]);
 
     /* ─── Start: dynamic AI-generated greeting ─── */
     const handleStart = useCallback(async () => {
@@ -504,14 +504,14 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
             let parsedPhrases: KeyPhrase[] = [];
             try { parsedPhrases = JSON.parse(pm?.[1] || "[]"); } catch { /* ok */ }
             setSummaryText(parsedSummary); setKeyPhrases(parsedPhrases);
-            // Luna speaks the summary
-            await lunaSpeak(parsedSummary, "happy");
+            // Cosmo speaks the summary
+            await cosmoSpeak(parsedSummary, "happy");
             if (playerId && token) {
                 try { await fetch("/api/english-sessions", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ player_id: playerId, topic, duration_minutes: durationMinutes, summary: parsedSummary, key_phrases: parsedPhrases }) }); setSessionSaved(true); } catch { /* ok */ }
             }
         } catch { setSummaryText("Great session!"); }
         finally { setIsSummaryLoading(false); }
-    }, [messages, token, topic, durationMinutes, playerId, lunaSpeak]);
+    }, [messages, token, topic, durationMinutes, playerId, cosmoSpeak]);
 
     const pct = secondsLeft / totalSeconds;
     const timerColor = pct > 0.25 ? "#0D9488" : pct > 0.1 ? "#F59E0B" : "#EF4444";
@@ -602,7 +602,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                     <AnimatePresence mode="wait">
                         <motion.div key={owlMood + convState} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="lv-owl-status">
                             {convState === "ready" && ""}
-                            {convState === "luna-speaking" && "🗣 Cosmo đang nói"}
+                            {convState === "cosmo-speaking" && "🗣 Cosmo đang nói"}
                             {convState === "user-speaking" && "👂 Đang nghe bạn..."}
                             {convState === "processing" && "💭 Đang suy nghĩ..."}
                         </motion.div>
@@ -620,7 +620,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                 ) : (
                     <div className="lv-status-bar">
                         {/* Sound wave orb */}
-                        <div className={`lv-wave-orb ${convState === "user-speaking" ? "lv-wave-user" : convState === "luna-speaking" ? "lv-wave-luna" : "lv-wave-idle"}`}>
+                        <div className={`lv-wave-orb ${convState === "user-speaking" ? "lv-wave-user" : convState === "cosmo-speaking" ? "lv-wave-cosmo" : "lv-wave-idle"}`}>
                             <div className="lv-wave-ring lv-ring-1" />
                             <div className="lv-wave-ring lv-ring-2" />
                             <div className="lv-wave-ring lv-ring-3" />
@@ -630,7 +630,7 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                                         key={i}
                                         className="lv-wave-bar"
                                         animate={{
-                                            scaleY: (convState === "user-speaking" || convState === "luna-speaking")
+                                            scaleY: (convState === "user-speaking" || convState === "cosmo-speaking")
                                                 ? [0.3, 0.7 + Math.random() * 0.3, 0.3]
                                                 : 0.15,
                                         }}
@@ -644,11 +644,11 @@ export default function LunaChatSession({ studentName, grade, topic, durationMin
                             </div>
                         </div>
                         {/* Turn label */}
-                        <motion.div className={`lv-turn-indicator lv-turn-${convState === "user-speaking" ? "user" : "luna"}`}
+                        <motion.div className={`lv-turn-indicator lv-turn-${convState === "user-speaking" ? "user" : "cosmo"}`}
                             animate={{ opacity: convState === "user-speaking" ? [0.6, 1, 0.6] : 1 }}
                             transition={{ duration: 0.8, repeat: convState === "user-speaking" ? Infinity : 0 }}>
                             {convState === "user-speaking" && <>🎤 Đang nghe...</>}
-                            {convState === "luna-speaking" && <>🔊 Cosmo đang nói</>}
+                            {convState === "cosmo-speaking" && <>🔊 Cosmo đang nói</>}
                             {convState === "processing" && <><span className="lv-think-dot" />Đang xử lý...</>}
                         </motion.div>
                     </div>
@@ -738,24 +738,24 @@ const LV_STYLES = `
   .lv-status-bar { width:100%; display:flex; align-items:center; justify-content:center; gap:16px; }
   .lv-turn-indicator { display:flex; align-items:center; gap:8px; padding:10px 22px; border-radius:20px; border:1px solid; font-size:14px; font-weight:800; backdrop-filter:blur(8px); }
   .lv-turn-user { background:rgba(124,58,237,0.12); border-color:rgba(124,58,237,0.3); color:#A78BFA; }
-  .lv-turn-luna { background:rgba(13,148,136,0.12); border-color:rgba(13,148,136,0.3); color:#5EEAD4; }
+  .lv-turn-cosmo { background:rgba(13,148,136,0.12); border-color:rgba(13,148,136,0.3); color:#5EEAD4; }
   .lv-think-dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.3); display:inline-block; animation:pulse-dot 1s infinite; }
   @keyframes pulse-dot { 0%,100%{opacity:0.3} 50%{opacity:1} }
 
   /* Wave Orb */
   .lv-wave-orb { position:relative; width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all 0.4s ease; }
   .lv-wave-user { background:radial-gradient(circle,rgba(124,58,237,0.25),rgba(124,58,237,0.05)); }
-  .lv-wave-luna { background:radial-gradient(circle,rgba(13,148,136,0.25),rgba(13,148,136,0.05)); }
+  .lv-wave-cosmo { background:radial-gradient(circle,rgba(13,148,136,0.25),rgba(13,148,136,0.05)); }
   .lv-wave-idle { background:radial-gradient(circle,rgba(255,255,255,0.08),transparent); }
 
   .lv-wave-ring { position:absolute; inset:0; border-radius:50%; border:1.5px solid; opacity:0; }
   .lv-wave-user .lv-wave-ring { border-color:rgba(167,139,250,0.4); }
-  .lv-wave-luna .lv-wave-ring { border-color:rgba(94,234,212,0.4); }
+  .lv-wave-cosmo .lv-wave-ring { border-color:rgba(94,234,212,0.4); }
   .lv-wave-idle .lv-wave-ring { border-color:rgba(255,255,255,0.1); }
 
-  .lv-wave-user .lv-ring-1, .lv-wave-luna .lv-ring-1 { animation: wave-ring 1.5s ease-out infinite; }
-  .lv-wave-user .lv-ring-2, .lv-wave-luna .lv-ring-2 { animation: wave-ring 1.5s ease-out 0.3s infinite; }
-  .lv-wave-user .lv-ring-3, .lv-wave-luna .lv-ring-3 { animation: wave-ring 1.5s ease-out 0.6s infinite; }
+  .lv-wave-user .lv-ring-1, .lv-wave-cosmo .lv-ring-1 { animation: wave-ring 1.5s ease-out infinite; }
+  .lv-wave-user .lv-ring-2, .lv-wave-cosmo .lv-ring-2 { animation: wave-ring 1.5s ease-out 0.3s infinite; }
+  .lv-wave-user .lv-ring-3, .lv-wave-cosmo .lv-ring-3 { animation: wave-ring 1.5s ease-out 0.6s infinite; }
 
   @keyframes wave-ring {
     0% { transform:scale(1); opacity:0.6; }
@@ -765,7 +765,7 @@ const LV_STYLES = `
   .lv-wave-bars { display:flex; align-items:center; gap:3px; height:24px; z-index:1; }
   .lv-wave-bar { width:3px; height:100%; border-radius:3px; transform-origin:center; }
   .lv-wave-user .lv-wave-bar { background:linear-gradient(to top,#A78BFA,#C4B5FD); }
-  .lv-wave-luna .lv-wave-bar { background:linear-gradient(to top,#14B8A6,#5EEAD4); }
+  .lv-wave-cosmo .lv-wave-bar { background:linear-gradient(to top,#14B8A6,#5EEAD4); }
   .lv-wave-idle .lv-wave-bar { background:rgba(255,255,255,0.2); }
 
   /* End screen */

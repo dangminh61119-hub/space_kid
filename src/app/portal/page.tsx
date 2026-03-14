@@ -245,6 +245,32 @@ export default function PortalPage() {
                                     </div>
                                 </div>
 
+                                {/* 🪙 Coins + Shop */}
+                                <div className="glass-card !p-3 !rounded-xl" style={{ borderColor: 'rgba(245,158,11,0.15)' }}>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-lg" style={{ filter: 'drop-shadow(0 0 6px rgba(245,158,11,0.5))' }}>🪙</span>
+                                            <span className="text-lg font-black" style={{ color: '#FBBF24', fontFamily: 'var(--font-heading)' }}>{player.coins.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex gap-2 text-xs text-white/40">
+                                            <span>💎 {player.crystals}</span>
+                                            <span>⚡ {player.abilityCharges}</span>
+                                        </div>
+                                    </div>
+                                    <Link
+                                        href="/portal/cosmic-shop"
+                                        className="block w-full py-2 rounded-xl text-xs font-bold text-center transition-all hover:scale-[1.02] active:scale-95"
+                                        style={{
+                                            background: 'linear-gradient(135deg, rgba(245,158,11,0.15), rgba(217,119,6,0.1))',
+                                            border: '1px solid rgba(245,158,11,0.25)',
+                                            color: '#FBBF24',
+                                            boxShadow: '0 4px 12px rgba(245,158,11,0.1)',
+                                        }}
+                                    >
+                                        🛒 Cosmic Shop
+                                    </Link>
+                                </div>
+
                                 {/* ── Badge Gallery ── */}
                                 <div className="glass-card !p-3 !rounded-xl">
                                     <div className="text-[10px] text-white/50 mb-2 font-bold uppercase tracking-wider">🏅 Huy hiệu ({playerBadges.length}/{allBadges.length})</div>

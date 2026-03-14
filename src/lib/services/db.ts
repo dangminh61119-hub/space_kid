@@ -789,6 +789,11 @@ export async function checkAchievementBadges(
         ? Math.max(...masteryData.map((m: { mastery_score: number }) => m.mastery_score))
         : 0;
 
+    // ─── Learn Badge Stats (lazy-loaded only if needed) ───
+    let learnQuizCount: number | null = null;
+    let mastery80Count: number | null = null;
+    let englishSessionCount: number | null = null;
+
     const awarded: DBPlayerBadge[] = [];
 
     for (const badge of specialBadges as DBBadge[]) {
@@ -812,6 +817,57 @@ export async function checkAchievementBadges(
                 break;
             case 'perfect_score':
                 shouldAward = stats.isPerfectScore === true;
+                break;
+
+            // ─── Learn Module Badges ───
+            case 'learn_quiz_count':
+                if (learnQuizCount === null) {
+                    const { count } = await supabase
+                        .from("coin_transactions")
+                        .select("*", { count: "exact", head: true })
+                        .eq("player_id", playerId)
+                        .eq("type", "quiz");
+                    learnQuizCount = count ?? 0;
+                }
+                shouldAward = learnQuizCount >= (condition.count ?? 999);
+                break;
+
+            case 'mastery_80_count':
+                if (mastery80Count === null) {
+                    const m80 = masteryData?.filter((m: { mastery_score: number }) => m.mastery_score >= 80) ?? [];
+                    mastery80Count = m80.length;
+                }
+                shouldAward = mastery80Count >= (condition.count ?? 999);
+                break;
+
+            case 'ai_tutor_sessions':
+                // AI tutor sessions are tracked as coin transactions with type "ai-tutor"
+                // For now, count from coin_transactions; can be enhanced with dedicated counter later
+                {
+                    const { count } = await supabase
+                        .from("coin_transactions")
+                        .select("*", { count: "exact", head: true })
+                        .eq("player_id", playerId)
+                        .eq("type", "ai-tutor");
+                    shouldAward = (count ?? 0) >= (condition.count ?? 999);
+                }
+                break;
+
+            case 'english_practice_sessions':
+                if (englishSessionCount === null) {
+                    const { count } = await supabase
+                        .from("coin_transactions")
+                        .select("*", { count: "exact", head: true })
+                        .eq("player_id", playerId)
+                        .eq("type", "english-practice");
+                    englishSessionCount = count ?? 0;
+                }
+                shouldAward = englishSessionCount >= (condition.count ?? 999);
+                break;
+
+            case 'daily_mission_streak':
+                // Daily mission streak is tracked in localStorage; check if current streak qualifies
+                // This is checked client-side via DailyMissions component; here we trust the stat if provided
                 break;
         }
 

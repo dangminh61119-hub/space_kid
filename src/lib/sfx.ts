@@ -1,5 +1,5 @@
 /**
- * lib/sfx.ts — Web Audio API Sound Effects for Luna English Buddy
+ * lib/sfx.ts — Web Audio API Sound Effects for Cosmo English Buddy
  * 
  * Generates short, pleasant sound effects without any external audio files.
  * Uses oscillators and gain envelopes for lightweight, instant playback.

@@ -1,5 +1,5 @@
 /**
- * /api/ai/english-tts — Google Cloud TTS Neural2 for Luna
+ * /api/ai/english-tts — Google Cloud TTS Neural2 for Cosmo
  *
  * POST { text: string, speed?: "slow" | "normal" | "fast" }
  * Returns audio/mp3 binary — ready for new Audio(objectURL).play()

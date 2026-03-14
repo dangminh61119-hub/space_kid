@@ -15,6 +15,7 @@ import PlanetProgress from "@/components/learn/PlanetProgress";
 import StarMap from "@/components/learn/StarMap";
 import RocketMeter from "@/components/learn/RocketMeter";
 import { getDueCount } from "@/lib/services/srs-service";
+import DailyMissions from "@/components/learn/DailyMissions";
 
 /* ─── Subject config ─── */
 
@@ -160,6 +161,7 @@ export default function LearnHomePage() {
                         <p className="learn-hero-subtitle">
                             <span className="learn-hero-badge">🎓 Lớp {player.grade}</span>
                             <span className="learn-hero-badge">⚡ Level {player.level}</span>
+                            <span className="learn-hero-badge" style={{ borderColor: 'rgba(245, 180, 11, 0.3)', color: '#FBBF24' }}>🪙 {player.coins.toLocaleString()}</span>
                         </p>
                         <div className="learn-hero-speech">
                             <motion.div
@@ -193,6 +195,11 @@ export default function LearnHomePage() {
                         </motion.div>
                     </div>
                 </div>
+            </motion.div>
+
+            {/* ─── Daily Missions ─── */}
+            <motion.div variants={fadeUp} className="learn-bento-item" style={{ gridColumn: "1 / -1" }}>
+                <DailyMissions />
             </motion.div>
 
             {/* ─── Rocket Meter replaces Stats Grid (spans 4) ─── */}
@@ -327,7 +334,7 @@ export default function LearnHomePage() {
                         <Link href="/learn/english-buddy" style={{ textDecoration: "none" }}>
                             <motion.div className="learn-dock-item learn-dock-new" whileHover={{ scale: 1.05, y: -4 }}>
                                 <span className="learn-dock-icon">🦅</span>
-                                <span className="learn-dock-label">Luna</span>
+                                <span className="learn-dock-label">Cosmo</span>
                                 <span className="learn-dock-new-tag">NEW</span>
                             </motion.div>
                         </Link>

@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/game-context";
 import { useAuth } from "@/lib/services/auth-context";
+import CoinRewardPopup from "@/components/learn/CoinRewardPopup";
+import { trackMissionProgress } from "@/lib/services/daily-missions";
 import Flashcard, { type FlashcardItem } from "@/components/learn/Flashcard";
 import SmartQuiz, { type QuizQuestion } from "@/components/learn/SmartQuiz";
 import ErrorDrill from "@/components/learn/ErrorDrill";
@@ -125,7 +127,7 @@ function generateQuizQuestions(subject: string, grade: number): QuizQuestion[] {
 
 /* ─── Practice Page Content ─── */
 function PracticeContent() {
-    const { player } = useGame();
+    const { player, addCoinsWithMultiplier } = useGame();
     const { playerDbId, session } = useAuth();
     const searchParams = useSearchParams();
     const token = session?.access_token;
@@ -150,6 +152,9 @@ function PracticeContent() {
     const [topicQuizLoading, setTopicQuizLoading] = useState(false);
     const [topicQuizId, setTopicQuizId] = useState<string | null>(null);
     const [topicQuizName, setTopicQuizName] = useState<string | null>(null);
+
+    // Coin reward popup state
+    const [coinReward, setCoinReward] = useState<{ earned: number; multiplier: number; reason: string } | null>(null);
 
     // Load profile & check URL params
     useEffect(() => {
@@ -326,7 +331,29 @@ function PracticeContent() {
                 });
             } catch { /* silent — calibration is non-critical */ }
         }
-    }, [sessionId, playerId, selectedSubject, topicQuizId, token]);
+
+        // 🪙 Award Coins based on accuracy
+        const total = results.correct + results.incorrect;
+        if (total > 0) {
+            const accuracy = results.correct / total;
+            let baseCoins = 10; // minimum for completing
+            if (accuracy >= 1.0) baseCoins = 30;
+            else if (accuracy >= 0.8) baseCoins = 20;
+            else if (accuracy >= 0.6) baseCoins = 15;
+
+            const reward = addCoinsWithMultiplier(baseCoins, "quiz");
+            const accPercent = Math.round(accuracy * 100);
+            setCoinReward({
+                earned: reward.earned,
+                multiplier: reward.multiplier,
+                reason: `🎯 Đạt ${accPercent}% chính xác (${results.correct}/${total})`,
+            });
+
+            // 🎯 Track daily mission progress
+            trackMissionProgress("quiz_complete");
+            window.dispatchEvent(new Event("mission-progress-updated"));
+        }
+    }, [sessionId, playerId, selectedSubject, topicQuizId, token, addCoinsWithMultiplier]);
 
     const handleExit = useCallback(() => {
         setMode("select");
@@ -336,6 +363,7 @@ function PracticeContent() {
         setTopicQuizId(null);
         setTopicQuizName(null);
         setTopicQuizQuestions([]);
+        setCoinReward(null);
     }, []);
 
     // ─── Render based on mode ───
@@ -396,6 +424,17 @@ function PracticeContent() {
                     cards={cards}
                     onComplete={async (results) => {
                         await handleComplete({ correct: results.correct, incorrect: results.incorrect });
+                        // 🪙 Flashcard reward: +5 coins per completed set
+                        const reward = addCoinsWithMultiplier(5, "flashcard");
+                        setCoinReward({
+                            earned: reward.earned,
+                            multiplier: reward.multiplier,
+                            reason: `🃏 Hoàn thành ${cards.length} flashcard`,
+                        });
+
+                        // 🎯 Track daily mission progress
+                        trackMissionProgress("flashcard_complete");
+                        window.dispatchEvent(new Event("mission-progress-updated"));
                     }}
                     onExit={handleExit}
                 />
@@ -698,6 +737,16 @@ function PracticeContent() {
           .practice-drills-grid { grid-template-columns: 1fr; }
         }
       `}</style>
+
+            {/* 🪙 Coin Reward Popup */}
+            {coinReward && (
+                <CoinRewardPopup
+                    earned={coinReward.earned}
+                    multiplier={coinReward.multiplier}
+                    reason={coinReward.reason}
+                    onDone={() => setCoinReward(null)}
+                />
+            )}
         </motion.div>
     );
 }

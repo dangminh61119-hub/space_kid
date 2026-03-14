@@ -12,11 +12,12 @@ import { useAuth } from "@/lib/services/auth-context";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { getJourneyLevels, updateMastery, saveJourneyProgress, getJourneyProgress, getPlanetForGrade, saveAnsweredQuestion, awardBadge, checkAchievementBadges, type GameLevel, type Ship } from "@/lib/services/db";
 import { supabase } from "@/lib/services/supabase";
+import { trackMissionProgress } from "@/lib/services/daily-missions";
 
 function PlayContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { player, addCosmo, addCoins, addStars } = useGame();
+    const { player, addCosmo, addCoinsWithMultiplier, addStars } = useGame();
     const { playerDbId } = useAuth();
     const { loading: authLoading, allowed, redirecting } = useRequireAuth();
     const [levels, setLevels] = useState<GameLevel[]>([]);
@@ -98,8 +99,12 @@ function PlayContent() {
                 if (newCompleted >= levels.length && levels.length > 0) {
                     heritageBadge = await awardBadge(playerDbId, journeySlug);
                     // Reward coins only when a meaningful milestone is reached
-                    addCoins(50);
+                    addCoinsWithMultiplier(50, 'journey');
                 }
+
+                // 🎯 Track portal level mission progress
+                trackMissionProgress("portal_level");
+                window.dispatchEvent(new Event("mission-progress-updated"));
 
                 // 🏅 Check achievement badges (streak, levels milestone)
                 // BUG-3 FIX: isPerfectScore was always true (finalScore > 0 && levelsCompleted > 0).

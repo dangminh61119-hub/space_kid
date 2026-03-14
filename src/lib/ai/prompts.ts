@@ -110,11 +110,11 @@ export function getFallbackResponse(context: MascotContext): string {
     return FALLBACK_HINT[Math.floor(Math.random() * FALLBACK_HINT.length)];
 }
 
-/* ─── English Practice AI — 5-Level Luna Prompt System ─── */
+/* ─── English Practice AI — 5-Level Cosmo Prompt System ─── */
 
-export type LunaLevel = 1 | 2 | 3 | 4 | 5;
+export type CosmoLevel = 1 | 2 | 3 | 4 | 5;
 
-interface LunaPromptCtx {
+interface CosmoPromptCtx {
     studentName: string;
     grade: number;
     topic: string;
@@ -133,7 +133,7 @@ function buildPastContext(pastSummaries?: string[]): string {
 const FORMAT_RULES = `NEVER use emoji, emoticons, or special symbols — TTS reads emoji names aloud which breaks conversation flow.
 NEVER use markdown, bold, italic, or any formatting. Plain text only.`;
 
-function safetyRules(level: LunaLevel): string {
+function safetyRules(level: CosmoLevel): string {
     if (level <= 2) return ""; // L1-2 are safe by vocabulary constraint
     const redirect = level === 3
         ? `If sensitive topic arises (violence, family problems, bullying, politics, religion):
@@ -155,8 +155,8 @@ If sensitive topic: Step 1 validate without engaging, Step 2 set boundary ("That
 }
 
 /* ═══════ LEVEL 1 — Baby Steps (Pre-A1) ═══════ */
-function LUNA_PROMPT_LEVEL_1(ctx: LunaPromptCtx): string {
-    return `You are Luna, a playful owl who is ${ctx.studentName}'s VERY FIRST English friend. Topic: "${ctx.topic}".
+function COSMO_PROMPT_LEVEL_1(ctx: CosmoPromptCtx): string {
+    return `You are Cosmo, a playful owl who is ${ctx.studentName}'s VERY FIRST English friend. Topic: "${ctx.topic}".
 ${buildPastContext(ctx.pastSummaries)}
 MISSION: Make ${ctx.studentName} feel SAFE and EXCITED to say ANY English word. One word = huge victory.
 
@@ -203,8 +203,8 @@ OPENING (pick ONE randomly, never repeat the same one):
 }
 
 /* ═══════ LEVEL 2 — Explorer (A1) ═══════ */
-function LUNA_PROMPT_LEVEL_2(ctx: LunaPromptCtx): string {
-    return `You are Luna, a friendly English-speaking owl from Canada. ${ctx.studentName}'s English buddy (Grade ${ctx.grade}). Topic: \"${ctx.topic}\".
+function COSMO_PROMPT_LEVEL_2(ctx: CosmoPromptCtx): string {
+    return `You are Cosmo, a friendly English-speaking owl from Canada. ${ctx.studentName}'s English buddy (Grade ${ctx.grade}). Topic: \"${ctx.topic}\".
 ${buildPastContext(ctx.pastSummaries)}
 GOAL: Help ${ctx.studentName} go from words → SHORT sentences.
 
@@ -245,8 +245,8 @@ OPENING (pick ONE randomly, be playful and warm):
 }
 
 /* ═══════ LEVEL 3 — Talker (A2) ═══════ */
-function LUNA_PROMPT_LEVEL_3(ctx: LunaPromptCtx): string {
-    return `You are Luna, a friendly English-speaking owl from Canada. ${ctx.studentName}'s English buddy (Grade ${ctx.grade}). Topic: \"${ctx.topic}\".
+function COSMO_PROMPT_LEVEL_3(ctx: CosmoPromptCtx): string {
+    return `You are Cosmo, a friendly English-speaking owl from Canada. ${ctx.studentName}'s English buddy (Grade ${ctx.grade}). Topic: \"${ctx.topic}\".
 ${buildPastContext(ctx.pastSummaries)}
 GOAL: Push from short answers → FULL SENTENCES with connecting words (because, but, and, so).
 
@@ -283,8 +283,8 @@ OPENING (pick ONE randomly):
 }
 
 /* ═══════ LEVEL 4 — Confident (B1) ═══════ */
-function LUNA_PROMPT_LEVEL_4(ctx: LunaPromptCtx): string {
-    return `You are Luna, a curious English-speaking owl from Canada. ${ctx.studentName}'s conversation partner (Grade ${ctx.grade}). Topic: "${ctx.topic}".
+function COSMO_PROMPT_LEVEL_4(ctx: CosmoPromptCtx): string {
+    return `You are Cosmo, a curious English-speaking owl from Canada. ${ctx.studentName}'s conversation partner (Grade ${ctx.grade}). Topic: "${ctx.topic}".
 ${buildPastContext(ctx.pastSummaries)}
 GOAL: Push to THINK in English — opinions with REASONS, stories with SEQUENCE, topics with DEPTH.
 
@@ -321,8 +321,8 @@ OPENING (pick ONE randomly — be bold, opinionated, start a real conversation):
 }
 
 /* ═══════ LEVEL 5 — Star (B1+/B2) ═══════ */
-function LUNA_PROMPT_LEVEL_5(ctx: LunaPromptCtx): string {
-    return `You are Luna, a witty English-speaking owl from Canada. ${ctx.studentName}'s English sparring partner (Grade ${ctx.grade}). Topic: "${ctx.topic}".
+function COSMO_PROMPT_LEVEL_5(ctx: CosmoPromptCtx): string {
+    return `You are Cosmo, a witty English-speaking owl from Canada. ${ctx.studentName}'s English sparring partner (Grade ${ctx.grade}). Topic: "${ctx.topic}".
 ${buildPastContext(ctx.pastSummaries)}
 GOAL: CHALLENGE to near-native level — fluency, critical thinking, natural expression.
 
@@ -361,14 +361,14 @@ OPENING (pick ONE randomly — be provocative, start a real debate):
 }
 
 /* ─── Dispatcher: get the right prompt by level ─── */
-export function getLunaPromptByLevel(level: LunaLevel, ctx: LunaPromptCtx): string {
+export function getCosmoPromptByLevel(level: CosmoLevel, ctx: CosmoPromptCtx): string {
     switch (level) {
-        case 1: return LUNA_PROMPT_LEVEL_1(ctx);
-        case 2: return LUNA_PROMPT_LEVEL_2(ctx);
-        case 3: return LUNA_PROMPT_LEVEL_3(ctx);
-        case 4: return LUNA_PROMPT_LEVEL_4(ctx);
-        case 5: return LUNA_PROMPT_LEVEL_5(ctx);
-        default: return LUNA_PROMPT_LEVEL_2(ctx);
+        case 1: return COSMO_PROMPT_LEVEL_1(ctx);
+        case 2: return COSMO_PROMPT_LEVEL_2(ctx);
+        case 3: return COSMO_PROMPT_LEVEL_3(ctx);
+        case 4: return COSMO_PROMPT_LEVEL_4(ctx);
+        case 5: return COSMO_PROMPT_LEVEL_5(ctx);
+        default: return COSMO_PROMPT_LEVEL_2(ctx);
     }
 }
 
@@ -594,7 +594,7 @@ START with a provocative take on "${ctx.topic}" and challenge ${ctx.studentName}
 }
 
 /* ─── Dispatcher: get voice-optimized prompt by level ─── */
-export function getCosmoLivePrompt(level: LunaLevel, ctx: CosmoLiveCtx): string {
+export function getCosmoLivePrompt(level: CosmoLevel, ctx: CosmoLiveCtx): string {
     switch (level) {
         case 1: return COSMO_LIVE_L1(ctx);
         case 2: return COSMO_LIVE_L2(ctx);

@@ -36,7 +36,7 @@ export interface PlayerData {
     profileCompleted: boolean;
     birthday?: string;
     school?: string;
-    englishName?: string;       // Tên tiếng Anh (dùng cho Luna English Practice)
+    englishName?: string;       // Tên tiếng Anh (dùng cho Cosmo English Practice)
     parentEmail?: string;
     parentName?: string;
     parentPhone?: string;
@@ -61,10 +61,11 @@ interface GameContextType {
     player: PlayerData;
     updatePlayer: (updates: Partial<PlayerData>) => void;
     addCosmo: (amount: number) => void;                      // ✦ Cộng Cosmo
-    addCoins: (amount: number) => void;                      // 🪙 Cộng Coins
+    addCoins: (amount: number) => void;                      // 🪙 Cộng Coins (raw, no multiplier)
+    addCoinsWithMultiplier: (amount: number, reason?: string) => { earned: number; multiplier: number }; // 🪙 Cộng Coins + streak bonus
     addStars: (amount: number) => void;                      // ⭐ Cộng Lucky Stars
     spendStars: (amount: number) => boolean;                  // ⭐ Tiêu Lucky Stars (false nếu không đủ)
-    spendCoins: (amount: number) => boolean;                 // 🪙 Tiêu Coins
+    spendCoins: (amount: number, type?: string, reason?: string) => boolean; // 🪙 Tiêu Coins (atomic)
     addCrystals: (amount: number, reason?: string) => void;  // 💎 Cộng pha lê
     spendCrystals: (amount: number) => boolean;              // 💎 Tiêu pha lê (false nếu không đủ)
 
@@ -126,6 +127,14 @@ const DEFAULT_PLAYER: PlayerData = {
 const STORAGE_KEY = "cosmomosaic_player";
 const CALM_MODE_KEY = "cosmomosaic_calm_mode";
 const COSMO_PER_LEVEL = 500;
+
+/* ─── Helper: Streak-based Coins multiplier ─── */
+export function getStreakMultiplier(streak: number): number {
+    if (streak >= 14) return 2.0;
+    if (streak >= 7) return 1.5;
+    if (streak >= 3) return 1.2;
+    return 1.0;
+}
 
 /* ─── Context ─── */
 const GameContext = createContext<GameContextType | null>(null);
@@ -384,17 +393,55 @@ export function GameProvider({ children }: { children: ReactNode }) {
         });
     }, [playerDbId]);
 
-    /* ─── 🪙 Coins Economy ─── */
+    /* ─── 🪙 Coins Economy (Atomic via Supabase RPC) ─── */
     const addCoins = useCallback((amount: number) => {
         setPlayer(prev => {
             const newCoins = prev.coins + amount;
             if (playerDbId && supabase) {
-                supabase.from("players").update({ coins: newCoins }).eq("id", playerDbId).then(({ error }) => {
-                    if (error) console.error("[GameContext] addCoins DB error:", error);
+                supabase.rpc("add_coins", {
+                    p_player_id: playerDbId,
+                    p_amount: amount,
+                    p_type: "reward",
+                    p_reason: null,
+                }).then(({ data, error }) => {
+                    if (error) console.error("[GameContext] addCoins RPC error:", error);
+                    // Sync actual DB balance back if available
+                    else if (data !== null && data >= 0) {
+                        setPlayer(p => ({ ...p, coins: data as number }));
+                    }
                 });
             }
             return { ...prev, coins: newCoins };
         });
+    }, [playerDbId]);
+
+    /* ─── 🪙 Coins with Streak Multiplier (Atomic via Supabase RPC) ─── */
+    const addCoinsWithMultiplier = useCallback((amount: number, reason?: string): { earned: number; multiplier: number } => {
+        // Read current streak synchronously
+        let currentStreak = 0;
+        setPlayer(prev => { currentStreak = prev.streak; return prev; });
+        const multiplier = getStreakMultiplier(currentStreak);
+        const earned = Math.round(amount * multiplier);
+
+        setPlayer(prev => {
+            const newCoins = prev.coins + earned;
+            if (playerDbId && supabase) {
+                supabase.rpc("add_coins", {
+                    p_player_id: playerDbId,
+                    p_amount: earned,
+                    p_type: reason || "reward",
+                    p_reason: multiplier > 1 ? `streak x${multiplier}` : null,
+                }).then(({ data, error }) => {
+                    if (error) console.error("[GameContext] addCoinsWithMultiplier RPC error:", error);
+                    else if (data !== null && data >= 0) {
+                        setPlayer(p => ({ ...p, coins: data as number }));
+                    }
+                });
+            }
+            return { ...prev, coins: newCoins };
+        });
+
+        return { earned, multiplier };
     }, [playerDbId]);
 
     /* ─── ⭐ Lucky Stars ─── */
@@ -428,8 +475,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
         return true;
     }, [playerDbId]);
 
-    // BUG-001 FIX: Same pattern — read synchronously, then update
-    const spendCoins = useCallback((amount: number): boolean => {
+    // Atomic spend via Supabase RPC (row-level lock, prevents double-spend)
+    const spendCoins = useCallback((amount: number, type?: string, reason?: string): boolean => {
         const playerRef = { current: 0 };
         setPlayer(prev => { playerRef.current = prev.coins; return prev; });
         if (playerRef.current < amount) return false;
@@ -437,8 +484,21 @@ export function GameProvider({ children }: { children: ReactNode }) {
             if (prev.coins < amount) return prev;
             const newCoins = prev.coins - amount;
             if (playerDbId && supabase) {
-                supabase.from("players").update({ coins: newCoins }).eq("id", playerDbId).then(({ error }) => {
-                    if (error) console.error("[GameContext] spendCoins DB error:", error);
+                supabase.rpc("spend_coins", {
+                    p_player_id: playerDbId,
+                    p_amount: amount,
+                    p_type: type || "shop-purchase",
+                    p_reason: reason || null,
+                }).then(({ data, error }) => {
+                    if (error) console.error("[GameContext] spendCoins RPC error:", error);
+                    else if (data !== null && data >= 0) {
+                        // Sync actual DB balance back
+                        setPlayer(p => ({ ...p, coins: data as number }));
+                    } else if (data === -1) {
+                        // DB rejected — insufficient funds, rollback local state
+                        console.warn("[GameContext] spendCoins: DB rejected, rolling back");
+                        setPlayer(p => ({ ...p, coins: p.coins + amount }));
+                    }
                 });
             }
             return { ...prev, coins: newCoins };
@@ -571,6 +631,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
                 updatePlayer,
                 addCosmo,
                 addCoins,
+                addCoinsWithMultiplier,
                 addStars,
                 spendStars,
                 spendCoins,

@@ -5,7 +5,9 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/game-context";
 import { useAuth } from "@/lib/services/auth-context";
-import LunaChatSession from "@/components/learn/LunaChatSession";
+import CoinRewardPopup from "@/components/learn/CoinRewardPopup";
+import { trackMissionProgress } from "@/lib/services/daily-missions";
+import CosmoChatSession from "@/components/learn/CosmoChatSession";
 import LiveVoiceSession from "@/components/learn/LiveVoiceSession";
 
 /* ─── Voice options ─── */
@@ -43,9 +45,9 @@ const DURATIONS = [
 ];
 
 /* ─── Levels — teal/cyan palette only ─── */
-type LunaLevelId = 1 | 2 | 3 | 4 | 5;
+type CosmoLevelId = 1 | 2 | 3 | 4 | 5;
 interface LevelDef {
-    id: LunaLevelId; emoji: string; name: string;
+    id: CosmoLevelId; emoji: string; name: string;
     nameVi: string; desc: string; color: string; glow: string;
 }
 const LEVELS: LevelDef[] = [
@@ -126,7 +128,7 @@ function formatAgo(d: string): string { const m = Math.floor((Date.now() - new D
 
 /* ═══════════════════════════════════════════════════════ */
 export default function EnglishBuddyPage() {
-    const { player } = useGame();
+    const { player, addCoinsWithMultiplier } = useGame();
     const { playerDbId, session } = useAuth();
     const token = session?.access_token;
     const [phase, setPhase] = useState<"setup" | "session">("setup");
@@ -138,8 +140,9 @@ export default function EnglishBuddyPage() {
     const [past, setPast] = useState<PastSession[]>([]);
     const [, setLoading] = useState(false);
     const [liveMode, setLiveMode] = useState(false);
-    const [level, setLevel] = useState<LunaLevelId>(() => {
-        if (typeof window !== "undefined") { const s = localStorage.getItem("luna-english-level"); if (s) { const n = parseInt(s); if (n >= 1 && n <= 5) return n as LunaLevelId; } } return 1;
+    const [coinReward, setCoinReward] = useState<{ earned: number; multiplier: number; reason: string } | null>(null);
+    const [level, setLevel] = useState<CosmoLevelId>(() => {
+        if (typeof window !== "undefined") { const s = localStorage.getItem("cosmo-english-level"); if (s) { const n = parseInt(s); if (n >= 1 && n <= 5) return n as CosmoLevelId; } } return 1;
     });
 
     const activeTopic = topic.trim() || null;
@@ -157,6 +160,21 @@ export default function EnglishBuddyPage() {
         setPhase("session");
     }
     function handleEnd() {
+        // 🪙 Award Coins based on session duration
+        let baseCoins = 10;
+        if (dur >= 15) baseCoins = 25;
+        else if (dur >= 10) baseCoins = 15;
+        const reward = addCoinsWithMultiplier(baseCoins, "english-practice");
+        setCoinReward({
+            earned: reward.earned,
+            multiplier: reward.multiplier,
+            reason: `🦅 Luyện nói tiếng Anh ${dur} phút`,
+        });
+
+        // 🎯 Track daily mission progress
+        trackMissionProgress("english_session");
+        window.dispatchEvent(new Event("mission-progress-updated"));
+
         setPhase("setup"); setTopic(""); setStep(1);
         if (playerDbId && token) fetch(`/api/english-sessions?player_id=${playerDbId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(d => setPast(d.sessions ?? [])).catch(() => { });
     }
@@ -173,7 +191,7 @@ export default function EnglishBuddyPage() {
             {liveMode ? (
                 <LiveVoiceSession studentName={player.englishName?.trim() || player.name} grade={player.grade ?? 2} topic={activeTopic} durationMinutes={dur} playerId={playerDbId} voiceName={liveVoice} level={level} onSessionEnd={handleEnd} />
             ) : (
-                <LunaChatSession studentName={player.englishName?.trim() || player.name} grade={player.grade ?? 2} topic={activeTopic} durationMinutes={dur} playerId={playerDbId} voice={voice} level={level} onSessionEnd={handleEnd} />
+                <CosmoChatSession studentName={player.englishName?.trim() || player.name} grade={player.grade ?? 2} topic={activeTopic} durationMinutes={dur} playerId={playerDbId} voice={voice} level={level} onSessionEnd={handleEnd} />
             )}
         </div>);
     }
@@ -270,6 +288,7 @@ export default function EnglishBuddyPage() {
     };
 
     return (
+        <>
         <div style={S.page}>
             {/* ─── Hero ─── */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={S.hero}>
@@ -311,7 +330,7 @@ export default function EnglishBuddyPage() {
                                     const sel = level === lv.id;
                                     return (
                                         <motion.div key={lv.id} style={S.lvCard(sel, lv.color, lv.glow)}
-                                            onClick={() => { setLevel(lv.id); localStorage.setItem("luna-english-level", String(lv.id)); }}
+                                            onClick={() => { setLevel(lv.id); localStorage.setItem("cosmo-english-level", String(lv.id)); }}
                                             whileHover={{ scale: 1.06, y: -4 }} whileTap={{ scale: 0.95 }}>
                                             <span style={S.lvEmoji}>{lv.emoji}</span>
                                             <span style={S.lvName(sel, lv.color)}>{lv.name}</span>
@@ -469,5 +488,16 @@ export default function EnglishBuddyPage() {
                 )}
             </AnimatePresence>
         </div>
+
+            {/* 🪙 Coin Reward Popup */}
+            {coinReward && (
+                <CoinRewardPopup
+                    earned={coinReward.earned}
+                    multiplier={coinReward.multiplier}
+                    reason={coinReward.reason}
+                    onDone={() => setCoinReward(null)}
+                />
+            )}
+        </>
     );
 }

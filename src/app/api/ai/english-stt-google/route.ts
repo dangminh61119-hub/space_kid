@@ -1,5 +1,5 @@
 /**
- * /api/ai/english-stt-google — Google Cloud Speech-to-Text for Luna
+ * /api/ai/english-stt-google — Google Cloud Speech-to-Text for Cosmo
  *
  * POST: multipart/form-data with `audio` blob (webm/opus)
  * Optional: `topic` string for Speech Adaptation (boost relevant vocab)

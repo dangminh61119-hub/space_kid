@@ -139,6 +139,19 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
               <span className="learn-streak-count">{player.streak} ngày</span>
             </div>
           )}
+
+          {/* Coins balance */}
+          {sidebarOpen ? (
+            <div className="learn-sidebar-coins">
+              <span className="learn-coins-icon">🪙</span>
+              <span className="learn-coins-count">{player.coins.toLocaleString()}</span>
+            </div>
+          ) : (
+            <div className="learn-sidebar-coins-mini" title={`${player.coins} Coins`}>
+              <span>🪙</span>
+              <span className="learn-coins-mini-count">{player.coins >= 1000 ? `${Math.floor(player.coins / 1000)}k` : player.coins}</span>
+            </div>
+          )}
         </motion.aside>
       )}
 
@@ -406,6 +419,43 @@ export default function LearnLayout({ children }: { children: React.ReactNode })
           font-size: 22px; 
           filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.6)); 
           animation: bounce 2s infinite; 
+        }
+
+        /* Coins widget */
+        .learn-sidebar-coins {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 14px 16px;
+          background: linear-gradient(135deg, rgba(245, 180, 11, 0.08), rgba(245, 158, 11, 0.03));
+          border: 1px solid rgba(245, 180, 11, 0.15);
+          border-radius: 16px;
+          font-family: var(--font-heading);
+          font-weight: 800;
+          font-size: 15px;
+          color: #FBBF24;
+          margin-top: 8px;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 0 12px rgba(245, 180, 11, 0.06);
+        }
+        .learn-coins-icon {
+          font-size: 22px;
+          filter: drop-shadow(0 0 8px rgba(245, 180, 11, 0.5));
+        }
+        .learn-sidebar-coins-mini {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 2px;
+          padding: 10px 0;
+          font-size: 18px;
+          color: #FBBF24;
+          cursor: default;
+        }
+        .learn-coins-mini-count {
+          font-size: 10px;
+          font-weight: 900;
+          font-family: var(--font-heading);
+          color: #FBBF24;
         }
 
         /* ─── Main Content ─── */

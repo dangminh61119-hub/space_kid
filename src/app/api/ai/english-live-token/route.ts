@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI, Modality } from "@google/genai";
-import { getCosmoLivePrompt, type LunaLevel } from "@/lib/ai/prompts";
+import { getCosmoLivePrompt, type CosmoLevel } from "@/lib/ai/prompts";
 import { requireAuth, checkRateLimit, rateLimitResponse } from "@/lib/services/api-auth";
 
 export async function POST(request: NextRequest) {
@@ -51,8 +51,8 @@ export async function POST(request: NextRequest) {
         }
 
         // Build Cosmo Live voice-optimized prompt
-        const lunaLevel = Math.min(5, Math.max(1, level)) as LunaLevel;
-        const systemInstruction = getCosmoLivePrompt(lunaLevel, {
+        const cosmoLevel = Math.min(5, Math.max(1, level)) as CosmoLevel;
+        const systemInstruction = getCosmoLivePrompt(cosmoLevel, {
             studentName,
             grade,
             topic,

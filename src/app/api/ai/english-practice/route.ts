@@ -1,12 +1,12 @@
 /**
- * /api/ai/english-practice — Luna English Practice Chat
+ * /api/ai/english-practice — Cosmo English Practice Chat
  *
- * Conversational English practice with the Luna owl persona.
+ * Conversational English practice with the Cosmo owl persona.
  * Uses 5-level prompt system for targeted difficulty.
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getLunaPromptByLevel, type LunaLevel } from "@/lib/ai/prompts";
+import { getCosmoPromptByLevel, type CosmoLevel } from "@/lib/ai/prompts";
 import { requireAuth, checkRateLimit, rateLimitResponse } from "@/lib/services/api-auth";
 
 interface ChatMessage {
@@ -58,19 +58,19 @@ export async function POST(request: NextRequest) {
 
         if (!apiKey) {
             return NextResponse.json({
-                response: "Luna is taking a short break! Please try again in a moment.",
+                response: "Cosmo is taking a short break! Please try again in a moment.",
                 isFallback: true,
             });
         }
 
         // Resolve level: use explicit level prop, or map legacy fluencyLevel
-        const level: LunaLevel = sessionContext.level
-            ? (Math.min(5, Math.max(1, sessionContext.level)) as LunaLevel)
+        const level: CosmoLevel = sessionContext.level
+            ? (Math.min(5, Math.max(1, sessionContext.level)) as CosmoLevel)
             : sessionContext.fluencyLevel === "advanced" ? 4
                 : sessionContext.fluencyLevel === "intermediate" ? 3
                     : 2;
 
-        const systemPrompt = getLunaPromptByLevel(level, {
+        const systemPrompt = getCosmoPromptByLevel(level, {
             studentName: sessionContext.studentName,
             grade: sessionContext.grade,
             topic: sessionContext.topic,
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
             const errBody = await aiRes.text();
             console.error("[english-practice] AI error:", aiRes.status, errBody);
             return NextResponse.json({
-                response: "Luna lost the signal! Try again?",
+                response: "Cosmo lost the signal! Try again?",
                 isFallback: true,
             });
         }
