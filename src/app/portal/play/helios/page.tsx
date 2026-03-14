@@ -22,7 +22,7 @@ function HeliosContent() {
     const searchParams = useSearchParams();
     const { playerDbId } = useAuth();
     const { loading: authLoading, allowed, redirecting } = useRequireAuth();
-    const { player, spendStars } = useGame();
+    const { player, spendStars, addCoinsWithMultiplier } = useGame();
 
     const [journeys, setJourneys] = useState<Journey[]>([]);
     const [selectedJourney, setSelectedJourney] = useState<string | null>(
@@ -58,18 +58,20 @@ function HeliosContent() {
 
     const handleGameComplete = useCallback(
         (score: number, _levelsCompleted: number) => {
-            console.log("[helios] Race completed, score:", score);
-            // Star Race doesn't follow the normal journey progress system
-            // Points/rewards can be added here later
+            // 🪙 Reward coins for completing a star race
+            addCoinsWithMultiplier(15, 'helios-race');
         },
-        [],
+        [addCoinsWithMultiplier],
     );
 
     const handleAnswered = useCallback(
         (questionId: string, isCorrect: boolean, subject: string, bloomLevel: number) => {
-            console.log("[helios]", isCorrect ? "✅" : "❌", questionId, subject, bloomLevel);
+            // 🪙 Reward coins for correct answers during race (+2 each)
+            if (isCorrect) {
+                addCoinsWithMultiplier(2, 'helios-answer');
+            }
         },
-        [],
+        [addCoinsWithMultiplier],
     );
 
     // Loading state

@@ -84,7 +84,12 @@ function PlayContent() {
     const handleGameComplete = async (finalScore: number, levelsCompleted: number) => {
         const cosmoReward = Math.max(100, finalScore);
         addCosmo(cosmoReward);
-        // BUG-004 FIX: coins only awarded when a journey makes progress (not on every game completion)
+
+        // 🪙 Reward coins per level completed (10 coins each)
+        const levelCoins = levelsCompleted * 10;
+        if (levelCoins > 0) {
+            addCoinsWithMultiplier(levelCoins, 'journey-levels');
+        }
 
         if (playerDbId && journeyId) {
             const planet = planetRef.current || await getPlanetForGrade(player.grade);
@@ -98,8 +103,8 @@ function PlayContent() {
                 let heritageBadge = null;
                 if (newCompleted >= levels.length && levels.length > 0) {
                     heritageBadge = await awardBadge(playerDbId, journeySlug);
-                    // Reward coins only when a meaningful milestone is reached
-                    addCoinsWithMultiplier(50, 'journey');
+                    // Bonus coins only when all levels completed
+                    addCoinsWithMultiplier(50, 'journey-complete');
                 }
 
                 // 🎯 Track portal level mission progress
@@ -184,6 +189,14 @@ function PlayContent() {
             }
         }
     }, [playerDbId]);  // BUG-009 FIX: starPopup removed from deps (using ref now)
+
+    // 🪙 Reward coins for correct answers (+2 per correct)
+    const handleAnsweredWithCoins = useCallback((questionId: string, isCorrect: boolean, subject: string, bloomLevel: number) => {
+        handleAnswered(questionId, isCorrect, subject, bloomLevel);
+        if (isCorrect) {
+            addCoinsWithMultiplier(2, 'game-answer');
+        }
+    }, [handleAnswered, addCoinsWithMultiplier]);
 
     /* ─── Refresh levels (re-fetch from server for smart question rotation) ─── */
     const refreshLevels = useCallback(async () => {
@@ -271,7 +284,7 @@ function PlayContent() {
                     onExit={() => router.push("/portal")}
                     playerClass={player.playerClass}
                     onGameComplete={handleGameComplete}
-                    onAnswered={handleAnswered}
+                    onAnswered={handleAnsweredWithCoins}
                     planetName={journeyTitle}
                     planetEmoji={journeyEmoji}
                     planetId={journeySlug}
