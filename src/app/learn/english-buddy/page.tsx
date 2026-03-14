@@ -9,6 +9,7 @@ import LunaChatSession from "@/components/learn/LunaChatSession";
 import LiveVoiceSession from "@/components/learn/LiveVoiceSession";
 
 /* ─── Voice options ─── */
+/* ─── Text Mode voices (Google Cloud TTS) ─── */
 const VOICES = [
     { id: "en-US-Studio-O", name: "Olivia", gender: "female", desc: "Ấm áp, tự nhiên nhất" },
     { id: "en-US-Chirp3-HD-Aoede", name: "Aria", gender: "female", desc: "Sáng, thân thiện" },
@@ -20,6 +21,18 @@ const VOICES = [
     { id: "en-US-Chirp3-HD-Puck", name: "Parker", gender: "male", desc: "Vui, playful" },
     { id: "en-US-Chirp3-HD-Charon", name: "Charlie", gender: "male", desc: "Ấm áp, tự nhiên" },
     { id: "en-US-Chirp3-HD-Orus", name: "Owen", gender: "male", desc: "Điềm tĩnh, rõ ràng" },
+];
+
+/* ─── Live Mode voices (Gemini Native Audio) ─── */
+const LIVE_VOICES = [
+    { id: "Zephyr", name: "Zephyr", gender: "female", desc: "⭐ Trẻ trung, sáng — phù hợp trẻ em nhất" },
+    { id: "Aoede", name: "Aoede", gender: "female", desc: "Ấm áp, thân thiện" },
+    { id: "Kore", name: "Kore", gender: "female", desc: "Nhẹ nhàng, dịu dàng" },
+    { id: "Leda", name: "Leda", gender: "female", desc: "Rõ ràng, trưởng thành" },
+    { id: "Puck", name: "Puck", gender: "male", desc: "⭐ Vui nhộn, playful — phù hợp trẻ em" },
+    { id: "Charon", name: "Charon", gender: "male", desc: "Ấm áp, tự nhiên" },
+    { id: "Fenrir", name: "Fenrir", gender: "male", desc: "Tự tin, mạnh mẽ" },
+    { id: "Orus", name: "Orus", gender: "male", desc: "Điềm tĩnh, rõ ràng" },
 ];
 
 /* ─── Duration ─── */
@@ -120,6 +133,7 @@ export default function EnglishBuddyPage() {
     const [step, setStep] = useState(1);
     const [dur, setDur] = useState(15);
     const [voice, setVoice] = useState(VOICES[0].id);
+    const [liveVoice, setLiveVoice] = useState(LIVE_VOICES[0].id);
     const [topic, setTopic] = useState("");
     const [past, setPast] = useState<PastSession[]>([]);
     const [, setLoading] = useState(false);
@@ -157,7 +171,7 @@ export default function EnglishBuddyPage() {
                 <button className="learn-btn learn-btn-secondary" style={{ fontSize: 13 }} onClick={() => setPhase("setup")}>← Quay lại</button>
             </div>
             {liveMode ? (
-                <LiveVoiceSession studentName={player.englishName?.trim() || player.name} grade={player.grade ?? 2} topic={activeTopic} durationMinutes={dur} playerId={playerDbId} voiceName={voice.includes("Kore") ? "Kore" : voice.includes("Puck") ? "Puck" : "Kore"} level={level} onSessionEnd={handleEnd} />
+                <LiveVoiceSession studentName={player.englishName?.trim() || player.name} grade={player.grade ?? 2} topic={activeTopic} durationMinutes={dur} playerId={playerDbId} voiceName={liveVoice} level={level} onSessionEnd={handleEnd} />
             ) : (
                 <LunaChatSession studentName={player.englishName?.trim() || player.name} grade={player.grade ?? 2} topic={activeTopic} durationMinutes={dur} playerId={playerDbId} voice={voice} level={level} onSessionEnd={handleEnd} />
             )}
@@ -419,15 +433,26 @@ export default function EnglishBuddyPage() {
                         </div>
 
                         <div style={{ marginBottom: 16 }}>
-                            <label style={{ display: "block", fontSize: 13, fontWeight: 800, color: "rgba(255,255,255,0.5)", marginBottom: 8 }}>🎙️ Chọn giọng nói</label>
-                            <select style={S.voiceSel} value={voice} onChange={e => setVoice(e.target.value)}>
-                                <optgroup label="👩 Giọng Nữ">
-                                    {VOICES.filter(v => v.gender === "female").map(v => (<option key={v.id} value={v.id} style={{ background: "#0F172A", color: "#fff" }}>{v.name} — {v.desc}</option>))}
-                                </optgroup>
-                                <optgroup label="👨 Giọng Nam">
-                                    {VOICES.filter(v => v.gender === "male").map(v => (<option key={v.id} value={v.id} style={{ background: "#0F172A", color: "#fff" }}>{v.name} — {v.desc}</option>))}
-                                </optgroup>
-                            </select>
+                            <label style={{ display: "block", fontSize: 13, fontWeight: 800, color: "rgba(255,255,255,0.5)", marginBottom: 8 }}>🎙️ Chọn giọng nói {liveMode && <span style={{ fontSize: 10, color: "#A78BFA", fontWeight: 600 }}>(Native Audio)</span>}</label>
+                            {liveMode ? (
+                                <select style={S.voiceSel} value={liveVoice} onChange={e => setLiveVoice(e.target.value)}>
+                                    <optgroup label="👩 Giọng Nữ">
+                                        {LIVE_VOICES.filter(v => v.gender === "female").map(v => (<option key={v.id} value={v.id} style={{ background: "#0F172A", color: "#fff" }}>{v.name} — {v.desc}</option>))}
+                                    </optgroup>
+                                    <optgroup label="👨 Giọng Nam">
+                                        {LIVE_VOICES.filter(v => v.gender === "male").map(v => (<option key={v.id} value={v.id} style={{ background: "#0F172A", color: "#fff" }}>{v.name} — {v.desc}</option>))}
+                                    </optgroup>
+                                </select>
+                            ) : (
+                                <select style={S.voiceSel} value={voice} onChange={e => setVoice(e.target.value)}>
+                                    <optgroup label="👩 Giọng Nữ">
+                                        {VOICES.filter(v => v.gender === "female").map(v => (<option key={v.id} value={v.id} style={{ background: "#0F172A", color: "#fff" }}>{v.name} — {v.desc}</option>))}
+                                    </optgroup>
+                                    <optgroup label="👨 Giọng Nam">
+                                        {VOICES.filter(v => v.gender === "male").map(v => (<option key={v.id} value={v.id} style={{ background: "#0F172A", color: "#fff" }}>{v.name} — {v.desc}</option>))}
+                                    </optgroup>
+                                </select>
+                            )}
                         </div>
 
                         <div style={S.btnPair}>
