@@ -438,6 +438,26 @@ export default function SeriesViewerPage() {
                                 </div>
                             </div>
 
+                            {/* Manual "Done watching" button — always visible during watch phase */}
+                            {phase === "watch" && currentEp && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.3 }}
+                                    className="sv-done-watching-section"
+                                >
+                                    <button
+                                        className="sv-done-watching-btn"
+                                        onClick={() => handleVideoEnded(currentEp.id)}
+                                    >
+                                        🎯 Xem xong — Làm câu hỏi
+                                    </button>
+                                    <p className="sv-done-watching-hint">
+                                        Bấm khi đã xem xong video để chuyển sang phần câu hỏi
+                                    </p>
+                                </motion.div>
+                            )}
+
                             {/* Quiz section */}
                             <AnimatePresence mode="wait">
                                 {phase === "quiz" && quizQuestions.length > 0 && (
@@ -686,6 +706,37 @@ export default function SeriesViewerPage() {
                     background: rgba(245,158,11,0.25);
                     transform: translateY(-2px);
                     box-shadow: 0 8px 24px rgba(245,158,11,0.2);
+                }
+
+                /* Manual "Done watching" button below video */
+                .sv-done-watching-section {
+                    text-align: center;
+                    padding: 16px 0;
+                    margin-bottom: 8px;
+                }
+                .sv-done-watching-btn {
+                    padding: 14px 32px;
+                    border-radius: 16px;
+                    border: 2px solid rgba(245,158,11,0.5);
+                    background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(245,158,11,0.08));
+                    color: #FBBF24;
+                    font-family: var(--font-heading);
+                    font-weight: 900;
+                    font-size: 16px;
+                    cursor: pointer;
+                    transition: all 0.25s;
+                    box-shadow: 0 4px 20px rgba(245,158,11,0.15);
+                }
+                .sv-done-watching-btn:hover {
+                    background: linear-gradient(135deg, rgba(245,158,11,0.25), rgba(245,158,11,0.12));
+                    transform: translateY(-2px);
+                    box-shadow: 0 8px 32px rgba(245,158,11,0.25);
+                    border-color: rgba(245,158,11,0.7);
+                }
+                .sv-done-watching-hint {
+                    font-size: 12px;
+                    color: rgba(255,255,255,0.3);
+                    margin-top: 8px;
                 }
 
                 /* Pause indicator */
