@@ -12,6 +12,7 @@ const NAV_CONTENT = [
     { href: "/admin/curriculum", icon: "📐", label: "Chương trình", id: "curriculum" },
     { href: "/admin/lessons", icon: "🎬", label: "Bài giảng", id: "lessons" },
     { href: "/admin/textbooks", icon: "📚", label: "Sách GK", id: "textbooks" },
+    { href: "/admin/video-theater", icon: "🌠", label: "StarFlix", id: "video-theater" },
 ];
 
 const NAV_QUESTIONS = [
@@ -229,7 +230,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                             pathname.includes("curriculum") ? "Chương trình học" :
                                                 pathname.includes("lessons") ? "Bài giảng" :
                                                     pathname.includes("textbooks") ? "Sách Giáo Khoa" :
-                                                        pathname.includes("players") ? "Quản lý Học sinh" : "Admin"}
+                                                        pathname.includes("video-theater") ? "StarFlix Vũ Trụ" :
+                                                            pathname.includes("players") ? "Quản lý Học sinh" : "Admin"}
                         </div>
                     </div>
                     <div className="adm-topbar-right">

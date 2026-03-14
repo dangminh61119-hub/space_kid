@@ -146,6 +146,39 @@ export default function PortalPage() {
                     </div>
                 </motion.div>
 
+                {/* ── StarFlix Vũ Trụ Banner ── */}
+                <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="max-w-6xl mx-auto px-4 mb-8"
+                >
+                    <Link href="/portal/starflix" style={{ textDecoration: 'none' }}>
+                        <div className="glass-card-strong p-4 sm:p-5 flex items-center gap-4 cursor-pointer transition-all hover:scale-[1.01]"
+                            style={{ borderLeft: '4px solid #8B5CF6', background: 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(59,130,246,0.04))' }}>
+                            <motion.div
+                                animate={{ y: [0, -6, 0], rotate: [0, 5, -5, 0] }}
+                                transition={{ duration: 3, repeat: Infinity }}
+                                className="text-4xl"
+                                style={{ filter: 'drop-shadow(0 0 12px rgba(139,92,246,0.5))' }}
+                            >
+                                🌠
+                            </motion.div>
+                            <div className="flex-1">
+                                <h3 className="text-white font-bold text-lg" style={{ fontFamily: 'var(--font-heading)' }}>
+                                    StarFlix Vũ Trụ
+                                </h3>
+                                <p className="text-white/50 text-sm">
+                                    Khám phá video bí ẩn từ dải ngân hà! Xem phim, vượt thử thách, mở khoá tập mới 🚀
+                                </p>
+                            </div>
+                            <div className="text-sm font-bold" style={{ color: '#c084fc', fontFamily: 'var(--font-heading)' }}>
+                                Xem ngay →
+                            </div>
+                        </div>
+                    </Link>
+                </motion.div>
+
                 {/* ── Planet Galaxy Bar ── */}
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}

@@ -221,3 +221,49 @@ export interface DBPlayerShip {
     ship_id: string;
     earned_at: string;
 }
+
+/* StarFlix Vũ Trụ — Video Theater */
+export interface DBVideoSeries {
+    id: string;
+    title: string;
+    description: string;
+    thumbnail_url: string;
+    category: 'english' | 'math' | 'science';
+    grade_min: number;
+    grade_max: number;
+    unlock_cost: number;
+    order_index: number;
+    is_active: boolean;
+    created_at: string;
+}
+
+export interface DBVideoEpisode {
+    id: string;
+    series_id: string;
+    title: string;
+    youtube_id: string;
+    duration_seconds: number;
+    order_index: number;
+    is_active: boolean;
+    created_at: string;
+}
+
+export interface DBVideoQuizQuestion {
+    id: string;
+    episode_id: string;
+    question_text: string;
+    options: string[];
+    correct_index: number;
+    order_index: number;
+    created_at: string;
+}
+
+export interface DBVideoWatchProgress {
+    id: string;
+    player_id: string;
+    episode_id: string;
+    watched: boolean;
+    quiz_passed: boolean;
+    quiz_skip_count: number;
+    updated_at: string;
+}
