@@ -111,7 +111,23 @@ export default function SeriesViewerPage() {
         setVideoEnded(false);
         setPlayerReady(false);
         setIsPlaying(false);
+        setQuizQuestions([]); // Reset quiz for new episode
     }, [currentEpIndex, progress, episodes]);
+
+    // Auto-load quiz questions when phase changes to "quiz"
+    useEffect(() => {
+        if (phase !== "quiz") return;
+        const ep = episodes[currentEpIndex];
+        if (!ep || quizQuestions.length > 0) return; // Already loaded
+        (async () => {
+            const quiz = await getEpisodeQuiz(ep.id);
+            setQuizQuestions(quiz);
+            if (quiz.length === 0) {
+                // No quiz for this episode → auto pass
+                setPhase("done");
+            }
+        })();
+    }, [phase, currentEpIndex, episodes]);
 
     const handleVideoEnded = useCallback(async (episodeId: string) => {
         if (!playerDbId) return;
@@ -388,6 +404,18 @@ export default function SeriesViewerPage() {
                                     </div>
                                 )}
 
+                                {/* Skip to quiz button for already-watched episodes */}
+                                {phase === "watch" && !isPlaying && !videoEnded && progress[currentEp?.id]?.watched && (
+                                    <div className="sv-skip-quiz-overlay">
+                                        <button className="sv-skip-quiz-btn" onClick={() => {
+                                            const ep = episodes[currentEpIndex];
+                                            if (ep) handleVideoEnded(ep.id);
+                                        }}>
+                                            🎯 Đã xem rồi — Đi tới câu hỏi
+                                        </button>
+                                    </div>
+                                )}
+
                                 {/* Bottom control bar */}
                                 <div className={`sv-controls ${showControls || !isPlaying ? 'visible' : ''}`}>
                                     <button className="sv-ctrl-btn" onClick={togglePlayPause} title={isPlaying ? 'Tạm dừng' : 'Phát'}>
@@ -628,6 +656,36 @@ export default function SeriesViewerPage() {
                     font-size: 24px;
                     font-weight: 900;
                     color: #34D399;
+                }
+
+                /* Skip to quiz button for already-watched episodes */
+                .sv-skip-quiz-overlay {
+                    position: absolute;
+                    bottom: 60px; left: 0; right: 0;
+                    z-index: 12;
+                    display: flex;
+                    justify-content: center;
+                    pointer-events: none;
+                }
+                .sv-skip-quiz-btn {
+                    pointer-events: all;
+                    padding: 10px 24px;
+                    border-radius: 14px;
+                    border: 1px solid rgba(245,158,11,0.4);
+                    background: rgba(245,158,11,0.15);
+                    backdrop-filter: blur(8px);
+                    color: #FBBF24;
+                    font-family: var(--font-heading);
+                    font-weight: 800;
+                    font-size: 14px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+                }
+                .sv-skip-quiz-btn:hover {
+                    background: rgba(245,158,11,0.25);
+                    transform: translateY(-2px);
+                    box-shadow: 0 8px 24px rgba(245,158,11,0.2);
                 }
 
                 /* Pause indicator */
