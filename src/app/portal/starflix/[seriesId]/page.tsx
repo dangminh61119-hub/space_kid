@@ -19,25 +19,14 @@ import VideoQuiz from "@/components/theater/VideoQuiz";
 import StarField from "@/components/StarField";
 import Navbar from "@/components/Navbar";
 
-/** Load YouTube IFrame API once */
-function useYouTubeAPI() {
-    const [ready, setReady] = useState(false);
-    useEffect(() => {
-        // Already loaded (e.g. cached or HMR)
-        if ((window as any).YT?.Player) { setReady(true); return; }
-
-        // Set callback BEFORE adding script to avoid race condition
-        (window as any).onYouTubeIframeAPIReady = () => setReady(true);
-
-        // Check if script tag already exists (from a previous render)
-        const existing = document.querySelector('script[src*="youtube.com/iframe_api"]');
-        if (!existing) {
-            const tag = document.createElement("script");
-            tag.src = "https://www.youtube.com/iframe_api";
-            document.head.appendChild(tag);
-        }
-    }, []);
-    return ready;
+/** YouTube iframe postMessage command helper */
+function ytCommand(iframe: HTMLIFrameElement | null, command: string, args?: any) {
+    if (!iframe?.contentWindow) return;
+    iframe.contentWindow.postMessage(JSON.stringify({
+        event: 'command',
+        func: command,
+        args: args ? [args] : [],
+    }), '*');
 }
 
 export default function SeriesViewerPage() {
@@ -47,56 +36,53 @@ export default function SeriesViewerPage() {
     const { playerDbId } = useAuth();
     const { loading: authLoading, allowed, redirecting } = useRequireAuth();
     const router = useRouter();
-    const ytReady = useYouTubeAPI();
+    const iframeRef = useRef<HTMLIFrameElement | null>(null);
+    const playerRef = useRef<any>(null); // keep for compat
 
     const [episodes, setEpisodes] = useState<VideoEpisode[]>([]);
     const [progress, setProgress] = useState<Record<string, EpisodeProgress>>({});
     const [currentEpIndex, setCurrentEpIndex] = useState(0);
     const [phase, setPhase] = useState<"watch" | "quiz" | "done">("watch");
-    const [quizQuestions, setQuizQuestions] = useState<VideoQuizQuestion[]>([]);
     const [loading, setLoading] = useState(true);
     const [seriesTitle, setSeriesTitle] = useState("");
+    const [isPlaying, setIsPlaying] = useState(false);
     const [videoEnded, setVideoEnded] = useState(false);
     const [playerReady, setPlayerReady] = useState(false);
-    const [isPlaying, setIsPlaying] = useState(false);
+    const [quizQuestions, setQuizQuestions] = useState<VideoQuizQuestion[]>([]);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [showControls, setShowControls] = useState(true);
-    const controlsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const wrapperRef = useRef<HTMLDivElement>(null);
+    const controlsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const playerRef = useRef<any>(null);
-    const containerRef = useRef<HTMLDivElement>(null);
-
-    // Load data
+    // Load series + episodes + progress
     useEffect(() => {
         async function load() {
             try {
-                const [eps, allSeries] = await Promise.all([
-                    getSeriesEpisodes(seriesId),
-                    adminGetAllSeries(),
-                ]);
-                setEpisodes(eps);
-                const series = allSeries.find(s => s.id === seriesId);
-                if (series) setSeriesTitle(series.title);
+                // Get series info
+                const allSeries = await adminGetAllSeries();
+                const thisSeries = allSeries.find(s => s.id === seriesId);
+                if (thisSeries) {
+                    setSeriesTitle(thisSeries.title);
 
-                if (playerDbId) {
-                    // Check series access
-                    if (series && series.unlockCost > 0) {
-                        const hasAccess = await isSeriesUnlocked(playerDbId, seriesId, series.unlockCost);
-                        if (!hasAccess) {
+                    // Access guard: check if series requires coins and is unlocked
+                    if (thisSeries.unlockCost > 0 && playerDbId) {
+                        const unlocked = await isSeriesUnlocked(playerDbId, seriesId, thisSeries.unlockCost);
+                        if (!unlocked) {
                             router.replace('/portal/starflix');
                             return;
                         }
                     }
+                }
 
+                const eps = await getSeriesEpisodes(seriesId);
+                setEpisodes(eps);
+
+                if (playerDbId) {
                     const prog = await getPlayerSeriesProgress(playerDbId, seriesId);
                     setProgress(prog);
 
-                    // Find first unwatched/unquizzed episode
-                    const firstUnfinished = eps.findIndex(ep => {
-                        const p = prog[ep.id];
-                        return !p || !p.quizPassed;
-                    });
+                    // Start at first unfinished episode
+                    const firstUnfinished = eps.findIndex(e => !prog[e.id]?.quizPassed);
                     setCurrentEpIndex(firstUnfinished >= 0 ? firstUnfinished : 0);
                 }
             } catch (e) {
@@ -106,7 +92,7 @@ export default function SeriesViewerPage() {
             }
         }
         load();
-    }, [seriesId, playerDbId]);
+    }, [seriesId, playerDbId, router]);
 
     // Determine phase for current episode
     useEffect(() => {
@@ -116,10 +102,8 @@ export default function SeriesViewerPage() {
         const prog = progress[ep.id];
 
         if (prog?.quizPassed) {
-            // Already completed → show video in done mode (can rewatch)
             setPhase("done");
         } else if (prog?.watched) {
-            // Watched but quiz not passed → show quiz
             setPhase("quiz");
         } else {
             setPhase("watch");
@@ -128,81 +112,6 @@ export default function SeriesViewerPage() {
         setPlayerReady(false);
         setIsPlaying(false);
     }, [currentEpIndex, progress, episodes]);
-
-    // Set up YouTube player
-    useEffect(() => {
-        if (!ytReady || episodes.length === 0) return;
-        const ep = episodes[currentEpIndex];
-        if (!ep) return;
-
-        // Destroy previous
-        if (playerRef.current) {
-            try { playerRef.current.destroy(); } catch { /* ignore */ }
-            playerRef.current = null;
-        }
-        setPlayerReady(false);
-
-        const container = document.getElementById("yt-player-container");
-        if (!container) return;
-
-        // Create fresh div for YouTube to replace
-        const div = document.createElement("div");
-        div.id = "yt-player";
-        container.innerHTML = "";
-        container.appendChild(div);
-
-        const epId = ep.id; // capture for closure
-        playerRef.current = new (window as any).YT.Player("yt-player", {
-            width: "100%",
-            height: "100%",
-            videoId: ep.youtubeId,
-            playerVars: {
-                controls: 0,
-                disablekb: 1,
-                modestbranding: 1,
-                rel: 0,
-                fs: 0,
-                iv_load_policy: 3,
-                playsinline: 1,
-                autoplay: 0,
-                enablejsapi: 1,
-                origin: typeof window !== 'undefined' ? window.location.origin : '',
-            },
-            events: {
-                onReady: () => {
-                    setPlayerReady(true);
-                },
-                onStateChange: (event: any) => {
-                    // YT states: -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering
-                    if (event.data === 1) {
-                        setIsPlaying(true);
-                        setVideoEnded(false);
-                    } else if (event.data === 2) {
-                        setIsPlaying(false);
-                    } else if (event.data === 0) {
-                        setIsPlaying(false);
-                        setVideoEnded(true);
-                        handleVideoEnded(epId);
-                    }
-                },
-            },
-        });
-
-        // Fallback: poll for playerReady in case onReady doesn't fire (cross-origin)
-        let attempts = 0;
-        const readyPoll = setInterval(() => {
-            attempts++;
-            if (attempts > 30) { clearInterval(readyPoll); return; }
-            try {
-                if (playerRef.current?.getPlayerState && typeof playerRef.current.getPlayerState === 'function') {
-                    setPlayerReady(true);
-                    clearInterval(readyPoll);
-                }
-            } catch { /* ignore */ }
-        }, 500);
-
-        return () => clearInterval(readyPoll);
-    }, [ytReady, currentEpIndex, episodes]);
 
     const handleVideoEnded = useCallback(async (episodeId: string) => {
         if (!playerDbId) return;
@@ -223,10 +132,56 @@ export default function SeriesViewerPage() {
         if (quiz.length > 0) {
             setPhase("quiz");
         } else {
-            // No quiz → auto pass
             setPhase("done");
         }
     }, [playerDbId]);
+
+    // Listen for YouTube iframe postMessage events
+    useEffect(() => {
+        const handler = (event: MessageEvent) => {
+            if (event.origin !== 'https://www.youtube.com') return;
+            try {
+                const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+                if (data.event === 'onReady') {
+                    setPlayerReady(true);
+                }
+                if (data.event === 'onStateChange') {
+                    const state = data.info;
+                    if (state === 1) {
+                        setIsPlaying(true);
+                        setVideoEnded(false);
+                    } else if (state === 2) {
+                        setIsPlaying(false);
+                    } else if (state === 0) {
+                        setIsPlaying(false);
+                        setVideoEnded(true);
+                        const ep = episodes[currentEpIndex];
+                        if (ep) handleVideoEnded(ep.id);
+                    }
+                }
+                if (data.event === 'initialDelivery' || data.info?.playerState !== undefined) {
+                    const state = data.info?.playerState;
+                    if (state === 1) { setIsPlaying(true); setVideoEnded(false); }
+                    else if (state === 2) { setIsPlaying(false); }
+                    else if (state === 0) { setIsPlaying(false); setVideoEnded(true); }
+                }
+            } catch { /* not a YouTube message */ }
+        };
+        window.addEventListener('message', handler);
+        return () => window.removeEventListener('message', handler);
+    }, [episodes, currentEpIndex, handleVideoEnded]);
+
+    // When iframe loads, tell YouTube to send us state change events
+    const handleIframeLoad = useCallback(() => {
+        setPlayerReady(true);
+        const iframe = iframeRef.current;
+        if (iframe?.contentWindow) {
+            iframe.contentWindow.postMessage(JSON.stringify({
+                event: 'listening',
+                id: 'yt-player',
+            }), '*');
+        }
+    }, []);
 
     const handleQuizPass = useCallback(async () => {
         const ep = episodes[currentEpIndex];
@@ -266,34 +221,20 @@ export default function SeriesViewerPage() {
         }
     };
 
-    // Start / pause / resume
+    // Start / pause / resume — use postMessage to talk to YouTube iframe
     const startPlayback = () => {
-        try {
-            if (playerRef.current?.playVideo) {
-                playerRef.current.playVideo();
-                // Optimistic state update in case onStateChange doesn't fire
-                setTimeout(() => {
-                    try {
-                        const state = playerRef.current?.getPlayerState?.();
-                        if (state === 1) setIsPlaying(true);
-                    } catch { /* ignore */ }
-                }, 1000);
-            }
-        } catch (e) {
-            console.error("[starflix] playVideo error:", e);
-        }
+        ytCommand(iframeRef.current, 'playVideo');
+        // Optimistic state update
+        setTimeout(() => setIsPlaying(true), 500);
     };
 
     const togglePlayPause = () => {
-        try {
-            if (!playerReady || !playerRef.current) return;
-            if (isPlaying) {
-                playerRef.current.pauseVideo();
-            } else {
-                playerRef.current.playVideo();
-            }
-        } catch (e) {
-            console.error("[starflix] togglePlayPause error:", e);
+        if (isPlaying) {
+            ytCommand(iframeRef.current, 'pauseVideo');
+            setIsPlaying(false);
+        } else {
+            ytCommand(iframeRef.current, 'playVideo');
+            setIsPlaying(true);
         }
     };
 
@@ -406,7 +347,18 @@ export default function SeriesViewerPage() {
                         <main className="sv-main">
                             {/* Video Player */}
                             <div className={`sv-player-wrap ${isFullscreen ? 'fullscreen' : ''}`} ref={wrapperRef} onMouseMove={resetControlsTimer}>
-                                <div id="yt-player-container" className="sv-yt-container" />
+                                {currentEp && (
+                                    <iframe
+                                        ref={iframeRef}
+                                        id="yt-player"
+                                        className="sv-yt-container"
+                                        src={`https://www.youtube.com/embed/${currentEp.youtubeId}?enablejsapi=1&controls=0&disablekb=1&modestbranding=1&rel=0&fs=0&iv_load_policy=3&playsinline=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`}
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowFullScreen={false}
+                                        onLoad={handleIframeLoad}
+                                        style={{ border: 'none', width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
+                                    />
+                                )}
 
                                 {/* Click overlay: only show when playing (for pause toggle) */}
                                 {isPlaying && (
