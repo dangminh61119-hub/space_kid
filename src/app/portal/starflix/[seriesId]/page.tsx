@@ -21,11 +21,19 @@ import Navbar from "@/components/Navbar";
 function useYouTubeAPI() {
     const [ready, setReady] = useState(false);
     useEffect(() => {
+        // Already loaded (e.g. cached or HMR)
         if ((window as any).YT?.Player) { setReady(true); return; }
-        const tag = document.createElement("script");
-        tag.src = "https://www.youtube.com/iframe_api";
-        document.head.appendChild(tag);
+
+        // Set callback BEFORE adding script to avoid race condition
         (window as any).onYouTubeIframeAPIReady = () => setReady(true);
+
+        // Check if script tag already exists (from a previous render)
+        const existing = document.querySelector('script[src*="youtube.com/iframe_api"]');
+        if (!existing) {
+            const tag = document.createElement("script");
+            tag.src = "https://www.youtube.com/iframe_api";
+            document.head.appendChild(tag);
+        }
     }, []);
     return ready;
 }
@@ -46,6 +54,7 @@ export default function SeriesViewerPage() {
     const [loading, setLoading] = useState(true);
     const [seriesTitle, setSeriesTitle] = useState("");
     const [videoEnded, setVideoEnded] = useState(false);
+    const [playerReady, setPlayerReady] = useState(false);
 
     const playerRef = useRef<any>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -99,6 +108,7 @@ export default function SeriesViewerPage() {
             setPhase("watch");
         }
         setVideoEnded(false);
+        setPlayerReady(false);
     }, [currentEpIndex, progress, episodes]);
 
     // Set up YouTube player
@@ -109,19 +119,24 @@ export default function SeriesViewerPage() {
 
         // Destroy previous
         if (playerRef.current) {
-            try { playerRef.current.destroy(); } catch { }
+            try { playerRef.current.destroy(); } catch { /* ignore */ }
+            playerRef.current = null;
         }
+        setPlayerReady(false);
 
         const container = document.getElementById("yt-player-container");
         if (!container) return;
 
-        // Create fresh div
+        // Create fresh div for YouTube to replace
         const div = document.createElement("div");
         div.id = "yt-player";
         container.innerHTML = "";
         container.appendChild(div);
 
+        const epId = ep.id; // capture for closure
         playerRef.current = new (window as any).YT.Player("yt-player", {
+            width: "100%",
+            height: "100%",
             videoId: ep.youtubeId,
             playerVars: {
                 controls: 0,
@@ -132,13 +147,17 @@ export default function SeriesViewerPage() {
                 iv_load_policy: 3,
                 playsinline: 1,
                 autoplay: 0,
+                origin: typeof window !== 'undefined' ? window.location.origin : '',
             },
             events: {
+                onReady: () => {
+                    setPlayerReady(true);
+                },
                 onStateChange: (event: any) => {
                     // YT.PlayerState.ENDED = 0
                     if (event.data === 0) {
                         setVideoEnded(true);
-                        handleVideoEnded(ep.id);
+                        handleVideoEnded(epId);
                     }
                 },
             },
@@ -209,8 +228,12 @@ export default function SeriesViewerPage() {
 
     // Start watching
     const startPlayback = () => {
-        if (playerRef.current?.playVideo) {
-            playerRef.current.playVideo();
+        try {
+            if (playerReady && playerRef.current?.playVideo) {
+                playerRef.current.playVideo();
+            }
+        } catch (e) {
+            console.error("[starflix] playVideo error:", e);
         }
     };
 
@@ -487,12 +510,14 @@ export default function SeriesViewerPage() {
                     margin-bottom: 20px;
                 }
                 .sv-yt-container {
+                    position: absolute;
+                    top: 0; left: 0;
                     width: 100%;
                     height: 100%;
                 }
                 .sv-yt-container :global(iframe) {
-                    width: 100%;
-                    height: 100%;
+                    width: 100% !important;
+                    height: 100% !important;
                     border: none;
                 }
                 .sv-overlay {
@@ -500,6 +525,7 @@ export default function SeriesViewerPage() {
                     top: 0; left: 0; right: 0; bottom: 0;
                     z-index: 5;
                     cursor: default;
+                    background: transparent;
                 }
                 .sv-play-btn {
                     position: absolute;
