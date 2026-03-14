@@ -87,6 +87,35 @@ export async function getVideoSeries(grade: number): Promise<VideoSeries[]> {
     }));
 }
 
+/** Get ALL active series regardless of grade */
+export async function getAllVideoSeries(): Promise<VideoSeries[]> {
+    if (isMockMode || !supabase) return [];
+
+    const { data, error } = await supabase
+        .from("video_series")
+        .select("*, video_episodes(id)")
+        .eq("is_active", true)
+        .order("order_index");
+
+    if (error || !data) {
+        console.error("[starflix] getAllVideoSeries error:", error);
+        return [];
+    }
+
+    return (data as (DBVideoSeries & { video_episodes: { id: string }[] })[]).map(s => ({
+        id: s.id,
+        title: s.title,
+        description: s.description,
+        thumbnailUrl: s.thumbnail_url,
+        category: s.category,
+        gradeMin: s.grade_min,
+        gradeMax: s.grade_max,
+        unlockCost: s.unlock_cost,
+        orderIndex: s.order_index,
+        episodeCount: s.video_episodes?.length ?? 0,
+    }));
+}
+
 /* ─── Series Unlock ─── */
 
 /** Get all series IDs that a player has unlocked */

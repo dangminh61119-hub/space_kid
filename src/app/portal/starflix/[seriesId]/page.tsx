@@ -165,6 +165,7 @@ export default function SeriesViewerPage() {
                 iv_load_policy: 3,
                 playsinline: 1,
                 autoplay: 0,
+                enablejsapi: 1,
                 origin: typeof window !== 'undefined' ? window.location.origin : '',
             },
             events: {
@@ -186,6 +187,21 @@ export default function SeriesViewerPage() {
                 },
             },
         });
+
+        // Fallback: poll for playerReady in case onReady doesn't fire (cross-origin)
+        let attempts = 0;
+        const readyPoll = setInterval(() => {
+            attempts++;
+            if (attempts > 30) { clearInterval(readyPoll); return; }
+            try {
+                if (playerRef.current?.getPlayerState && typeof playerRef.current.getPlayerState === 'function') {
+                    setPlayerReady(true);
+                    clearInterval(readyPoll);
+                }
+            } catch { /* ignore */ }
+        }, 500);
+
+        return () => clearInterval(readyPoll);
     }, [ytReady, currentEpIndex, episodes]);
 
     const handleVideoEnded = useCallback(async (episodeId: string) => {
@@ -253,8 +269,15 @@ export default function SeriesViewerPage() {
     // Start / pause / resume
     const startPlayback = () => {
         try {
-            if (playerReady && playerRef.current?.playVideo) {
+            if (playerRef.current?.playVideo) {
                 playerRef.current.playVideo();
+                // Optimistic state update in case onStateChange doesn't fire
+                setTimeout(() => {
+                    try {
+                        const state = playerRef.current?.getPlayerState?.();
+                        if (state === 1) setIsPlaying(true);
+                    } catch { /* ignore */ }
+                }, 1000);
             }
         } catch (e) {
             console.error("[starflix] playVideo error:", e);
@@ -385,11 +408,13 @@ export default function SeriesViewerPage() {
                             <div className={`sv-player-wrap ${isFullscreen ? 'fullscreen' : ''}`} ref={wrapperRef} onMouseMove={resetControlsTimer}>
                                 <div id="yt-player-container" className="sv-yt-container" />
 
-                                {/* Click overlay: play/pause toggle */}
-                                <div className="sv-overlay" onClick={isPlaying || videoEnded ? togglePlayPause : startPlayback} />
+                                {/* Click overlay: only show when playing (for pause toggle) */}
+                                {isPlaying && (
+                                    <div className="sv-overlay" onClick={togglePlayPause} />
+                                )}
 
                                 {/* Initial play button — only before first play */}
-                                {!isPlaying && !videoEnded && !isPlaying && phase === "watch" && (
+                                {!isPlaying && !videoEnded && phase === "watch" && (
                                     <button className="sv-play-btn" onClick={startPlayback}>
                                         <span>▶</span>
                                     </button>

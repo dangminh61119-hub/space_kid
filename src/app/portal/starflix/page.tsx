@@ -1,15 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useGame } from "@/lib/game-context";
 import { useAuth } from "@/lib/services/auth-context";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
-import { getVideoSeries, getPlayerSeriesProgress, getPlayerUnlockedSeries, unlockSeriesWithCoins, type VideoSeries } from "@/lib/services/video-theater-service";
+import { getAllVideoSeries, getPlayerSeriesProgress, getPlayerUnlockedSeries, unlockSeriesWithCoins, type VideoSeries } from "@/lib/services/video-theater-service";
 import StarField from "@/components/StarField";
 import Navbar from "@/components/Navbar";
+
+const ITEMS_PER_PAGE = 6;
 
 const CATEGORY_CONFIG: Record<string, { label: string; emoji: string; color: string }> = {
     english: { label: "Tiếng Anh", emoji: "🌍", color: "#3B82F6" },
@@ -26,6 +28,8 @@ export default function StarFlixPage() {
     const [loading, setLoading] = useState(true);
     const [progressMap, setProgressMap] = useState<Record<string, { watched: number; total: number }>>({});
     const [filter, setFilter] = useState<string>("all");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
     const [unlockedSet, setUnlockedSet] = useState<Set<string>>(new Set());
     const [unlockModal, setUnlockModal] = useState<VideoSeries | null>(null);
     const [unlocking, setUnlocking] = useState(false);
@@ -33,10 +37,10 @@ export default function StarFlixPage() {
     useEffect(() => {
         async function load() {
             try {
-                const data = await getVideoSeries(player.grade);
+                const data = await getAllVideoSeries();
                 setSeries(data);
 
-                // Load progress + unlock status for each series
+                // Load progress + unlock status
                 if (playerDbId) {
                     const [map2, unlocked] = await Promise.all([
                         (async () => {
@@ -60,9 +64,27 @@ export default function StarFlixPage() {
             }
         }
         load();
-    }, [player.grade, playerDbId]);
+    }, [playerDbId]);
 
-    const filteredSeries = filter === "all" ? series : series.filter(s => s.category === filter);
+    // Filter + search + paginate
+    const filteredSeries = useMemo(() => {
+        let result = series;
+        if (filter !== "all") result = result.filter(s => s.category === filter);
+        if (searchQuery.trim()) {
+            const q = searchQuery.trim().toLowerCase();
+            result = result.filter(s =>
+                s.title.toLowerCase().includes(q) ||
+                s.description.toLowerCase().includes(q)
+            );
+        }
+        return result;
+    }, [series, filter, searchQuery]);
+
+    const totalPages = Math.max(1, Math.ceil(filteredSeries.length / ITEMS_PER_PAGE));
+    const paginatedSeries = filteredSeries.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+    // Reset page when filter/search changes
+    useEffect(() => { setCurrentPage(1); }, [filter, searchQuery]);
 
     const handleCardClick = (s: VideoSeries) => {
         const isFree = s.unlockCost <= 0;
@@ -167,6 +189,36 @@ export default function StarFlixPage() {
                     ))}
                 </motion.div>
 
+                {/* Search Bar */}
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                    className="sf-search-wrap"
+                >
+                    <span className="sf-search-icon">🔍</span>
+                    <input
+                        type="text"
+                        className="sf-search-input"
+                        placeholder="Tìm kiếm phim theo tên hoặc mô tả..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                    />
+                    {searchQuery && (
+                        <button className="sf-search-clear" onClick={() => setSearchQuery("")}>
+                            ✕
+                        </button>
+                    )}
+                </motion.div>
+
+                {/* Result count */}
+                {!loading && (
+                    <div className="sf-result-count">
+                        {filteredSeries.length} series{searchQuery ? ` cho "${searchQuery}"` : ''}
+                        {filter !== 'all' ? ` • ${CATEGORY_CONFIG[filter]?.label}` : ''}
+                    </div>
+                )}
+
                 {/* Series Grid */}
                 {loading ? (
                     <div className="sf-loading">
@@ -182,17 +234,21 @@ export default function StarFlixPage() {
                 ) : filteredSeries.length === 0 ? (
                     <div className="sf-empty">
                         <div style={{ fontSize: 60, marginBottom: 16 }}>📡</div>
-                        <h3>Chưa có phim nào</h3>
-                        <p>Rạp chiếu đang được chuẩn bị. Quay lại sau nhé!</p>
+                        <h3>{searchQuery ? 'Không tìm thấy' : 'Chưa có phim nào'}</h3>
+                        <p>{searchQuery ? `Không tìm thấy phim nào cho "${searchQuery}"` : 'Rạp chiếu đang được chuẩn bị. Quay lại sau nhé!'}</p>
+                        {searchQuery && (
+                            <button className="sf-empty-clear" onClick={() => setSearchQuery("")}>Xoá tìm kiếm</button>
+                        )}
                     </div>
                 ) : (
+                    <>
                     <motion.div
                         initial="hidden"
                         animate="visible"
                         variants={{ visible: { transition: { staggerChildren: 0.08 } } }}
                         className="sf-grid"
                     >
-                        {filteredSeries.map((s) => {
+                        {paginatedSeries.map((s) => {
                             const cfg = CATEGORY_CONFIG[s.category] || CATEGORY_CONFIG.english;
                             const prog = progressMap[s.id];
                             const progressPct = prog && prog.total > 0 ? Math.round((prog.watched / prog.total) * 100) : 0;
@@ -274,6 +330,38 @@ export default function StarFlixPage() {
                             );
                         })}
                     </motion.div>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="sf-pagination">
+                            <button
+                                className="sf-page-btn"
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage === 1}
+                            >
+                                ← Trước
+                            </button>
+                            <div className="sf-page-numbers">
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                    <button
+                                        key={page}
+                                        className={`sf-page-num ${page === currentPage ? 'active' : ''}`}
+                                        onClick={() => setCurrentPage(page)}
+                                    >
+                                        {page}
+                                    </button>
+                                ))}
+                            </div>
+                            <button
+                                className="sf-page-btn"
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={currentPage === totalPages}
+                            >
+                                Tiếp →
+                            </button>
+                        </div>
+                    )}
+                    </>
                 )}
 
                 {/* Back link */}
@@ -710,11 +798,122 @@ export default function StarFlixPage() {
                 }
                 .sf-back-link:hover { color: #c084fc; }
 
+                /* Search Bar */
+                .sf-search-wrap {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    background: rgba(255,255,255,0.04);
+                    border: 1px solid rgba(255,255,255,0.08);
+                    border-radius: 14px;
+                    padding: 10px 16px;
+                    margin-bottom: 12px;
+                    transition: border-color 0.2s;
+                }
+                .sf-search-wrap:focus-within {
+                    border-color: rgba(139,92,246,0.4);
+                    background: rgba(255,255,255,0.06);
+                }
+                .sf-search-icon { font-size: 18px; opacity: 0.5; flex-shrink: 0; }
+                .sf-search-input {
+                    flex: 1;
+                    background: none;
+                    border: none;
+                    outline: none;
+                    color: #e2e8f0;
+                    font-size: 14px;
+                    font-family: inherit;
+                }
+                .sf-search-input::placeholder { color: rgba(255,255,255,0.25); }
+                .sf-search-clear {
+                    background: rgba(255,255,255,0.08);
+                    border: none;
+                    color: rgba(255,255,255,0.5);
+                    width: 24px; height: 24px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 12px;
+                    display: flex; align-items: center; justify-content: center;
+                    transition: all 0.15s;
+                    flex-shrink: 0;
+                }
+                .sf-search-clear:hover { background: rgba(255,255,255,0.15); color: #fff; }
+
+                /* Result count */
+                .sf-result-count {
+                    font-size: 12px;
+                    color: rgba(255,255,255,0.35);
+                    margin-bottom: 16px;
+                    padding-left: 4px;
+                }
+
+                /* Pagination */
+                .sf-pagination {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                    margin-top: 32px;
+                    padding: 16px 0;
+                }
+                .sf-page-numbers { display: flex; gap: 4px; }
+                .sf-page-btn {
+                    padding: 8px 16px;
+                    border-radius: 10px;
+                    border: 1px solid rgba(255,255,255,0.08);
+                    background: rgba(255,255,255,0.04);
+                    color: rgba(255,255,255,0.6);
+                    font-size: 13px;
+                    font-weight: 700;
+                    font-family: inherit;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .sf-page-btn:hover:not(:disabled) { background: rgba(139,92,246,0.1); border-color: rgba(139,92,246,0.3); color: #c084fc; }
+                .sf-page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+                .sf-page-num {
+                    width: 36px; height: 36px;
+                    border-radius: 10px;
+                    border: 1px solid rgba(255,255,255,0.06);
+                    background: rgba(255,255,255,0.03);
+                    color: rgba(255,255,255,0.5);
+                    font-size: 13px;
+                    font-weight: 700;
+                    font-family: inherit;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    display: flex; align-items: center; justify-content: center;
+                }
+                .sf-page-num:hover { background: rgba(139,92,246,0.1); color: #c084fc; }
+                .sf-page-num.active {
+                    background: linear-gradient(135deg, #8B5CF6, #6366F1);
+                    color: #fff;
+                    border-color: transparent;
+                    box-shadow: 0 4px 12px rgba(139,92,246,0.3);
+                }
+
+                /* Empty state clear */
+                .sf-empty-clear {
+                    margin-top: 16px;
+                    padding: 10px 24px;
+                    border-radius: 12px;
+                    border: 1px solid rgba(139,92,246,0.3);
+                    background: rgba(139,92,246,0.08);
+                    color: #c084fc;
+                    font-size: 13px;
+                    font-weight: 700;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    font-family: inherit;
+                }
+                .sf-empty-clear:hover { background: rgba(139,92,246,0.15); }
+
                 @media (max-width: 640px) {
                     .sf-hero { flex-direction: column; gap: 16px; padding: 24px 20px; align-items: flex-start; }
                     .sf-hero-title { font-size: 24px; }
                     .sf-hero-icon { font-size: 40px; }
                     .sf-grid { grid-template-columns: 1fr; }
+                    .sf-pagination { flex-wrap: wrap; }
                 }
             `}</style>
         </div>
