@@ -12,7 +12,7 @@ interface LevelIntroProps {
     subject: string;
     onStart: () => void;
     playerClass?: "warrior" | "wizard" | "hunter" | null;
-    gameMode?: "shooter" | "star-hunter" | "math-forge" | "meteor" | "rush" | "word-craft" | "timebomb" | "galaxy-sort" | "cosmo-bridge" | "boss" | "star-race";
+    gameMode?: "shooter" | "star-hunter" | "math-forge" | "meteor" | "rush" | "word-craft" | "timebomb" | "galaxy-sort" | "cosmo-bridge" | "boss" | "star-race" | "nebula-flip" | "gravity-well" | "constellation";
 }
 
 const classMessages = {
@@ -134,6 +134,30 @@ const MODE_INTRO: Record<string, ModeConfig> = {
         iconAnim: { scale: [0.4, 1.1, 1], opacity: [0, 1], rotate: [10, -5, 0] },
         iconTransition: { duration: 0.5, ease: "easeOut" },
         tagline: "✍️ Viết đúng — chinh phục ngôn từ!",
+    },
+    "nebula-flip": {
+        icon: "🔮", label: "Lật Tinh Vân",
+        color: "#9333EA",
+        bgGlow: "radial-gradient(ellipse at 50% 30%, rgba(147,51,234,0.2) 0%, transparent 65%)",
+        iconAnim: { rotateY: [0, 180, 360], scale: [0.5, 1.1, 1], opacity: [0, 1] },
+        iconTransition: { duration: 0.8, ease: "easeOut" },
+        tagline: "🔮 Lật thẻ — tìm cặp tri thức ẩn giấu!",
+    },
+    "gravity-well": {
+        icon: "🌀", label: "Hố Hấp Dẫn",
+        color: "#7C3AED",
+        bgGlow: "radial-gradient(ellipse at 50% 50%, rgba(124,58,237,0.2) 0%, transparent 60%)",
+        iconAnim: { rotate: [0, 720], scale: [0, 1.2, 1], opacity: [0, 1] },
+        iconTransition: { duration: 1.0, ease: "easeOut" },
+        tagline: "🌀 Bắt đáp án trước khi lỗ đen nuốt chửng!",
+    },
+    "constellation": {
+        icon: "✨", label: "Vẽ Chòm Sao",
+        color: "#FFD700",
+        bgGlow: "radial-gradient(ellipse at 50% 20%, rgba(255,215,0,0.18) 0%, transparent 65%)",
+        iconAnim: { scale: [0, 1.3, 0.9, 1.1, 1], rotate: [0, 5, -5, 0], opacity: [0, 1] },
+        iconTransition: { duration: 0.7, ease: "easeOut" },
+        tagline: "✨ Nối sao sáng — vẽ chòm sao tri thức!",
     },
 };
 

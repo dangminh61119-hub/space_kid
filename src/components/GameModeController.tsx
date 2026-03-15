@@ -9,6 +9,9 @@ import TimeBombGame from "./TimeBombGame";
 import GalaxySortGame from "./GalaxySortGame";
 import CosmoBridgeGame from "./CosmoBridgeGame";
 import StarRaceGame from "./StarRaceGame";
+import NebulaFlipGame from "./NebulaFlipGame";
+import GravityWellGame from "./GravityWellGame";
+import ConstellationGame from "./ConstellationGame";
 import SummonOverlay from "./SummonOverlay";
 import LevelIntro from "./LevelIntro";
 import PlanetStoryIntro from "./PlanetStoryIntro";
@@ -20,7 +23,7 @@ import { MiniOwlSVG } from "./MascotAbilityButton";
 import ComboFlash from "./effects/ComboFlash";
 import { useGameSound } from "@/lib/sound/SoundProvider";
 
-type GameMode = "shooter" | "star-hunter" | "meteor" | "rush" | "timebomb" | "galaxy-sort" | "cosmo-bridge" | "boss" | "star-race";
+type GameMode = "shooter" | "star-hunter" | "meteor" | "rush" | "timebomb" | "galaxy-sort" | "cosmo-bridge" | "boss" | "star-race" | "nebula-flip" | "gravity-well" | "constellation";
 type ControllerState = "planetIntro" | "levelIntro" | "playing" | "levelWin" | "levelLose";
 
 /* ─── 3-Star Scoring System (GDD §9) ───
@@ -248,6 +251,8 @@ export default function GameModeController({
         galaxysort: "galaxy-sort",
         starhunter: "star-hunter",
         starrace: "star-race",
+        nebulaflip: "nebula-flip",
+        gravitywell: "gravity-well",
     };
     const rawMode = currentLevel?.gameMode || "timebomb";
     const activeMode: GameMode = MODE_ALIASES[rawMode] || (rawMode as GameMode);
@@ -430,7 +435,7 @@ export default function GameModeController({
         let gameComponent;
         switch (activeMode) {
             case "shooter":
-                gameComponent = <SpaceShooterGame key={gameKey} {...commonProps} />;
+                gameComponent = <SpaceShooterGame key={gameKey} {...commonProps} planetId={planetId} />;
                 break;
             case "star-hunter":
                 gameComponent = <StarHunterGame key={gameKey} {...commonProps} />;
@@ -456,8 +461,17 @@ export default function GameModeController({
             case "star-race":
                 gameComponent = <StarRaceGame key={gameKey} {...commonProps} />;
                 break;
+            case "nebula-flip":
+                gameComponent = <NebulaFlipGame key={gameKey} {...commonProps} />;
+                break;
+            case "gravity-well":
+                gameComponent = <GravityWellGame key={gameKey} {...commonProps} />;
+                break;
+            case "constellation":
+                gameComponent = <ConstellationGame key={gameKey} {...commonProps} />;
+                break;
             default:
-                gameComponent = <SpaceShooterGame key={gameKey} {...commonProps} />;
+                gameComponent = <SpaceShooterGame key={gameKey} {...commonProps} planetId={planetId} />;
         }
 
         // Wrap with SummonOverlay for 🔮 help system

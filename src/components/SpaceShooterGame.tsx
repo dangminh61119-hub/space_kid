@@ -1,11 +1,15 @@
 "use client";
 
 import { useRef, useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
+
+const BossFightOverlay = dynamic(() => import("./BossFightOverlay"), { ssr: false });
 import { Maximize, Minimize } from "lucide-react";
 import VolumeControl from "./VolumeControl";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { useGame } from "@/lib/game-context";
+
 
 /* ─── Types ─── */
 interface Question {
@@ -33,6 +37,8 @@ interface WordBomb {
     width: number;
     height: number;
     opacity: number;
+    colorIdx: number;
+    shapeType: number;
 }
 
 interface Laser {
@@ -40,6 +46,25 @@ interface Laser {
     x: number;
     y: number;
     speed: number;
+    trail: { x: number; y: number; alpha: number }[];
+}
+
+interface SpaceDust {
+    x: number;
+    y: number;
+    size: number;
+    speed: number;
+    alpha: number;
+    color: string;
+}
+
+interface Shockwave {
+    x: number;
+    y: number;
+    radius: number;
+    maxRadius: number;
+    alpha: number;
+    color: string;
 }
 
 interface Particle {
@@ -70,20 +95,64 @@ interface Props {
     onAnswered?: (questionId: string, isCorrect: boolean, subject: string, bloomLevel: number) => void;
     calmMode?: boolean;
     paused?: boolean;
+    planetId?: string;
 }
 
 /* ─── Constants ─── */
-const CANVAS_W = 800;
-const CANVAS_H = 600;
-const SHIP_W = 120;
-const SHIP_H = 120;
+const CANVAS_W = 900;
+const CANVAS_H = 500;
+const SHIP_W = 84;
+const SHIP_H = 84;
 const LASER_W = 6;
 const LASER_H = 24;
-const BOMB_H = 50;
+const BOMB_H = 35;
 const MAX_HP = 3;
+const NUM_SHAPES = 3; // number of distinct bomb shapes
+
+/* ─── Bomb shape path helper ─── */
+function drawBombShapePath(
+    c: CanvasRenderingContext2D,
+    shapeType: number,
+    bx: number, by: number, w: number, h: number
+) {
+    const cx = bx + w / 2;
+    const cy = by + h / 2;
+    c.beginPath();
+    switch (shapeType % NUM_SHAPES) {
+        case 0: { // Rounded rectangle (capsule)
+            const r = 14;
+            c.moveTo(bx + r, by);
+            c.lineTo(bx + w - r, by);
+            c.quadraticCurveTo(bx + w, by, bx + w, by + r);
+            c.lineTo(bx + w, by + h - r);
+            c.quadraticCurveTo(bx + w, by + h, bx + w - r, by + h);
+            c.lineTo(bx + r, by + h);
+            c.quadraticCurveTo(bx, by + h, bx, by + h - r);
+            c.lineTo(bx, by + r);
+            c.quadraticCurveTo(bx, by, bx + r, by);
+            break;
+        }
+        case 1: { // Shield / badge
+            c.moveTo(bx + 8, by);
+            c.lineTo(bx + w - 8, by);
+            c.quadraticCurveTo(bx + w, by, bx + w, by + 8);
+            c.lineTo(bx + w, by + h * 0.55);
+            c.quadraticCurveTo(bx + w, by + h * 0.75, cx, by + h);
+            c.quadraticCurveTo(bx, by + h * 0.75, bx, by + h * 0.55);
+            c.lineTo(bx, by + 8);
+            c.quadraticCurveTo(bx, by, bx + 8, by);
+            break;
+        }
+        case 2: { // Oval / circle
+            c.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
+            break;
+        }
+    }
+    c.closePath();
+}
 
 /* ─── Component ─── */
-export default function SpaceShooterGame({ levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false, paused = false }: Props) {
+export default function SpaceShooterGame({ levels, onExit, playerClass, onGameComplete, onAnswered, calmMode = false, paused = false, planetId }: Props) {
     const { playShoot, playHit, playCorrect, playWrong, playBGM, stopBGM } = useSoundEffects();
     const { player, useAbilityCharge } = useGame();
     const useAbilityChargeRef = useRef(useAbilityCharge);
@@ -91,7 +160,7 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
     const containerRef = useRef<HTMLDivElement>(null);
 
     // Game state
-    const [gameState, setGameState] = useState<"ready" | "playing" | "levelComplete" | "gameOver" | "win">("ready");
+    const [gameState, setGameState] = useState<"ready" | "playing" | "levelComplete" | "gameOver" | "win" | "boss">("ready");
     const [currentLevel, setCurrentLevel] = useState(0);
     const [score, setScore] = useState(0);
     const [hp, setHp] = useState(MAX_HP);
@@ -108,7 +177,11 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
     const bombs = useRef<WordBomb[]>([]);
     const particles = useRef<Particle[]>([]);
     const floatingTexts = useRef<FloatingText[]>([]);
-    const stars = useRef<{ x: number; y: number; size: number; speed: number; alpha: number }[]>([]);
+    const stars = useRef<{ x: number; y: number; size: number; speed: number; alpha: number; color: string; twinkleSpeed: number; layer: number }[]>([]);
+    const spaceDust = useRef<SpaceDust[]>([]);
+    const shockwaves = useRef<Shockwave[]>([]);
+    const engineParticles = useRef<Particle[]>([]);
+    const frameCount = useRef(0);
     const nextBombId = useRef(0);
     const nextLaserId = useRef(0);
     const nextTextId = useRef(0);
@@ -122,6 +195,8 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
     const gameStateRef = useRef(gameState);
     const isPausedRef = useRef(false);
     const shipImgRef = useRef<HTMLImageElement | null>(null);
+    const planetIdRef = useRef(planetId);
+    const currentLevelRef = useRef(0);
 
     // Keep refs in sync
     useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
@@ -130,20 +205,41 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
     useEffect(() => { hpRef.current = hp; }, [hp]);
     useEffect(() => { questionIdxRef.current = questionIdx; }, [questionIdx]);
     useEffect(() => { useAbilityChargeRef.current = useAbilityCharge; }, [useAbilityCharge]);
+    useEffect(() => { planetIdRef.current = planetId; }, [planetId]);
+    useEffect(() => { currentLevelRef.current = currentLevel; }, [currentLevel]);
 
-    /* ─── Init stars once ─── */
+    /* ─── Init stars + dust once ─── */
     useEffect(() => {
+        const starColors = ["#ffffff", "#ffffff", "#ffffff", "#B0E0FF", "#00F5FF", "#FFE066", "#FF6BFF"];
         const s = [];
-        for (let i = 0; i < 100; i++) {
+        for (let i = 0; i < 160; i++) {
+            const layer = i < 40 ? 0 : i < 100 ? 1 : 2; // 0=far, 1=mid, 2=near
             s.push({
                 x: Math.random() * CANVAS_W,
                 y: Math.random() * CANVAS_H,
-                size: Math.random() * 2 + 0.5,
-                speed: Math.random() * 0.5 + 0.1,
-                alpha: Math.random() * 0.7 + 0.3,
+                size: layer === 0 ? Math.random() * 1 + 0.3 : layer === 1 ? Math.random() * 1.5 + 0.5 : Math.random() * 2.5 + 1,
+                speed: layer === 0 ? 0.08 + Math.random() * 0.1 : layer === 1 ? 0.2 + Math.random() * 0.3 : 0.5 + Math.random() * 0.5,
+                alpha: Math.random() * 0.6 + 0.4,
+                color: starColors[Math.floor(Math.random() * starColors.length)],
+                twinkleSpeed: 0.5 + Math.random() * 2,
+                layer,
             });
         }
         stars.current = s;
+
+        // Init ambient space dust
+        const dust: SpaceDust[] = [];
+        for (let i = 0; i < 25; i++) {
+            dust.push({
+                x: Math.random() * CANVAS_W,
+                y: Math.random() * CANVAS_H,
+                size: Math.random() * 1.5 + 0.5,
+                speed: 0.15 + Math.random() * 0.3,
+                alpha: 0.1 + Math.random() * 0.2,
+                color: ["#00F5FF", "#FF6BFF", "#FFE066"][Math.floor(Math.random() * 3)],
+            });
+        }
+        spaceDust.current = dust;
 
         const img = new Image();
         img.src = "/spaceship.png";
@@ -172,18 +268,23 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
 
         const spacing = CANVAS_W / (filteredWords.length + 1);
 
+        // Progressive speed: increases with each question
+        const speedMultiplier = 1 + qIdx * 0.08;
+
         const newBombs: WordBomb[] = filteredWords.map((word, i) => {
-            const w = Math.max(word.length * 16 + 32, 120);
+            const w = Math.max(word.length * 12 + 24, 90);
             return {
                 id: nextBombId.current++,
                 text: word,
                 isCorrect: word === q.correctWord,
                 x: spacing * (i + 1) - w / 2,
                 y: -50 - Math.random() * 60,
-                speed: (0.5 + Math.random() * 0.3) * level.speed * (playerClass === "wizard" ? 0.7 : 1),
+                speed: (0.3 + Math.random() * 0.18) * level.speed * speedMultiplier * (playerClass === "wizard" ? 0.7 : 1),
                 width: w,
                 height: BOMB_H,
                 opacity: 1,
+                colorIdx: Math.floor(Math.random() * 4),
+                shapeType: qIdx % NUM_SHAPES,
             };
         });
         bombs.current = newBombs;
@@ -198,6 +299,8 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
         lasers.current = [];
         particles.current = [];
         floatingTexts.current = [];
+        shockwaves.current = [];
+        engineParticles.current = [];
         spawnTimer.current = 0;
         setGameState("playing");
         spawnBombs(lvlIdx, 0);
@@ -213,7 +316,7 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
         startLevel(0);
     }, [startLevel, playBGM]);
 
-    /* ─── Explosion particles & Text ─── */
+    /* ─── Explosion particles, Shockwave & Text ─── */
     const spawnExplosion = useCallback((x: number, y: number, color: string, scale = 1, count = 12) => {
         const actualCount = calmMode ? Math.ceil(count / 2) : count;
         for (let i = 0; i < actualCount; i++) {
@@ -226,6 +329,16 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                 life: 1,
                 color,
                 size: (2 + Math.random() * 3) * scale,
+            });
+        }
+        // Spawn shockwave ring
+        if (!calmMode) {
+            shockwaves.current.push({
+                x, y,
+                radius: 5,
+                maxRadius: 60 * scale,
+                alpha: 0.8,
+                color,
             });
         }
     }, []);
@@ -274,18 +387,21 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                     x: shipX.current - 25,
                     y: CANVAS_H - SHIP_H - 10,
                     speed: 7,
+                    trail: [],
                 },
                 {
                     id: nextLaserId.current++,
                     x: shipX.current,
                     y: CANVAS_H - SHIP_H - 20,
                     speed: 7,
+                    trail: [],
                 },
                 {
                     id: nextLaserId.current++,
                     x: shipX.current + 25,
                     y: CANVAS_H - SHIP_H - 10,
                     speed: 7,
+                    trail: [],
                 }
             );
         };
@@ -370,23 +486,67 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                 }
             }
 
-            // Move lasers
+            // Move lasers + update trails
             lasers.current = lasers.current.filter(l => {
+                l.trail.push({ x: l.x, y: l.y, alpha: 1 });
+                if (l.trail.length > 8) l.trail.shift();
+                l.trail.forEach(t => t.alpha *= 0.82);
                 l.y -= l.speed;
                 return l.y > -20;
             });
 
-            // Move bombs
-            let bombHitBottom = false;
-            for (const bomb of bombs.current) {
-                bomb.y += bomb.speed;
-                if (bomb.y > CANVAS_H + 10 && bomb.isCorrect) {
-                    bombHitBottom = true;
-                }
+            // Move space dust
+            for (const d of spaceDust.current) {
+                d.y += d.speed;
+                if (d.y > CANVAS_H) { d.y = -2; d.x = Math.random() * CANVAS_W; }
             }
 
-            // If correct bomb fell off screen → lose HP
-            if (bombHitBottom) {
+            // Update shockwaves
+            shockwaves.current = shockwaves.current.filter(sw => {
+                sw.radius += 4;
+                sw.alpha -= 0.04;
+                return sw.alpha > 0 && sw.radius < sw.maxRadius;
+            });
+
+            // Engine exhaust
+            if (Math.random() < 0.6) {
+                const ex = shipX.current + (Math.random() - 0.5) * 16;
+                const ey = CANVAS_H - 20;
+                engineParticles.current.push({
+                    x: ex, y: ey,
+                    vx: (Math.random() - 0.5) * 0.8,
+                    vy: 1 + Math.random() * 2,
+                    life: 1,
+                    color: Math.random() > 0.5 ? "#00F5FF" : "#FF6BFF",
+                    size: 1.5 + Math.random() * 2,
+                });
+            }
+            engineParticles.current = engineParticles.current.filter(p => {
+                p.x += p.vx; p.y += p.vy; p.life -= 0.04;
+                return p.life > 0;
+            });
+
+            frameCount.current++;
+
+            // Move bombs
+            for (const bomb of bombs.current) {
+                bomb.y += bomb.speed;
+            }
+
+            // Check bombs that fell off screen
+            const fellBombs = bombs.current.filter(b => b.y > CANVAS_H + 10);
+            let wrongFell = false;
+            for (const bomb of fellBombs) {
+                if (!bomb.isCorrect) {
+                    // WRONG bomb escaped — player failed to shoot it!
+                    wrongFell = true;
+                }
+                // Correct bomb falling off is fine — just remove it
+            }
+            // Remove all bombs that fell off screen
+            bombs.current = bombs.current.filter(b => b.y <= CANVAS_H + 10);
+
+            if (wrongFell) {
                 // Warrior shield: absorb first hit
                 if (playerClass === "warrior" && !shieldUsed) {
                     const charged = useAbilityChargeRef.current();
@@ -399,7 +559,6 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                         onAnswered?.("", false, levels[currentLevel]?.subject ?? "", 2);
                         advanceQuestion();
                     } else {
-                        // No charges — take damage
                         const newHp = hpRef.current - 1;
                         hpRef.current = newHp;
                         setHp(newHp);
@@ -423,7 +582,7 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                     spawnExplosion(CANVAS_W / 2, CANVAS_H - 30, "#FF4444");
                     if (newHp <= 0) {
                         stopBGM();
-                        onGameComplete?.(scoreRef.current, 0); // 0 = lose
+                        onGameComplete?.(scoreRef.current, 0);
                         setGameState("gameOver");
                         return;
                     }
@@ -446,18 +605,20 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                         hitLasers.add(laser.id);
                         hitBombs.add(bomb.id);
 
-                        if (bomb.isCorrect) {
-                            // Correct hit!
+                        if (!bomb.isCorrect) {
+                            // Correct action: shot a WRONG answer!
                             const pts = 100;
                             scoreRef.current += pts;
                             setScore(s => s + pts);
                             playCorrect();
                             spawnExplosion(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, "#00F5FF", 2, 25);
                             spawnText("+100 XP!", bomb.x + bomb.width / 2, bomb.y, "#00F5FF");
-                            // Record mastery (default bloom=2 for word recall; question id would give exact bloom)
                             onAnswered?.("", true, levels[currentLevel]?.subject ?? "", 2);
-                            advanceQuestion();
                         } else {
+                            // BAD: shot the CORRECT answer!
+                            spawnExplosion(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, "#FF4444", 1.5, 20);
+                            spawnText("Đáp án đúng!", bomb.x + bomb.width / 2, bomb.y, "#FF4444");
+
                             // Warrior shield check
                             if (playerClass === "warrior" && !shieldUsed) {
                                 const charged = useAbilityChargeRef.current();
@@ -466,17 +627,12 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                                     setAbilityNotice("🛡️ Lá chắn thép đã bảo vệ bạn!");
                                     setTimeout(() => setAbilityNotice(null), 2000);
                                     playHit();
-                                    spawnExplosion(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, "#FFE066", 1.5, 20);
-                                    spawnText("🛡️ Chắn!", bomb.x + bomb.width / 2, bomb.y, "#FFE066");
                                 } else {
-                                    // No charges
                                     const newHp = hpRef.current - 1;
                                     hpRef.current = newHp;
                                     setHp(newHp);
                                     playWrong();
                                     onAnswered?.("", false, levels[currentLevel]?.subject ?? "", 2);
-                                    spawnExplosion(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, "#FF4444", 1.5, 20);
-                                    spawnText("Oops!", bomb.x + bomb.width / 2, bomb.y, "#FF4444");
                                     if (newHp <= 0) {
                                         stopBGM();
                                         onGameComplete?.(scoreRef.current, 0);
@@ -485,28 +641,36 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                                     }
                                 }
                             } else {
-                                // Wrong hit → lose HP
                                 const newHp = hpRef.current - 1;
                                 hpRef.current = newHp;
                                 setHp(newHp);
                                 playWrong();
                                 onAnswered?.("", false, levels[currentLevel]?.subject ?? "", 2);
-                                spawnExplosion(bomb.x + bomb.width / 2, bomb.y + bomb.height / 2, "#FF4444", 1.5, 20);
-                                spawnText("Oops!", bomb.x + bomb.width / 2, bomb.y, "#FF4444");
                                 if (newHp <= 0) {
                                     stopBGM();
-                                    onGameComplete?.(scoreRef.current, 0); // 0 = lose
+                                    onGameComplete?.(scoreRef.current, 0);
                                     setGameState("gameOver");
                                     return;
                                 }
                             }
+                            // Shooting correct answer also advances question (penalty applied)
+                            advanceQuestion();
                         }
                     }
                 }
             }
 
             lasers.current = lasers.current.filter(l => !hitLasers.has(l.id));
-            bombs.current = bombs.current.filter(b => !hitBombs.has(b.id) && b.y < CANVAS_H + 50);
+            bombs.current = bombs.current.filter(b => !hitBombs.has(b.id));
+
+            // Check if all wrong bombs are destroyed → advance!
+            const wrongBombsLeft = bombs.current.filter(b => !b.isCorrect);
+            if (wrongBombsLeft.length === 0 && bombs.current.length > 0) {
+                // Only correct bomb(s) remaining — all wrong answers destroyed!
+                spawnText("✨ Hoàn thành!", CANVAS_W / 2, CANVAS_H / 2, "#FFD700");
+                bombs.current = []; // clear remaining correct bomb
+                advanceQuestion();
+            }
 
             // Update particles
             particles.current = particles.current.filter(p => {
@@ -526,16 +690,19 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
 
         const advanceQuestion = () => {
             const nextQ = questionIdxRef.current + 1;
-            const level = levels[currentLevel];
+            const lvlIdx = currentLevelRef.current;
+            const level = levels[lvlIdx];
             if (!level) return;
+
+            console.log("[shooter] advanceQuestion called! nextQ:", nextQ, "totalQs:", level.questions.length, "currentLevel:", lvlIdx, "totalLevels:", levels.length);
 
             if (nextQ >= level.questions.length) {
                 // Level complete
                 bombs.current = [];
-                if (currentLevel + 1 >= levels.length) {
-                    stopBGM();
-                    onGameComplete?.(scoreRef.current, currentLevel + 1);
-                    setGameState("win");
+                if (lvlIdx + 1 >= levels.length) {
+                    // All levels done — trigger boss fight!
+                    console.log("[shooter] 🐙 TRIGGERING BOSS FIGHT!");
+                    setGameState("boss");
                 } else {
                     setGameState("levelComplete");
                 }
@@ -545,182 +712,300 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                 // Small delay then spawn new bombs
                 setTimeout(() => {
                     if (gameStateRef.current === "playing") {
-                        spawnBombs(currentLevel, nextQ);
+                        spawnBombs(lvlIdx, nextQ);
                     }
                 }, 400);
             }
         };
 
         const draw = (c: CanvasRenderingContext2D) => {
-            // Background
-            c.fillStyle = "#0A0E27";
+            const t = Date.now() * 0.001; // time in seconds for animations
+
+            // ═══ 1. DEEP SPACE BACKGROUND ═══
+            const bgGrad = c.createLinearGradient(0, 0, 0, CANVAS_H);
+            bgGrad.addColorStop(0, "#050816");
+            bgGrad.addColorStop(0.3, "#0A0E27");
+            bgGrad.addColorStop(0.6, "#0D0B2E");
+            bgGrad.addColorStop(1, "#10072B");
+            c.fillStyle = bgGrad;
             c.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-            // Stars
+            // ═══ 2. ANIMATED NEBULA CLOUDS ═══
+            // Nebula 1 — cyan, drifts slowly
+            const n1x = CANVAS_W * 0.3 + Math.sin(t * 0.15) * 60;
+            const n1y = 120 + Math.cos(t * 0.1) * 30;
+            const neb1 = c.createRadialGradient(n1x, n1y, 20, n1x, n1y, 280);
+            neb1.addColorStop(0, "rgba(0,245,255,0.06)");
+            neb1.addColorStop(0.4, "rgba(0,200,255,0.03)");
+            neb1.addColorStop(1, "transparent");
+            c.fillStyle = neb1;
+            c.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+            // Nebula 2 — magenta, opposite drift
+            const n2x = CANVAS_W * 0.7 + Math.cos(t * 0.12) * 50;
+            const n2y = 250 + Math.sin(t * 0.08) * 40;
+            const neb2 = c.createRadialGradient(n2x, n2y, 15, n2x, n2y, 320);
+            neb2.addColorStop(0, "rgba(255,107,255,0.05)");
+            neb2.addColorStop(0.5, "rgba(147,51,234,0.03)");
+            neb2.addColorStop(1, "transparent");
+            c.fillStyle = neb2;
+            c.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+            // Nebula 3 — gold, subtle at top
+            const n3x = CANVAS_W * 0.5 + Math.sin(t * 0.2) * 40;
+            const neb3 = c.createRadialGradient(n3x, 50, 10, n3x, 50, 200);
+            neb3.addColorStop(0, "rgba(255,224,102,0.04)");
+            neb3.addColorStop(1, "transparent");
+            c.fillStyle = neb3;
+            c.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+            // ═══ 3. PARALLAX STARFIELD WITH TWINKLING ═══
             for (const star of stars.current) {
-                c.globalAlpha = star.alpha;
-                c.fillStyle = "#ffffff";
+                const twinkle = 0.5 + 0.5 * Math.sin(t * star.twinkleSpeed + star.x * 0.1);
+                const alpha = star.alpha * (0.6 + 0.4 * twinkle);
+                c.globalAlpha = alpha;
+                c.fillStyle = star.color;
                 c.beginPath();
                 c.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                c.fill();
+                // Bright stars get a small cross-shaped glow
+                if (star.layer === 2 && star.size > 2) {
+                    c.globalAlpha = alpha * 0.3;
+                    c.fillRect(star.x - star.size * 2, star.y - 0.5, star.size * 4, 1);
+                    c.fillRect(star.x - 0.5, star.y - star.size * 2, 1, star.size * 4);
+                }
+            }
+            c.globalAlpha = 1;
+
+            // ═══ 4. AMBIENT SPACE DUST ═══
+            for (const d of spaceDust.current) {
+                c.globalAlpha = d.alpha * (0.7 + 0.3 * Math.sin(t * 1.5 + d.x));
+                c.fillStyle = d.color;
+                c.beginPath();
+                c.arc(d.x, d.y, d.size, 0, Math.PI * 2);
                 c.fill();
             }
             c.globalAlpha = 1;
 
-            // Nebula glow
-            const nebula = c.createRadialGradient(CANVAS_W / 2, 100, 30, CANVAS_W / 2, 100, 350);
-            nebula.addColorStop(0, "rgba(0,245,255,0.04)");
-            nebula.addColorStop(0.5, "rgba(255,107,255,0.03)");
-            nebula.addColorStop(1, "transparent");
-            c.fillStyle = nebula;
-            c.fillRect(0, 0, CANVAS_W, CANVAS_H);
+            // ═══ 5. ENGINE EXHAUST PARTICLES (behind ship) ═══
+            for (const ep of engineParticles.current) {
+                c.globalAlpha = ep.life * 0.7;
+                c.fillStyle = ep.color;
+                c.beginPath();
+                c.arc(ep.x, ep.y, ep.size * ep.life, 0, Math.PI * 2);
+                c.fill();
+            }
+            c.globalAlpha = 1;
 
-            // Bombs (word capsules)
+            // ═══ 6. ENHANCED BOMBS (word capsules) ═══
             for (const bomb of bombs.current) {
                 c.globalAlpha = bomb.opacity;
+                const bx = bomb.x;
+                const by = bomb.y + Math.sin(t * 2.5 + bomb.id) * 3; // subtle wobble
+                const bcx = bx + bomb.width / 2;
+                const bcy = by + bomb.height / 2;
+
+                // Per-bomb color palette (randomized, NOT based on isCorrect)
+                const BOMB_PALETTES = [
+                    { hex: "#00F5FF", r: 0, g: 245, b: 255 },   // cyan
+                    { hex: "#FF6BFF", r: 255, g: 107, b: 255 },  // magenta
+                    { hex: "#FFD700", r: 255, g: 215, b: 0 },    // gold
+                    { hex: "#7BFF7B", r: 123, g: 255, b: 123 },  // green
+                ];
+                const bp = BOMB_PALETTES[bomb.colorIdx % BOMB_PALETTES.length];
+
+                // Outer glow halo
+                const pulse = 0.6 + 0.4 * Math.sin(t * 3 + bomb.id * 0.7);
+                c.shadowColor = bp.hex;
+                c.shadowBlur = 15 * pulse;
 
                 // Glassmorphism capsule
-                const grad = c.createLinearGradient(bomb.x, bomb.y, bomb.x + bomb.width, bomb.y + bomb.height);
-                if (bomb.isCorrect) {
-                    grad.addColorStop(0, "rgba(0,245,255,0.15)");
-                    grad.addColorStop(1, "rgba(0,245,255,0.08)");
-                } else {
-                    grad.addColorStop(0, "rgba(255,107,255,0.15)");
-                    grad.addColorStop(1, "rgba(255,107,255,0.08)");
-                }
+                const grad = c.createLinearGradient(bx, by, bx + bomb.width, by + bomb.height);
+                grad.addColorStop(0, `rgba(${bp.r},${bp.g},${bp.b},0.18)`);
+                grad.addColorStop(1, `rgba(${bp.r},${bp.g},${bp.b},0.08)`);
 
-                // Rounded rect
-                const r = 12;
-                c.beginPath();
-                c.moveTo(bomb.x + r, bomb.y);
-                c.lineTo(bomb.x + bomb.width - r, bomb.y);
-                c.quadraticCurveTo(bomb.x + bomb.width, bomb.y, bomb.x + bomb.width, bomb.y + r);
-                c.lineTo(bomb.x + bomb.width, bomb.y + bomb.height - r);
-                c.quadraticCurveTo(bomb.x + bomb.width, bomb.y + bomb.height, bomb.x + bomb.width - r, bomb.y + bomb.height);
-                c.lineTo(bomb.x + r, bomb.y + bomb.height);
-                c.quadraticCurveTo(bomb.x, bomb.y + bomb.height, bomb.x, bomb.y + bomb.height - r);
-                c.lineTo(bomb.x, bomb.y + r);
-                c.quadraticCurveTo(bomb.x, bomb.y, bomb.x + r, bomb.y);
-                c.closePath();
+                // Shape path (varies per question)
+                drawBombShapePath(c, bomb.shapeType, bx, by, bomb.width, bomb.height);
 
                 c.fillStyle = grad;
                 c.fill();
-                c.strokeStyle = "rgba(255,255,255,0.2)";
-                c.lineWidth = 1;
-                c.stroke();
 
-                // Text
+                // Pulsing border
+                const borderAlpha = 0.2 + 0.3 * pulse;
+                c.strokeStyle = `rgba(${bp.r},${bp.g},${bp.b},${borderAlpha})`;
+                c.lineWidth = 1.5;
+                c.stroke();
+                c.shadowBlur = 0;
+
+                // Orbiting sparkles
+                for (let i = 0; i < 3; i++) {
+                    const angle = t * 2 + (Math.PI * 2 / 3) * i + bomb.id;
+                    const sparkR = Math.max(bomb.width, bomb.height) * 0.55;
+                    const sx = bcx + Math.cos(angle) * sparkR;
+                    const sy = bcy + Math.sin(angle) * sparkR * 0.5;
+                    c.globalAlpha = bomb.opacity * 0.6 * (0.5 + 0.5 * Math.sin(t * 5 + i));
+                    c.fillStyle = bp.hex;
+                    c.beginPath();
+                    c.arc(sx, sy, 1.5, 0, Math.PI * 2);
+                    c.fill();
+                }
+
+                // Text with subtle shadow
+                c.globalAlpha = bomb.opacity;
                 c.fillStyle = "#ffffff";
-                c.font = "bold 20px system-ui, -apple-system, sans-serif";
+                c.font = "bold 14px system-ui, -apple-system, sans-serif";
                 c.textAlign = "center";
                 c.textBaseline = "middle";
-                c.fillText(bomb.text, bomb.x + bomb.width / 2, bomb.y + bomb.height / 2);
+                c.shadowColor = `rgba(${bp.r},${bp.g},${bp.b},0.5)`;
+                c.shadowBlur = 6;
+                c.fillText(bomb.text, bcx, bcy);
+                c.shadowBlur = 0;
 
                 c.globalAlpha = 1;
             }
 
-            // Lasers
+            // ═══ 7. ENHANCED LASERS WITH TRAILS ═══
             for (const laser of lasers.current) {
-                // Glow
-                const glow = c.createLinearGradient(laser.x, laser.y, laser.x, laser.y + LASER_H);
-                glow.addColorStop(0, "rgba(0,245,255,0.9)");
-                glow.addColorStop(1, "rgba(0,245,255,0.2)");
-                c.fillStyle = glow;
-                c.fillRect(laser.x - LASER_W / 2, laser.y, LASER_W, LASER_H);
+                // Draw trail
+                for (const tp of laser.trail) {
+                    c.globalAlpha = tp.alpha * 0.4;
+                    c.fillStyle = "#00F5FF";
+                    c.fillRect(tp.x - 2, tp.y, 4, LASER_H * 0.6);
+                }
+                c.globalAlpha = 1;
 
-                // Core
-                c.fillStyle = "#ffffff";
-                c.fillRect(laser.x - 1, laser.y, 2, LASER_H);
-
-                // Glow effect
+                // Wide outer glow
                 c.shadowColor = "#00F5FF";
-                c.shadowBlur = 8;
-                c.fillRect(laser.x - 1, laser.y, 2, LASER_H);
+                c.shadowBlur = 18;
+                const glow = c.createLinearGradient(laser.x, laser.y, laser.x, laser.y + LASER_H);
+                glow.addColorStop(0, "rgba(0,245,255,0.95)");
+                glow.addColorStop(0.5, "rgba(0,200,255,0.6)");
+                glow.addColorStop(1, "rgba(0,245,255,0.1)");
+                c.fillStyle = glow;
+                c.fillRect(laser.x - LASER_W / 2 - 1, laser.y, LASER_W + 2, LASER_H);
+
+                // Bright white core
+                c.fillStyle = "#ffffff";
+                c.fillRect(laser.x - 1.5, laser.y, 3, LASER_H);
+
+                // Tip glow dot
+                c.beginPath();
+                c.arc(laser.x, laser.y, 3, 0, Math.PI * 2);
+                c.fillStyle = "#ffffff";
+                c.fill();
                 c.shadowBlur = 0;
             }
 
-            // Ship
+            // ═══ 8. SHIP WITH ENGINE GLOW ═══
             const sx = shipX.current;
             const sy = CANVAS_H - SHIP_H - 15;
 
+            // Engine glow underneath (always visible)
+            const enginePulse = 0.6 + 0.4 * Math.sin(t * 8);
+            c.shadowColor = "#00F5FF";
+            c.shadowBlur = 20 * enginePulse;
+            c.fillStyle = `rgba(0,245,255,${0.3 * enginePulse})`;
+            c.beginPath();
+            c.ellipse(sx, sy + SHIP_H + 2, 18, 8, 0, 0, Math.PI * 2);
+            c.fill();
+            c.shadowBlur = 0;
+
             if (shipImgRef.current) {
-                // Draw normally first
                 c.drawImage(shipImgRef.current, sx - SHIP_W / 2, sy, SHIP_W, SHIP_H);
 
-                // Then draw with 50% screen blend mode for glowing effect
                 const prevOp = c.globalCompositeOperation;
                 const prevAl = c.globalAlpha;
                 c.globalCompositeOperation = "screen";
-                c.globalAlpha = 0.5;
+                c.globalAlpha = 0.45 + 0.1 * Math.sin(t * 6);
                 c.drawImage(shipImgRef.current, sx - SHIP_W / 2, sy, SHIP_W, SHIP_H);
-
                 c.globalCompositeOperation = prevOp;
                 c.globalAlpha = prevAl;
             } else {
-                // Fallback Engine glow
-                c.shadowColor = "#00F5FF";
-                c.shadowBlur = 15;
-                c.fillStyle = "rgba(0,245,255,0.4)";
-                c.beginPath();
-                c.ellipse(sx, sy + SHIP_H + 5, 12, 6, 0, 0, Math.PI * 2);
-                c.fill();
-                c.shadowBlur = 0;
-
-                // Ship body
+                // Fallback ship body
                 c.fillStyle = "#1a2a4a";
                 c.beginPath();
-                c.moveTo(sx, sy - 5);                    // nose
-                c.lineTo(sx + SHIP_W / 2, sy + SHIP_H);  // right wing
-                c.lineTo(sx + 8, sy + SHIP_H - 8);       // right indent
-                c.lineTo(sx - 8, sy + SHIP_H - 8);       // left indent
-                c.lineTo(sx - SHIP_W / 2, sy + SHIP_H);  // left wing
+                c.moveTo(sx, sy - 5);
+                c.lineTo(sx + SHIP_W / 2, sy + SHIP_H);
+                c.lineTo(sx + 8, sy + SHIP_H - 8);
+                c.lineTo(sx - 8, sy + SHIP_H - 8);
+                c.lineTo(sx - SHIP_W / 2, sy + SHIP_H);
                 c.closePath();
                 c.fill();
-
-                // Ship highlight
                 c.strokeStyle = "rgba(0,245,255,0.6)";
                 c.lineWidth = 1.5;
                 c.stroke();
-
-                // Cockpit
                 c.fillStyle = "rgba(0,245,255,0.3)";
                 c.beginPath();
                 c.ellipse(sx, sy + 10, 6, 8, 0, 0, Math.PI * 2);
                 c.fill();
             }
 
-            // Particles
+            // ═══ 9. SHOCKWAVE RINGS ═══
+            for (const sw of shockwaves.current) {
+                c.globalAlpha = sw.alpha;
+                c.strokeStyle = sw.color;
+                c.lineWidth = 2.5;
+                c.beginPath();
+                c.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
+                c.stroke();
+                // Inner fading ring
+                if (sw.radius > 10) {
+                    c.globalAlpha = sw.alpha * 0.4;
+                    c.lineWidth = 1;
+                    c.beginPath();
+                    c.arc(sw.x, sw.y, sw.radius * 0.6, 0, Math.PI * 2);
+                    c.stroke();
+                }
+            }
+            c.globalAlpha = 1;
+
+            // ═══ 10. EXPLOSION PARTICLES ═══
             for (const p of particles.current) {
                 c.globalAlpha = p.life;
+                c.shadowColor = p.color;
+                c.shadowBlur = 6;
                 c.fillStyle = p.color;
                 c.beginPath();
                 c.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
                 c.fill();
             }
+            c.shadowBlur = 0;
 
-            // Floating Texts
-            for (const t of floatingTexts.current) {
-                c.globalAlpha = t.life;
-                c.fillStyle = t.color;
+            // ═══ 11. FLOATING TEXTS ═══
+            for (const ft of floatingTexts.current) {
+                c.globalAlpha = ft.life;
+                c.fillStyle = ft.color;
                 c.font = "bold 26px system-ui, -apple-system, sans-serif";
                 c.textAlign = "center";
                 c.textBaseline = "middle";
-                c.shadowColor = t.color;
-                c.shadowBlur = 10;
-                c.fillText(t.text, t.x, t.y);
+                c.shadowColor = ft.color;
+                c.shadowBlur = 12;
+                c.fillText(ft.text, ft.x, ft.y);
                 c.shadowBlur = 0;
             }
 
             c.globalAlpha = 1;
 
-            // Pause overlay
+            // ═══ 12. CORNER LENS FLARE ═══
+            const flareAlpha = 0.03 + 0.02 * Math.sin(t * 0.5);
+            const flare = c.createRadialGradient(0, 0, 0, 0, 0, 250);
+            flare.addColorStop(0, `rgba(0,245,255,${flareAlpha})`);
+            flare.addColorStop(1, "transparent");
+            c.fillStyle = flare;
+            c.fillRect(0, 0, 250, 250);
+
+            // ═══ PAUSE OVERLAY ═══
             if (isPausedRef.current) {
-                c.fillStyle = "rgba(10,14,39,0.7)";
+                c.fillStyle = "rgba(5,8,22,0.8)";
                 c.fillRect(0, 0, CANVAS_W, CANVAS_H);
                 c.fillStyle = "#00F5FF";
                 c.font = "bold 36px 'Outfit', sans-serif";
                 c.textAlign = "center";
                 c.textBaseline = "middle";
+                c.shadowColor = "#00F5FF";
+                c.shadowBlur = 20;
                 c.fillText("⏸ TẠM DỪNG", CANVAS_W / 2, CANVAS_H / 2);
+                c.shadowBlur = 0;
                 c.fillStyle = "rgba(255,255,255,0.5)";
                 c.font = "16px 'Inter', sans-serif";
                 c.fillText("Nhấn nút tiếp tục để chơi tiếp", CANVAS_W / 2, CANVAS_H / 2 + 40);
@@ -736,15 +1021,15 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
     const progressPercent = level ? ((questionIdx + 1) / level.questions.length) * 100 : 0;
 
     return (
-        <div ref={containerRef} className={`w-full max-w-5xl mx-auto flex flex-col gap-4 ${isFullscreen ? 'bg-slate-950 p-4 justify-center items-center overflow-hidden h-screen' : ''}`}>
+        <div ref={containerRef} className={`w-full max-w-6xl mx-auto flex flex-col gap-1.5 ${isFullscreen ? 'bg-slate-950 p-4 justify-center items-center overflow-hidden h-screen' : 'h-[calc(100dvh-80px)] overflow-hidden'}`}>
             {/* ─ HUD ─ */}
-            <div className={`flex items-center justify-between gap-3 glass-card-strong !rounded-2xl px-4 py-3 ${isFullscreen ? 'w-full max-w-[800px]' : 'w-full'}`}>
+            <div className={`relative flex items-center justify-between gap-2 glass-card-strong !rounded-xl px-3 py-2 ${isFullscreen ? 'w-full max-w-[900px]' : 'w-full'}`}>
                 {/* HP */}
                 <div className="flex items-center gap-1.5">
                     {Array.from({ length: MAX_HP }).map((_, i) => (
                         <span
                             key={i}
-                            className={`text-xl transition-all ${i < hp ? "opacity-100 scale-100" : "opacity-20 scale-75"}`}
+                            className={`text-base transition-all ${i < hp ? "opacity-100 scale-100" : "opacity-20 scale-75"}`}
                         >
                             ❤️
                         </span>
@@ -777,7 +1062,7 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                                 initial={{ opacity: 0, y: -10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: 10 }}
-                                className="text-xl sm:text-2xl font-bold text-neon-gold font-[var(--font-heading)] tracking-wider drop-shadow-md"
+                                className="text-base sm:text-lg font-bold text-neon-gold font-[var(--font-heading)] tracking-wider drop-shadow-md"
                             >
                                 {currentQuestion}
                             </motion.p>
@@ -803,28 +1088,58 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                         </div>
                     )}
                 </div>
+                {/* Integrated progress bar at bottom of HUD */}
+                {gameState === "playing" && level && (
+                    <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/5 rounded-b-xl overflow-hidden">
+                        <motion.div
+                            className="h-full bg-gradient-to-r from-neon-cyan to-neon-magenta"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${progressPercent}%` }}
+                            transition={{ duration: 0.3 }}
+                        />
+                    </div>
+                )}
             </div>
 
-            {/* ─ Progress bar ─ */}
-            {gameState === "playing" && level && (
-                <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                    <motion.div
-                        className="h-full bg-gradient-to-r from-neon-cyan to-neon-magenta rounded-full"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${progressPercent}%` }}
-                        transition={{ duration: 0.3 }}
+            {/* ─ Canvas / Boss Fight ─ */}
+            <div className="relative rounded-xl overflow-hidden border border-white/10 flex-1 min-h-0" style={{ aspectRatio: `${CANVAS_W}/${CANVAS_H}`, filter: calmMode ? "saturate(0.3)" : "none" }}>
+                {gameState === "boss" ? (
+                    <BossFightOverlay
+                        width={CANVAS_W}
+                        height={CANVAS_H}
+                        question={level?.questions[level.questions.length - 1] || { question: "", correctWord: "", wrongWords: [] }}
+                        playerClass={playerClass}
+                        initialShipX={shipX.current}
+                        hp={hp}
+                        score={score}
+                        onBossDefeated={(bonus) => {
+                            stopBGM();
+                            setScore(s => s + bonus);
+                            onGameComplete?.(scoreRef.current + bonus, currentLevel + 1);
+                            setGameState("win");
+                        }}
+                        onPlayerDied={() => {
+                            stopBGM();
+                            setGameState("gameOver");
+                        }}
+                        onHpChange={(newHp) => {
+                            setHp(newHp);
+                            hpRef.current = newHp;
+                        }}
+                        onScoreChange={(newScore) => {
+                            setScore(newScore);
+                            scoreRef.current = newScore;
+                        }}
+                        calmMode={calmMode}
                     />
-                </div>
-            )}
-
-            {/* ─ Canvas ─ */}
-            <div className="relative rounded-2xl overflow-hidden border border-white/10" style={{ aspectRatio: `${CANVAS_W}/${CANVAS_H}`, filter: calmMode ? "saturate(0.3)" : "none" }}>
-                <canvas
-                    ref={canvasRef}
-                    width={CANVAS_W}
-                    height={CANVAS_H}
-                    className="w-full h-full cursor-crosshair block"
-                />
+                ) : (
+                    <canvas
+                        ref={canvasRef}
+                        width={CANVAS_W}
+                        height={CANVAS_H}
+                        className="w-full h-full cursor-crosshair block"
+                    />
+                )}
 
                 {/* Overlays */}
                 <AnimatePresence>
@@ -842,7 +1157,7 @@ export default function SpaceShooterGame({ levels, onExit, playerClass, onGameCo
                             </h2>
                             <p className="text-white/60 text-sm text-center max-w-md px-4">
                                 Di chuyển tàu bằng chuột, nhấn để bắn!<br />
-                                Bắn vào từ <span className="text-neon-cyan font-bold">ĐÚNG</span>, né từ <span className="text-neon-magenta font-bold">SAI</span>!
+                                Bắn hết từ <span className="text-neon-magenta font-bold">SAI</span>, giữ đáp án <span className="text-neon-cyan font-bold">ĐÚNG</span>!
                             </p>
                             {/* Class ability intro */}
                             {playerClass && (

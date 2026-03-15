@@ -86,19 +86,19 @@ export interface Journey {
 // See PROJECT_CONTEXT.md §4.5 for the adaptive difficulty spec.
 
 /* ─── Grade-based question count (GDD §4.2 / §9) ───
- * Questions per LEVEL to match GDD journey totals:
- * Grade 1: 20q/journey ÷ 5 levels ≈ 4/level
- * Grade 2: 25q/journey ÷ 5 levels = 5/level
- * Grade 3: 30q/journey ÷ 6 levels = 5/level
- * Grade 4: 35q/journey ÷ 6 levels ≈ 6/level
- * Grade 5: 40q/journey ÷ 6 levels ≈ 7/level
+ * Questions per LEVEL (doubled for longer sessions):
+ * Grade 1: 8/level
+ * Grade 2: 10/level
+ * Grade 3: 10/level
+ * Grade 4: 12/level
+ * Grade 5: 14/level
  */
 export function questionsPerGrade(grade: number): number {
-    if (grade <= 1) return 4;
-    if (grade <= 2) return 5;
-    if (grade <= 3) return 5;
-    if (grade <= 4) return 6;
-    return 7;
+    if (grade <= 1) return 8;
+    if (grade <= 2) return 10;
+    if (grade <= 3) return 10;
+    if (grade <= 4) return 12;
+    return 14;
 }
 
 /* ─── Planet list ─── */
