@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
                 uses: 1,
                 expireTime,
                 liveConnectConstraints: {
-                    model: "gemini-live-2.5-flash-native-audio",
+                    model: "gemini-3.1-flash-live-preview",
                     config: {
                         responseModalities: [Modality.AUDIO],
                         speechConfig: {
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
             token: (token as { name?: string }).name || token,
             wsUrl,
-            model: "gemini-live-2.5-flash-native-audio",
+            model: "gemini-3.1-flash-live-preview",
             expiresAt: expireTime,
         });
 

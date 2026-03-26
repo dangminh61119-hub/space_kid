@@ -306,7 +306,7 @@ export default function LiveVoiceSession({ studentName, grade, topic, durationMi
                 console.log("[LiveVoice] WebSocket connected! Sending setup...");
                 const config = {
                     setup: {
-                        model: "models/gemini-live-2.5-flash-native-audio",
+                        model: "models/gemini-3.1-flash-live-preview",
                         generationConfig: {
                             responseModalities: ["AUDIO"],
                             speechConfig: {
