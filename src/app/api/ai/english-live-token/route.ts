@@ -59,8 +59,8 @@ export async function POST(request: NextRequest) {
             durationMinutes,
         });
 
-        // Create GenAI client
-        const client = new GoogleGenAI({ apiKey });
+        // Create GenAI client — v1alpha required for ephemeral tokens
+        const client = new GoogleGenAI({ apiKey, httpOptions: { apiVersion: "v1alpha" } });
 
         // Ephemeral token — 30 min expiry, locked to native-audio model
         const expireTime = new Date(Date.now() + 30 * 60 * 1000).toISOString();
