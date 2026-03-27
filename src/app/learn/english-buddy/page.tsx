@@ -146,7 +146,15 @@ export default function EnglishBuddyPage() {
     });
 
     const activeTopic = topic.trim() || null;
-    const suggestions = useMemo(() => { const g = String(player.grade ?? 2); return shufflePick(TOPIC_SUGGESTIONS[g] ?? TOPIC_SUGGESTIONS["2"], 6); }, [player.grade]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Exclude recently-used topics from suggestions to ensure variety
+    const recentTopics = useMemo(() => new Set(past.map(s => s.topic)), [past]);
+    const suggestions = useMemo(() => {
+        const g = String(player.grade ?? 2);
+        const all = TOPIC_SUGGESTIONS[g] ?? TOPIC_SUGGESTIONS["2"];
+        const fresh = all.filter(s => !recentTopics.has(s.text));
+        // If all topics have been used, fall back to full list
+        return shufflePick(fresh.length >= 6 ? fresh : all, 6);
+    }, [player.grade, recentTopics]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         if (!playerDbId || !token) return;
