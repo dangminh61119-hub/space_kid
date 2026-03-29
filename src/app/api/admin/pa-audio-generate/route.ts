@@ -22,6 +22,9 @@ export async function POST(req: NextRequest) {
     if (!AZURE_SPEECH_KEY) {
         return NextResponse.json({ error: "Azure Speech chưa được cấu hình" }, { status: 500 });
     }
+    if (!SUPABASE_SERVICE_KEY) {
+        return NextResponse.json({ error: "SUPABASE_SERVICE_ROLE_KEY chưa được cấu hình" }, { status: 500 });
+    }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
     const body = await req.json().catch(() => ({}));
@@ -33,7 +36,7 @@ export async function POST(req: NextRequest) {
         .from("pa_sentences")
         .select("id, text")
         .is("audio_url", null)
-        .eq("active", true)
+        .eq("is_active", true)
         .order("level", { ascending: true })
         .limit(limit);
 
@@ -93,11 +96,18 @@ export async function POST(req: NextRequest) {
                 .from("pa-audio")
                 .getPublicUrl(fileName);
 
-            // Update sentence record
-            await supabase
+            // Update sentence record with audio URL
+            const { error: updateErr } = await supabase
                 .from("pa_sentences")
                 .update({ audio_url: urlData.publicUrl })
                 .eq("id", sentence.id);
+
+            if (updateErr) {
+                // Rollback: delete uploaded file since URL wasn't saved
+                await supabase.storage.from("pa-audio").remove([fileName]);
+                results.push({ id: sentence.id, text: sentence.text, status: `DB update error: ${updateErr.message}` });
+                continue;
+            }
 
             results.push({ id: sentence.id, text: sentence.text, status: "✅ OK" });
 
@@ -114,7 +124,7 @@ export async function POST(req: NextRequest) {
         .from("pa_sentences")
         .select("id", { count: "exact", head: true })
         .is("audio_url", null)
-        .eq("active", true);
+        .eq("is_active", true);
 
     return NextResponse.json({
         generated: results.filter(r => r.status === "✅ OK").length,
