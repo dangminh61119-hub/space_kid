@@ -72,9 +72,14 @@ export async function GET(request: NextRequest) {
         });
 
         return NextResponse.json({ data: data ?? [], stats: levelCounts });
-    } catch (error) {
+    } catch (error: any) {
         console.error("[admin/pa-sentences] GET catch:", error);
-        return NextResponse.json({ data: [], stats: {} });
+        return NextResponse.json({ 
+            data: [], 
+            stats: {}, 
+            error: error?.message || "Unknown error",
+            hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+        });
     }
 }
 
