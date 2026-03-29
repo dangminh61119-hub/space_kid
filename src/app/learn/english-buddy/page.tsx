@@ -9,6 +9,7 @@ import CoinRewardPopup from "@/components/learn/CoinRewardPopup";
 import { trackMissionProgress } from "@/lib/services/daily-missions";
 import CosmoChatSession from "@/components/learn/CosmoChatSession";
 import LiveVoiceSession from "@/components/learn/LiveVoiceSession";
+import PronunciationSession from "@/components/learn/PronunciationSession";
 
 /* ─── Voice options ─── */
 /* ─── Text Mode voices (Google Cloud TTS) ─── */
@@ -37,11 +38,27 @@ const LIVE_VOICES = [
     { id: "Orus", name: "Orus", gender: "male", desc: "Điềm tĩnh, rõ ràng" },
 ];
 
+/* ─── PA Mode voices (Azure TTS) ─── */
+const PA_VOICES = [
+    { id: "en-US-AvaMultilingualNeural", name: "Ava", gender: "female", desc: "⭐ Ấm áp, rõ ràng — khuyên dùng" },
+    { id: "en-US-AnaNeural", name: "Ana", gender: "female", desc: "Giọng trẻ em — Level 1-2" },
+    { id: "en-US-JennyNeural", name: "Jenny", gender: "female", desc: "Tự nhiên, thân thiện" },
+    { id: "en-GB-SoniaNeural", name: "Sonia", gender: "female", desc: "British English" },
+    { id: "en-US-AndrewMultilingualNeural", name: "Andrew", gender: "male", desc: "Friendly, tự nhiên" },
+    { id: "en-US-GuyNeural", name: "Guy", gender: "male", desc: "Rõ ràng, chuyên nghiệp" },
+    { id: "en-AU-NatashaNeural", name: "Natasha", gender: "female", desc: "Australian English" },
+];
+
 /* ─── Duration ─── */
 const DURATIONS = [
     { minutes: 5, label: "5 phút", emoji: "⚡", desc: "Nhanh gọn" },
     { minutes: 10, label: "10 phút", emoji: "⭐", desc: "Chuẩn nhất", popular: true },
     { minutes: 15, label: "15 phút", emoji: "🔥", desc: "Luyện sâu" },
+];
+
+const PA_DURATIONS = [
+    { minutes: 5, label: "5 phút", emoji: "⚡", desc: "Nhanh gọn" },
+    { minutes: 10, label: "10 phút", emoji: "⭐", desc: "Chuẩn nhất", popular: true },
 ];
 
 /* ─── Levels — teal/cyan palette only ─── */
@@ -127,19 +144,29 @@ interface PastSession { id: string; topic: string; duration_minutes: number; sum
 function formatAgo(d: string): string { const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000); if (m < 60) return `${m}p trước`; const h = Math.floor(m / 60); if (h < 24) return `${h}h trước`; return `${Math.floor(h / 24)}d trước`; }
 
 /* ═══════════════════════════════════════════════════════ */
+type PracticeMode = "live" | "pa" | "text";
+
 export default function EnglishBuddyPage() {
     const { player, addCoinsWithMultiplier } = useGame();
     const { playerDbId, session } = useAuth();
     const token = session?.access_token;
     const [phase, setPhase] = useState<"setup" | "session">("setup");
     const [step, setStep] = useState(1);
-    const [dur, setDur] = useState(15);
+    const [dur, setDur] = useState(10);
     const [voice, setVoice] = useState(VOICES[0].id);
     const [liveVoice, setLiveVoice] = useState(LIVE_VOICES[0].id);
+    const [paVoice, setPaVoice] = useState(PA_VOICES[0].id);
     const [topic, setTopic] = useState("");
     const [past, setPast] = useState<PastSession[]>([]);
     const [, setLoading] = useState(false);
     const [liveMode, setLiveMode] = useState(false);
+    const [mode, setMode] = useState<PracticeMode>(() => {
+        if (typeof window !== "undefined") {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get("mode") === "text") return "text";
+        }
+        return "live";
+    });
     const [coinReward, setCoinReward] = useState<{ earned: number; multiplier: number; reason: string } | null>(null);
     const [level, setLevel] = useState<CosmoLevelId>(() => {
         if (typeof window !== "undefined") { const s = localStorage.getItem("cosmo-english-level"); if (s) { const n = parseInt(s); if (n >= 1 && n <= 5) return n as CosmoLevelId; } } return 1;
@@ -164,6 +191,7 @@ export default function EnglishBuddyPage() {
     }, [playerDbId, token]);
 
     function handleStart() {
+        if (mode === "pa") { setPhase("session"); return; }
         if (!activeTopic) { const p = suggestions[Math.floor(Math.random() * suggestions.length)]; setTopic(p.text); setTimeout(() => setPhase("session"), 50); return; }
         setPhase("session");
     }
@@ -190,16 +218,20 @@ export default function EnglishBuddyPage() {
     const lvDef = LEVELS.find(l => l.id === level)!;
     const vcDef = VOICES.find(v => v.id === voice)!;
 
-    if (phase === "session" && activeTopic) {
+    if (phase === "session" && (activeTopic || mode === "pa")) {
+        const modeLabel = mode === "live" ? "LIVE" : mode === "pa" ? "PA" : "TEXT";
+        const modeBg = mode === "live" ? "linear-gradient(135deg,#7C3AED,#A78BFA)" : mode === "pa" ? "linear-gradient(135deg,#0D9488,#14B8A6)" : "linear-gradient(135deg,#6B7280,#9CA3AF)";
         return (<div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <h1 className="learn-page-title" style={{ marginBottom: 0 }}>🦉 Cosmo {liveMode && <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: 1.5, color: "#fff", background: "linear-gradient(135deg,#7C3AED,#A78BFA)", padding: "3px 10px", borderRadius: 8, marginLeft: 8, verticalAlign: "middle" }}>LIVE</span>}</h1>
+                <h1 className="learn-page-title" style={{ marginBottom: 0 }}>🦉 Cosmo <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: 1.5, color: "#fff", background: modeBg, padding: "3px 10px", borderRadius: 8, marginLeft: 8, verticalAlign: "middle" }}>{modeLabel}</span></h1>
                 <button className="learn-btn learn-btn-secondary" style={{ fontSize: 13 }} onClick={() => setPhase("setup")}>← Quay lại</button>
             </div>
-            {liveMode ? (
-                <LiveVoiceSession studentName={player.englishName?.trim() || player.name} grade={player.grade ?? 2} topic={activeTopic} durationMinutes={dur} playerId={playerDbId} voiceName={liveVoice} level={level} onSessionEnd={handleEnd} />
+            {mode === "pa" ? (
+                <PronunciationSession studentName={player.englishName?.trim() || player.name} level={level} durationMinutes={dur} playerId={playerDbId} voiceName={paVoice} onSessionEnd={handleEnd} />
+            ) : mode === "live" ? (
+                <LiveVoiceSession studentName={player.englishName?.trim() || player.name} grade={player.grade ?? 2} topic={activeTopic!} durationMinutes={dur} playerId={playerDbId} voiceName={liveVoice} level={level} onSessionEnd={handleEnd} />
             ) : (
-                <CosmoChatSession studentName={player.englishName?.trim() || player.name} grade={player.grade ?? 2} topic={activeTopic} durationMinutes={dur} playerId={playerDbId} voice={voice} level={level} onSessionEnd={handleEnd} />
+                <CosmoChatSession studentName={player.englishName?.trim() || player.name} grade={player.grade ?? 2} topic={activeTopic!} durationMinutes={dur} playerId={playerDbId} voice={voice} level={level} onSessionEnd={handleEnd} />
             )}
         </div>);
     }
@@ -331,7 +363,30 @@ export default function EnglishBuddyPage() {
                 {/* STEP 1 */}
                 {step === 1 && (
                     <motion.div key="s1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.25 }} style={S.panel}>
-                        <h2 style={S.title}>📊 Chọn Level giao tiếp</h2>
+                        {/* ─── Mode Selector ─── */}
+                        <h2 style={S.title}>🎯 Chọn chế độ luyện</h2>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 24 }}>
+                            {[
+                                { m: "live" as PracticeMode, emoji: "🎙", name: "Nói chuyện tự do", desc: "Giao tiếp real-time với Cosmo", color: "#A78BFA", bg: "rgba(124,58,237,0.15)", border: "rgba(124,58,237,0.4)" },
+                                { m: "pa" as PracticeMode, emoji: "📝", name: "Luyện phát âm", desc: "Cosmo chấm điểm từng từ", color: "#5EEAD4", bg: "rgba(13,148,136,0.15)", border: "rgba(20,184,166,0.4)" },
+                            ].map(opt => {
+                                const sel = mode === opt.m;
+                                return (
+                                    <motion.div key={opt.m}
+                                        style={{ display: "flex", flexDirection: "column" as const, alignItems: "center", gap: 8, padding: "22px 14px", borderRadius: 20, cursor: "pointer", background: sel ? opt.bg : "rgba(15,23,42,0.5)", border: `2.5px solid ${sel ? opt.border : "rgba(255,255,255,0.08)"}`, boxShadow: sel ? `0 0 28px ${opt.bg}` : "none", transition: "all 0.3s", backdropFilter: "blur(12px)" }}
+                                        onClick={() => { setMode(opt.m); if (opt.m === "pa" && dur > 10) setDur(10); }}
+                                        whileHover={{ scale: 1.04, y: -3 }} whileTap={{ scale: 0.96 }}
+                                    >
+                                        <span style={{ fontSize: 36 }}>{opt.emoji}</span>
+                                        <span style={{ fontFamily: "var(--font-heading)", fontSize: 14, fontWeight: 900, color: sel ? opt.color : "#fff" }}>{opt.name}</span>
+                                        <span style={{ fontSize: 11, fontWeight: 600, color: sel ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.35)", textAlign: "center" }}>{opt.desc}</span>
+                                        {sel && <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} style={{ fontSize: 16, fontWeight: 900, color: opt.color }}>✓</motion.span>}
+                                    </motion.div>
+                                );
+                            })}
+                        </div>
+
+                        <h2 style={S.title}>📊 Chọn Level</h2>
                         <div style={S.lvScroll}>
                             <div style={S.lvTrack}>
                                 {LEVELS.map(lv => {
@@ -352,7 +407,7 @@ export default function EnglishBuddyPage() {
 
                         <h2 style={{ ...S.title, marginTop: 28 }}>⏱️ Thời lượng</h2>
                         <div style={S.durRow}>
-                            {DURATIONS.map(d => {
+                            {(mode === "pa" ? PA_DURATIONS : DURATIONS).map(d => {
                                 const sel = dur === d.minutes;
                                 return (
                                     <motion.div key={d.minutes} style={S.durCard(sel)}
@@ -367,8 +422,8 @@ export default function EnglishBuddyPage() {
                         </div>
 
                         <div style={{ marginTop: 16 }}>
-                            <motion.button style={S.ctaNext} onClick={() => setStep(2)} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
-                                Tiếp theo → Chọn chủ đề
+                            <motion.button style={S.ctaNext} onClick={() => setStep(mode === "pa" ? 3 : 2)} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
+                                {mode === "pa" ? "Tiếp theo → Xác nhận" : "Tiếp theo → Chọn chủ đề"}
                             </motion.button>
                         </div>
                     </motion.div>
@@ -437,31 +492,33 @@ export default function EnglishBuddyPage() {
                             </div>
                         </div>
 
-                        {/* ─── Live Mode Toggle ─── */}
-                        <div style={{ marginBottom: 20, background: liveMode ? "rgba(124,58,237,0.1)" : "rgba(255,255,255,0.03)", border: `2px solid ${liveMode ? "rgba(124,58,237,0.4)" : "rgba(255,255,255,0.08)"}`, borderRadius: 18, padding: "16px 20px", cursor: "pointer", transition: "all 0.3s" }} onClick={() => setLiveMode(!liveMode)}>
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                                    <span style={{ fontSize: 24 }}>{liveMode ? "🔴" : "💬"}</span>
-                                    <div>
-                                        <div style={{ fontFamily: "var(--font-heading)", fontSize: 14, fontWeight: 900, color: liveMode ? "#A78BFA" : "rgba(255,255,255,0.7)" }}>
-                                            {liveMode ? "Live Mode" : "Text Mode"}
-                                        </div>
-                                        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
-                                            {liveMode ? "Giao tiếp giọng nói real-time với Cosmo" : "Ghi âm → Cosmo phản hồi tuần tự"}
-                                        </div>
+                        {/* ─── Mode Info Banner ─── */}
+                        <div style={{ marginBottom: 20, background: mode === "pa" ? "rgba(13,148,136,0.1)" : mode === "live" ? "rgba(124,58,237,0.1)" : "rgba(255,255,255,0.03)", border: `2px solid ${mode === "pa" ? "rgba(20,184,166,0.3)" : mode === "live" ? "rgba(124,58,237,0.4)" : "rgba(255,255,255,0.08)"}`, borderRadius: 18, padding: "16px 20px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                <span style={{ fontSize: 24 }}>{mode === "pa" ? "📝" : mode === "live" ? "🎙" : "💬"}</span>
+                                <div>
+                                    <div style={{ fontFamily: "var(--font-heading)", fontSize: 14, fontWeight: 900, color: mode === "pa" ? "#5EEAD4" : mode === "live" ? "#A78BFA" : "rgba(255,255,255,0.7)" }}>
+                                        {mode === "pa" ? "Luyện phát âm" : mode === "live" ? "Nói chuyện tự do (Live)" : "Text Mode"}
+                                    </div>
+                                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
+                                        {mode === "pa" ? "Azure Speech — chấm điểm phát âm từng từ" : mode === "live" ? "Gemini Native Audio — real-time, ngắt lời tự nhiên" : "Google STT — ghi âm tuần tự"}
                                     </div>
                                 </div>
-                                {/* Toggle switch */}
-                                <div style={{ width: 48, height: 26, borderRadius: 13, background: liveMode ? "linear-gradient(135deg,#7C3AED,#A78BFA)" : "rgba(255,255,255,0.1)", position: "relative", transition: "all 0.3s", flexShrink: 0 }}>
-                                    <motion.div animate={{ x: liveMode ? 24 : 2 }} transition={{ type: "spring", stiffness: 500, damping: 30 }} style={{ width: 22, height: 22, borderRadius: "50%", background: "#fff", position: "absolute", top: 2, boxShadow: "0 2px 6px rgba(0,0,0,0.3)" }} />
-                                </div>
                             </div>
-                            {liveMode && <div style={{ marginTop: 10, fontSize: 11, color: "rgba(167,139,250,0.6)", lineHeight: 1.5 }}>⚡ Gemini Native Audio — độ trễ thấp, ngắt lời tự nhiên, nhận diện cảm xúc</div>}
                         </div>
 
                         <div style={{ marginBottom: 16 }}>
-                            <label style={{ display: "block", fontSize: 13, fontWeight: 800, color: "rgba(255,255,255,0.5)", marginBottom: 8 }}>🎙️ Chọn giọng nói {liveMode && <span style={{ fontSize: 10, color: "#A78BFA", fontWeight: 600 }}>(Native Audio)</span>}</label>
-                            {liveMode ? (
+                            <label style={{ display: "block", fontSize: 13, fontWeight: 800, color: "rgba(255,255,255,0.5)", marginBottom: 8 }}>🎙️ Chọn giọng nói {mode === "pa" && <span style={{ fontSize: 10, color: "#5EEAD4", fontWeight: 600 }}>(Azure TTS)</span>}{mode === "live" && <span style={{ fontSize: 10, color: "#A78BFA", fontWeight: 600 }}>(Native Audio)</span>}</label>
+                            {mode === "pa" ? (
+                                <select style={S.voiceSel} value={paVoice} onChange={e => setPaVoice(e.target.value)}>
+                                    <optgroup label="👩 Giọng Nữ">
+                                        {PA_VOICES.filter(v => v.gender === "female").map(v => (<option key={v.id} value={v.id} style={{ background: "#0F172A", color: "#fff" }}>{v.name} — {v.desc}</option>))}
+                                    </optgroup>
+                                    <optgroup label="👨 Giọng Nam">
+                                        {PA_VOICES.filter(v => v.gender === "male").map(v => (<option key={v.id} value={v.id} style={{ background: "#0F172A", color: "#fff" }}>{v.name} — {v.desc}</option>))}
+                                    </optgroup>
+                                </select>
+                            ) : mode === "live" ? (
                                 <select style={S.voiceSel} value={liveVoice} onChange={e => setLiveVoice(e.target.value)}>
                                     <optgroup label="👩 Giọng Nữ">
                                         {LIVE_VOICES.filter(v => v.gender === "female").map(v => (<option key={v.id} value={v.id} style={{ background: "#0F172A", color: "#fff" }}>{v.name} — {v.desc}</option>))}

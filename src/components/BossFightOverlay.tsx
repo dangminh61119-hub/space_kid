@@ -23,14 +23,14 @@ interface BossFightProps {
 const BOSS_MAX_HP = 500;
 const SHIP_W = 84;
 const SHIP_H = 84;
-const NUM_TENTACLES = 5;
-const TENTACLE_SEGMENTS = 12;
+const NUM_TENTACLES = 8;
+const TENTACLE_SEGMENTS = 14;
 const BOMB_RADIUS = 24;
 const BOSS_PROJ_RADIUS = 6;
 const BOSS_PROJ_SPEED = 2.8;
-const BOMB_SPAWN_INTERVAL = 2000; // ms per tentacle
-const BOSS_SHOOT_INTERVAL = 2500; // ms
-const BOMB_SPEED = 1.2;
+const BOMB_SPAWN_INTERVAL = 3500; // ms per tentacle (slower)
+const BOSS_SHOOT_INTERVAL = 3000; // ms
+const BOMB_SPEED = 0.9;
 const LASER_SPEED = 8;
 const LASER_W = 4;
 const LASER_H = 18;
@@ -68,6 +68,9 @@ interface TentacleData {
     phaseOffset: number;
     length: number;
     spawnTimer: number;
+    tipWord: string | null; // word attached to this tentacle tip
+    tipCorrect: boolean;    // is this the correct answer?
+    tipColor: number;       // color index for the word badge
 }
 
 /**
@@ -114,15 +117,28 @@ export default function BossFightOverlay({
     const lastBossShot = useRef(0);
     const bossDeathTimer = useRef(0);
 
-    // Tentacle data
+    // Tentacle data — spread evenly to both sides (left ↔ right)
     const tentacles = useRef<TentacleData[]>(
-        Array.from({ length: NUM_TENTACLES }, (_, i) => ({
-            baseAngle: (Math.PI * 0.3) + (Math.PI * 0.4 / (NUM_TENTACLES - 1)) * i + Math.PI * 0.3,
-            phaseOffset: i * 1.2,
-            length: 80 + Math.random() * 40,
-            spawnTimer: Date.now() + i * 400 + Math.random() * 1000,
-        }))
+        Array.from({ length: NUM_TENTACLES }, (_, i) => {
+            // Fan evenly across ~160° arc (80° each side)
+            const spread = Math.PI * 0.88;
+            const startAngle = Math.PI / 2 - spread / 2;
+            const angle = startAngle + (spread / (NUM_TENTACLES - 1)) * i;
+            return {
+                baseAngle: angle,
+                phaseOffset: i * 0.9 + (i % 2) * 0.5,
+                length: 150 + Math.random() * 50,
+                spawnTimer: 0,
+                tipWord: null,
+                tipCorrect: false,
+                tipColor: 0,
+            };
+        })
     );
+
+    // Track which tentacles hold words (indices)
+    const wordTentacleIndices = useRef<number[]>([]);
+    const wordsAssigned = useRef(false);
 
     // Ship sprite
     const shipImgRef = useRef<HTMLImageElement | null>(null);
@@ -166,16 +182,17 @@ export default function BossFightOverlay({
     }, [calmMode]);
 
     /* ─── Get tentacle tip position ─── */
-    const getTentacleTip = useCallback((tentacle: TentacleData, time: number, bossCx: number, bossCy: number) => {
-        let x = bossCx;
-        let y = bossCy + 40; // base at bottom of boss body
+    // Compute tentacle tip position — MUST match drawing code's wave math exactly
+    const getTentacleTip = useCallback((tentacle: TentacleData, time: number, bCx: number, bCy: number, bobY: number) => {
+        let x = bCx;
+        let y = bCy + 30 + bobY;
         const segLen = tentacle.length / TENTACLE_SEGMENTS;
 
         for (let s = 0; s < TENTACLE_SEGMENTS; s++) {
-            const wave = Math.sin(time * 2 + tentacle.phaseOffset + s * 0.4) * (8 + s * 2);
-            const angle = tentacle.baseAngle + wave * 0.01;
-            x += Math.cos(angle) * segLen + wave * 0.3;
-            y += Math.sin(angle) * segLen * 0.5 + segLen * 0.7;
+            const wave = Math.sin(time * 1.5 + tentacle.phaseOffset + s * 0.4) * (5 + s * 2)
+                       + Math.sin(time * 0.6 + tentacle.phaseOffset * 1.5 + s * 0.7) * (2 + s * 1.2);
+            x += Math.cos(tentacle.baseAngle) * segLen + wave * 0.5;
+            y += segLen * 0.7;
         }
         return { x, y };
     }, []);
@@ -223,7 +240,7 @@ export default function BossFightOverlay({
             const t = Date.now() * 0.001;
             const now = Date.now();
             const bossCx = width / 2;
-            const bossCyTarget = 100;
+            const bossCyTarget = -60; // body hidden above screen edge
 
             // ═══ UPDATE ═══
 
@@ -275,16 +292,31 @@ export default function BossFightOverlay({
             lasers.current = lasers.current.filter(l => l.alive);
 
             if (bossPhase.current === "fighting") {
-                // Tentacle bomb spawning
-                for (const tent of tentacles.current) {
-                    if (now > tent.spawnTimer) {
-                        const tip = getTentacleTip(tent, t, bossCx, bossCy);
-                        spawnBomb(tip.x, tip.y);
-                        tent.spawnTimer = now + BOMB_SPAWN_INTERVAL + Math.random() * 1000;
+                const bobY = Math.sin(t * 0.7) * 5;
+
+                // Assign words to tentacles (once per round)
+                if (!wordsAssigned.current) {
+                    wordsAssigned.current = true;
+                    const words = [...(wrongWords.current || [])].slice(0, 3);
+                    const correctW = question.correctWord;
+                    const allWords = [...words.map(w => ({ w, correct: false })), { w: correctW, correct: true }];
+                    // Shuffle
+                    for (let i = allWords.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [allWords[i], allWords[j]] = [allWords[j], allWords[i]];
+                    }
+                    // Pick 4 spread-out tentacle indices (evenly spaced)
+                    const step = NUM_TENTACLES / allWords.length;
+                    const indices = allWords.map((_, idx) => Math.min(NUM_TENTACLES - 1, Math.round(idx * step + step / 2 - 0.5)));
+                    wordTentacleIndices.current = indices;
+                    for (let i = 0; i < allWords.length; i++) {
+                        tentacles.current[indices[i]].tipWord = allWords[i].w;
+                        tentacles.current[indices[i]].tipCorrect = allWords[i].correct;
+                        tentacles.current[indices[i]].tipColor = i;
                     }
                 }
 
-                // Boss shooting
+                // Boss shooting projectiles at player (keep this mechanic)
                 if (now - lastBossShot.current > BOSS_SHOOT_INTERVAL) {
                     lastBossShot.current = now;
                     const dx = shipX.current - bossCx;
@@ -325,20 +357,42 @@ export default function BossFightOverlay({
             // ═══ COLLISION DETECTION ═══
 
             if (bossPhase.current === "fighting") {
-                // Laser ↔ Bomb
+                const bobY = Math.sin(t * 0.7) * 5;
+
+                // Laser ↔ Tentacle tip words
                 for (const laser of lasers.current) {
                     if (!laser.alive) continue;
-                    for (const bomb of bombs.current) {
-                        if (!bomb.alive) continue;
-                        const dx = laser.x - bomb.x;
-                        const dy = laser.y - bomb.y;
-                        if (dx * dx + dy * dy < (bomb.radius + 8) * (bomb.radius + 8)) {
+                    for (const tent of tentacles.current) {
+                        if (!tent.tipWord) continue;
+                        const tip = getTentacleTip(tent, t, bossCx, bossCy, bobY);
+                        const dx = laser.x - tip.x;
+                        const dy = laser.y - tip.y;
+                        if (dx * dx + dy * dy < 30 * 30) {
                             laser.alive = false;
-                            bomb.alive = false;
-                            bossHp.current = Math.max(0, bossHp.current - 10);
-                            scoreRef.current += 50;
-                            onScoreChange(scoreRef.current);
-                            spawnExplosion(bomb.x, bomb.y, BOMB_COLORS[bomb.colorIdx]);
+                            spawnExplosion(tip.x, tip.y, tent.tipCorrect ? "#00FF88" : "#FF4444", 10);
+
+                            if (tent.tipCorrect) {
+                                // Correct answer — damage boss + reassign words
+                                bossHp.current = Math.max(0, bossHp.current - 80);
+                                scoreRef.current += 200;
+                                onScoreChange(scoreRef.current);
+                                // Clear all tip words and reassign
+                                for (const t2 of tentacles.current) {
+                                    t2.tipWord = null;
+                                    t2.tipCorrect = false;
+                                }
+                                wordsAssigned.current = false;
+                            } else {
+                                // Wrong answer — player takes damage, word disappears
+                                tent.tipWord = null;
+                                tent.tipCorrect = false;
+                                playerHp.current -= 1;
+                                onHpChange(playerHp.current);
+                                if (playerHp.current <= 0) {
+                                    onPlayerDied();
+                                    return;
+                                }
+                            }
                             break;
                         }
                     }
@@ -349,7 +403,7 @@ export default function BossFightOverlay({
                     if (!laser.alive) continue;
                     const dx = laser.x - bossCx;
                     const dy = laser.y - bossCy;
-                    if (dx * dx / (110 * 110) + dy * dy / (65 * 65) < 1) {
+                    if (dx * dx / (90 * 90) + dy * dy / (60 * 60) < 1) {
                         laser.alive = false;
                         bossHp.current = Math.max(0, bossHp.current - 5);
                         scoreRef.current += 10;
@@ -367,23 +421,6 @@ export default function BossFightOverlay({
                     const dy = proj.y - sy;
                     if (dx * dx + dy * dy < (SHIP_W / 3) * (SHIP_W / 3)) {
                         proj.alive = false;
-                        playerHp.current -= 1;
-                        onHpChange(playerHp.current);
-                        spawnExplosion(sx, sy, "#FF4444", 8);
-                        if (playerHp.current <= 0) {
-                            onPlayerDied();
-                            return;
-                        }
-                    }
-                }
-
-                // Bomb ↔ Ship
-                for (const bomb of bombs.current) {
-                    if (!bomb.alive) continue;
-                    const dx = bomb.x - sx;
-                    const dy = bomb.y - sy;
-                    if (dx * dx + dy * dy < (bomb.radius + SHIP_W / 3) * (bomb.radius + SHIP_W / 3)) {
-                        bomb.alive = false;
                         playerHp.current -= 1;
                         onHpChange(playerHp.current);
                         spawnExplosion(sx, sy, "#FF4444", 8);
@@ -432,7 +469,7 @@ export default function BossFightOverlay({
             }
             c.globalAlpha = 1;
 
-            // ─── Boss Body ───
+            // ─── Boss Body (Cosmic Jellyfish) ───
             if (bossPhase.current !== "dead") {
                 const bAlpha = bossPhase.current === "dying"
                     ? Math.max(0, 1 - bossDeathTimer.current / 90)
@@ -440,133 +477,152 @@ export default function BossFightOverlay({
                         ? Math.min(1, enterTimer.current / 30)
                         : 1;
                 c.globalAlpha = bAlpha;
+                const bobY = Math.sin(t * 0.7) * 5;
+                const breathScale = 1 + 0.025 * Math.sin(t * 1.3);
 
-                // Body glow
-                c.shadowColor = "#9333EA";
-                c.shadowBlur = 30 + 10 * Math.sin(t * 2);
+                // ─── Tentacles (drawn behind body) — spread left ↔ right ───
+                const tentColors = ["#9333EA", "#00F5FF", "#E879F9", "#7C3AED", "#FF6BFF", "#00D4AA", "#B388FF", "#00F5FF"];
+                for (let ti = 0; ti < tentacles.current.length; ti++) {
+                    const tent = tentacles.current[ti];
+                    const tColor = tentColors[ti % tentColors.length];
 
-                // Body ellipse
-                const bodyGrad = c.createRadialGradient(bossCx, bossCy, 10, bossCx, bossCy, 110);
-                bodyGrad.addColorStop(0, "#7C3AED");
-                bodyGrad.addColorStop(0.5, "#5B21B6");
-                bodyGrad.addColorStop(1, "#1E1040");
-                c.fillStyle = bodyGrad;
-                c.beginPath();
-                c.ellipse(bossCx, bossCy, 100, 60, 0, 0, Math.PI * 2);
-                c.fill();
-
-                // Body outline
-                c.strokeStyle = "rgba(147, 51, 234, 0.5)";
-                c.lineWidth = 2;
-                c.stroke();
-                c.shadowBlur = 0;
-
-                // ─── Eyes (sleepy) ───
-                const eyeY = bossCy - 8;
-                const blinkPhase = Math.sin(t * 0.5);
-                const eyeOpenness = Math.max(0.3, 0.5 + 0.2 * blinkPhase); // half-closed
-
-                // Left eye
-                c.fillStyle = "#1a0030";
-                c.beginPath();
-                c.ellipse(bossCx - 30, eyeY, 18, 12 * eyeOpenness, 0, 0, Math.PI * 2);
-                c.fill();
-                // Left pupil
-                c.fillStyle = "#FF0000";
-                c.shadowColor = "#FF0000";
-                c.shadowBlur = 8;
-                c.beginPath();
-                c.arc(bossCx - 30 + Math.sin(t) * 3, eyeY, 5 * eyeOpenness, 0, Math.PI * 2);
-                c.fill();
-
-                // Right eye
-                c.shadowBlur = 0;
-                c.fillStyle = "#1a0030";
-                c.beginPath();
-                c.ellipse(bossCx + 30, eyeY, 18, 12 * eyeOpenness, 0, 0, Math.PI * 2);
-                c.fill();
-                // Right pupil
-                c.fillStyle = "#FF0000";
-                c.shadowColor = "#FF0000";
-                c.shadowBlur = 8;
-                c.beginPath();
-                c.arc(bossCx + 30 + Math.sin(t) * 3, eyeY, 5 * eyeOpenness, 0, Math.PI * 2);
-                c.fill();
-                c.shadowBlur = 0;
-
-                // Lazy mouth
-                c.strokeStyle = "#4C1D95";
-                c.lineWidth = 2;
-                c.beginPath();
-                c.arc(bossCx, bossCy + 18, 15, 0.1, Math.PI - 0.1);
-                c.stroke();
-
-                // "Zzz" text for sleepy effect
-                c.fillStyle = `rgba(255,255,255,${0.3 + 0.2 * Math.sin(t * 2)})`;
-                c.font = "bold 14px system-ui";
-                c.textAlign = "left";
-                c.fillText("z", bossCx + 100 + Math.sin(t) * 5, bossCy - 40 + Math.cos(t * 1.5) * 5);
-                c.font = "bold 18px system-ui";
-                c.fillText("Z", bossCx + 115 + Math.sin(t + 0.5) * 5, bossCy - 55 + Math.cos(t * 1.5 + 0.5) * 5);
-
-                // ─── Tentacles ───
-                for (const tent of tentacles.current) {
-                    const points: { x: number; y: number }[] = [];
+                    const pts: { x: number; y: number }[] = [];
                     let px = bossCx;
-                    let py = bossCy + 40;
-                    points.push({ x: px, y: py });
+                    let py = bossCy + 30 + bobY;
+                    pts.push({ x: px, y: py });
 
                     const segLen = tent.length / TENTACLE_SEGMENTS;
                     for (let s = 0; s < TENTACLE_SEGMENTS; s++) {
-                        const wave = Math.sin(t * 2 + tent.phaseOffset + s * 0.5) * (6 + s * 2.5);
-                        px += Math.cos(tent.baseAngle) * segLen + wave;
-                        py += segLen * 0.8;
-                        points.push({ x: px, y: py });
+                        const wave = Math.sin(t * 1.5 + tent.phaseOffset + s * 0.4) * (5 + s * 2)
+                                   + Math.sin(t * 0.6 + tent.phaseOffset * 1.5 + s * 0.7) * (2 + s * 1.2);
+                        px += Math.cos(tent.baseAngle) * segLen + wave * 0.5;
+                        py += segLen * 0.7;
+                        pts.push({ x: px, y: py });
                     }
 
-                    // Draw tentacle as thick line with gradient
+                    // Smooth Bezier tentacle with gradient thickness
                     c.lineCap = "round";
                     c.lineJoin = "round";
-                    for (let s = 0; s < points.length - 1; s++) {
-                        const thickness = 8 - (s / points.length) * 6;
-                        const alpha = 1 - (s / points.length) * 0.4;
-                        c.globalAlpha = bAlpha * alpha;
-                        c.strokeStyle = `rgba(147, 51, 234, ${0.8})`;
-                        c.lineWidth = thickness;
-                        c.beginPath();
-                        c.moveTo(points[s].x, points[s].y);
-                        c.lineTo(points[s + 1].x, points[s + 1].y);
-                        c.stroke();
-                    }
-
-                    // Tentacle tip glow
-                    const tip = points[points.length - 1];
-                    c.globalAlpha = bAlpha * (0.5 + 0.3 * Math.sin(t * 3 + tent.phaseOffset));
-                    c.fillStyle = "#E879F9";
-                    c.shadowColor = "#E879F9";
-                    c.shadowBlur = 10;
                     c.beginPath();
-                    c.arc(tip.x, tip.y, 5, 0, Math.PI * 2);
+                    c.moveTo(pts[0].x, pts[0].y);
+                    for (let s = 1; s < pts.length - 1; s++) {
+                        const mx = (pts[s].x + pts[s + 1].x) / 2;
+                        const my = (pts[s].y + pts[s + 1].y) / 2;
+                        c.quadraticCurveTo(pts[s].x, pts[s].y, mx, my);
+                    }
+                    c.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+
+                    // Outer glow
+                    c.globalAlpha = bAlpha * 0.25;
+                    c.strokeStyle = tColor;
+                    c.shadowColor = tColor;
+                    c.shadowBlur = 15;
+                    c.lineWidth = 8;
+                    c.stroke();
+
+                    // Inner core
+                    c.globalAlpha = bAlpha * 0.7;
+                    c.strokeStyle = tColor;
+                    c.shadowBlur = 5;
+                    c.lineWidth = 3;
+                    c.stroke();
+                    c.shadowBlur = 0;
+
+                    // Tip glow
+                    const tip = pts[pts.length - 1];
+                    const tipPulse = 0.4 + 0.6 * Math.sin(t * 3.5 + tent.phaseOffset);
+                    c.globalAlpha = bAlpha * tipPulse;
+                    c.fillStyle = tColor;
+                    c.shadowColor = tColor;
+                    c.shadowBlur = 12;
+                    c.beginPath();
+                    c.arc(tip.x, tip.y, 3 + tipPulse * 2, 0, Math.PI * 2);
                     c.fill();
                     c.shadowBlur = 0;
+
+                    // Word badge at tip
+                    if (tent.tipWord) {
+                        const wordColors = ["#FF6BFF", "#00F5FF", "#FFD700", "#7BFF7B"];
+                        const wColor = wordColors[tent.tipColor % wordColors.length];
+                        c.globalAlpha = bAlpha;
+                        c.font = "bold 13px system-ui";
+                        c.textAlign = "center";
+                        const tw = c.measureText(tent.tipWord).width;
+                        const badgeW = tw + 18;
+                        const badgeH = 24;
+                        const bx = tip.x - badgeW / 2;
+                        const by = tip.y - badgeH - 6;
+
+                        // Badge background
+                        c.fillStyle = "rgba(0,0,0,0.7)";
+                        c.shadowColor = wColor;
+                        c.shadowBlur = 10;
+                        c.beginPath();
+                        c.roundRect(bx, by, badgeW, badgeH, 12);
+                        c.fill();
+
+                        // Badge border
+                        c.strokeStyle = wColor;
+                        c.lineWidth = 1.5;
+                        c.stroke();
+                        c.shadowBlur = 0;
+
+                        // Word text
+                        c.fillStyle = "#ffffff";
+                        c.fillText(tent.tipWord, tip.x, by + badgeH / 2 + 4.5);
+                    }
                 }
+                c.globalAlpha = bAlpha;
+
+                // ─── Dome Head (only draw if visible) ───
+                if (bossCy > -30) {
+                    const headW = 85 * breathScale;
+                    const headH = 55 * breathScale;
+                    const headY = bossCy - 10 + bobY;
+
+                    c.shadowColor = "#9333EA";
+                    c.shadowBlur = 35 + 12 * Math.sin(t * 2);
+
+                    const domeGrad = c.createRadialGradient(bossCx, headY - 10, 10, bossCx, headY + 10, headW);
+                    domeGrad.addColorStop(0, "#6D28D9");
+                    domeGrad.addColorStop(0.4, "#5B21B6");
+                    domeGrad.addColorStop(0.7, "#3B0F7A");
+                    domeGrad.addColorStop(1, "#1a0040");
+                    c.fillStyle = domeGrad;
+                    c.beginPath();
+                    c.ellipse(bossCx, headY, headW, headH, 0, 0, Math.PI * 2);
+                    c.fill();
+                    c.strokeStyle = "rgba(147, 51, 234, 0.6)";
+                    c.lineWidth = 2;
+                    c.stroke();
+                    c.shadowBlur = 0;
+                } else {
+                    // Top edge glow hint — boss is hiding above
+                    const glowAlpha = 0.3 + 0.15 * Math.sin(t * 2);
+                    c.globalAlpha = bAlpha * glowAlpha;
+                    const edgeGrad = c.createLinearGradient(0, 0, 0, 40);
+                    edgeGrad.addColorStop(0, "#9333EA");
+                    edgeGrad.addColorStop(1, "transparent");
+                    c.fillStyle = edgeGrad;
+                    c.fillRect(bossCx - 200, 0, 400, 40);
+                    c.globalAlpha = bAlpha;
+                }
+
                 c.globalAlpha = 1;
 
-                // ─── Boss HP Bar ───
+                // ─── Boss HP Bar (fixed at top of screen) ───
                 if (bossPhase.current === "fighting" || bossPhase.current === "dying") {
-                    const barW = 200;
-                    const barH = 8;
-                    const barX = bossCx - barW / 2;
-                    const barY = bossCy - 80;
+                    const barW = 240;
+                    const barH = 10;
+                    const barX = width / 2 - barW / 2;
+                    const barY = 18;
                     const hpPct = bossHp.current / BOSS_MAX_HP;
 
-                    // Background
-                    c.fillStyle = "rgba(0,0,0,0.5)";
+                    c.fillStyle = "rgba(0,0,0,0.6)";
                     c.beginPath();
                     c.roundRect(barX - 2, barY - 2, barW + 4, barH + 4, 6);
                     c.fill();
 
-                    // HP fill
                     const hpGrad = c.createLinearGradient(barX, barY, barX + barW * hpPct, barY);
                     hpGrad.addColorStop(0, hpPct > 0.3 ? "#9333EA" : "#EF4444");
                     hpGrad.addColorStop(1, hpPct > 0.3 ? "#E879F9" : "#FF6666");
@@ -575,11 +631,18 @@ export default function BossFightOverlay({
                     c.roundRect(barX, barY, barW * hpPct, barH, 4);
                     c.fill();
 
-                    // Label
+                    // Glow
+                    c.shadowColor = hpPct > 0.3 ? "#E879F9" : "#FF4444";
+                    c.shadowBlur = 6;
+                    c.beginPath();
+                    c.roundRect(barX, barY, barW * hpPct, barH, 4);
+                    c.fill();
+                    c.shadowBlur = 0;
+
                     c.fillStyle = "#ffffff";
                     c.font = "bold 11px system-ui";
                     c.textAlign = "center";
-                    c.fillText("QUÁI VẬT LƯỜI BIẾNG", bossCx, barY - 6);
+                    c.fillText("🐙 QUÁI VẬT VŨ TRỤ", width / 2, barY - 6);
                 }
             }
 
@@ -686,6 +749,39 @@ export default function BossFightOverlay({
                 c.fill();
                 c.shadowBlur = 0;
                 c.globalAlpha = 1;
+            }
+
+            // ─── Question Prompt HUD ───
+            if (bossPhase.current === "fighting") {
+                const promptY = height - SHIP_H - 55;
+
+                // Background pill
+                c.globalAlpha = 0.85;
+                c.fillStyle = "rgba(0,0,0,0.6)";
+                c.beginPath();
+                c.roundRect(width / 2 - 160, promptY - 16, 320, 36, 18);
+                c.fill();
+
+                // Border
+                c.strokeStyle = "rgba(255,215,0,0.4)";
+                c.lineWidth = 1;
+                c.stroke();
+
+                // Label
+                c.globalAlpha = 1;
+                c.font = "bold 13px system-ui";
+                c.textAlign = "center";
+                c.textBaseline = "middle";
+                c.fillStyle = "rgba(255,255,255,0.7)";
+                c.fillText("🎯 Bắn từ:", width / 2 - 60, promptY + 2);
+
+                // Question word (prominent yellow)
+                c.fillStyle = "#FFD700";
+                c.shadowColor = "#FFD700";
+                c.shadowBlur = 8;
+                c.font = "bold 18px system-ui";
+                c.fillText(question.question, width / 2 + 40, promptY + 2);
+                c.shadowBlur = 0;
             }
 
             // ─── "BOSS FIGHT!" banner during entering ───
