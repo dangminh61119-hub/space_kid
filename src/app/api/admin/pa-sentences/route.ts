@@ -43,16 +43,28 @@ export async function GET(request: NextRequest) {
         if (search) query = query.ilike("text", `%${search}%`);
 
         const { data, error } = await query.limit(500);
+        
+        console.log("[admin/pa-sentences] Query result:", {
+            dataCount: data?.length ?? 0,
+            error: error?.message ?? null,
+            hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+            supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL?.slice(0, 30),
+        });
+
         if (error) {
             console.error("[admin/pa-sentences] GET error:", error);
-            return NextResponse.json({ error: "Query failed" }, { status: 500 });
+            return NextResponse.json({ error: "Query failed", detail: error.message }, { status: 500 });
         }
 
         // Also get stats
-        const { data: stats } = await supabase
+        const { data: stats, error: statsErr } = await supabase
             .from("pa_sentences")
             .select("level")
             .eq("is_active", true);
+
+        if (statsErr) {
+            console.error("[admin/pa-sentences] Stats error:", statsErr);
+        }
 
         const levelCounts: Record<number, number> = {};
         (stats ?? []).forEach(s => {
